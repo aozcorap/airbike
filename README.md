@@ -2,9 +2,6 @@
 
 Web-App (installierbar auf dem Handy) für ein 10-Wochen-Air-Bike-Training für Boxer, mit Intervall-Timer.
 
-Die Trainingsstruktur basiert auf dem Programm „Assault Bike Conditioning" von Boxing Science.
-Dies ist ein privates Projekt. Die Inhalte dürfen ohne Lizenz des Rechteinhabers nicht veröffentlicht oder verkauft werden.
-
 ## Funktionen
 - 10-Wochen-Plan mit allen Sessions (Pyramiden, Max-Sprints, Muskelpufferung, Fight-HIIT, Taper)
 - Intervall-Timer mit Ton, Vibration und aktivem Bildschirm

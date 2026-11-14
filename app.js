@@ -241,8 +241,6 @@ function viewInfo() {
   <p>Kein Aufprall, kaum Technik und Ganzkörperbelastung. Du kannst sehr hart trainieren, ohne Sehnen und Gelenke wie beim Sprinten zu belasten.</p>
   <h2>Grenzen des Air Bikes</h2>
   <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Die Rote Zone erreichst du über hohe Trittfrequenz, nicht nur über Kraft.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern, ohne dass Laktat entsteht.</li></ul>
-  <h2>Quelle</h2>
-  <p class="muted small">Die Trainingsstruktur basiert auf dem Programm „Assault Bike Conditioning“ von Boxing Science. Diese App ist ein privates Projekt, kein offizielles Produkt von Boxing Science.</p>
   <div class="notice">Gesundheitshinweis: Max-Sprints und Training in der Roten Zone sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
 
