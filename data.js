@@ -122,19 +122,24 @@ const pyramid = (counts) => {
   }));
 };
 
-const fightHiit = ({ reps, on, off, pct }) => ({
-  title: 'Fight-HIIT',
-  desc: `${reps} × 3-min-Runde (${180 / (on + off)} × ${on} s Arbeit · ${off} s Pause) · 1 min Pause zwischen den Runden`,
-  note: 'Aus der Laufband-Vorlage auf das Bike umgerechnet (Orientierung: RPE 9/10, Prozentwerte vom Max-Watt sind eine Schätzung).',
-  repeat: reps,
-  steps: [
-    ...times(180 / (on + off), [
-      work(`${on} s Arbeit`, on, { pct, rpe: '9/10', adapted: true }),
-      rest(`${off} s Pause`, off),
-    ]),
-    rest('Pause zwischen den Runden', 60),
-  ],
-});
+const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
+  const inner = Math.max(1, Math.floor(roundSecs / (on + off)));
+  const minutes = roundSecs / 60;
+  return {
+    title: 'Fight-HIIT',
+    desc: `${reps} × ${minutes}-min-Runde (${inner} × ${on} s Arbeit · ${off} s Pause) · 1 min Pause zwischen den Runden`,
+    note: 'Aus der Laufband-Vorlage auf das Bike umgerechnet (Orientierung: RPE 9/10, Prozentwerte vom Max-Watt sind eine Schätzung).',
+    repeat: reps,
+    fight: { on, off, pct },
+    steps: [
+      ...times(inner, [
+        work(`${on} s Arbeit`, on, { pct, rpe: '9/10', adapted: true }),
+        rest(`${off} s Pause`, off),
+      ]),
+      rest('Pause zwischen den Runden', 60),
+    ],
+  };
+};
 
 // ---------- Aktive Erholung (auf das Bike umgeschrieben) ----------
 const REC_TXT = '70–80 % HFmax, Belastung 2–3 von 10';
@@ -171,6 +176,15 @@ export const RECOVERY_OPTIONS = {
   },
 };
 
+// ---------- Profile (Altersklassen) ----------
+// ACHTUNG: Die Werte der Jugendprofile sind PLATZHALTER und nicht von einem Fachtrainer freigegeben.
+export const PROFILES = {
+  elite: { name: 'Elite / Erwachsene', roundSecs: 180, volume: 1, maxSprintSecs: 30, hardPerWeek: 3, wattCapPct: 0, approved: true },
+  u18: { name: 'U17–U18', roundSecs: 180, volume: 0.8, maxSprintSecs: 20, hardPerWeek: 3, wattCapPct: 100, approved: false },
+  u16: { name: 'U15–U16', roundSecs: 120, volume: 0.6, maxSprintSecs: 15, hardPerWeek: 2, wattCapPct: 90, approved: false },
+  u14: { name: 'U13–U14', blocked: true, approved: false },
+};
+
 // ---------- Phasen ----------
 export const PHASES = [
   { weeks: [1, 2], name: 'Tempo freischalten', text: 'Pyramiden und 20-s-Sprints bauen die Basis auf und holen Geschwindigkeit in die rote Zone.' },
@@ -182,7 +196,8 @@ export const PHASES = [
 const LOAD = { 1: 'Mittel', 2: 'Mittel', 3: 'Mittel', 4: 'Mittel–Hoch', 5: 'Hoch', 6: 'Mittel', 7: 'Mittel–Hoch', 8: 'Hoch', 9: 'Mittel', 10: 'Niedrig' };
 
 // ---------- Sessions ----------
-const S = (id, type, title, focus, blocks) => ({ id, type, title, focus, blocks });
+const NON_MAIN = new Set(['Warm-up', 'Pause vor Hauptteil', 'Erweitertes Warm-up']);
+const S = (id, type, title, focus, blocks) => ({ id, type, title, focus, blocks: blocks.map((b) => ({ ...b, main: !NON_MAIN.has(b.title) })) });
 
 const T = {
   pyramid: ['Pyramiden-HIIT', 'Viel Intensität bei kleinem Umfang: kurze und lange Intervalle mit steigendem und sinkendem Tempo.'],
@@ -303,9 +318,10 @@ export const WEEKS = SESSIONS.map((sessions, idx) => {
 });
 
 // Reihenfolge innerhalb einer Woche: Session 1, Erholung, Session 2, Session 3
-export function weekOrder(week) {
+export function weekOrder(week, hardPerWeek = 3) {
   const [s1, s2, s3] = week.sessions;
-  return [s1, week.recovery, s2, s3].filter(Boolean);
+  const hard = [s1, s2, s3].filter(Boolean).slice(0, hardPerWeek);
+  return [hard[0], week.recovery, ...hard.slice(1)].filter(Boolean);
 }
 
 export function findSession(id) {
@@ -329,27 +345,41 @@ export function fmtSecs(s) {
 
 export function resolveTarget(step, ctx) {
   const { maxW, off } = ctx;
+  const cap = ctx.cap || 0;
+  const capW = maxW && cap ? r5((maxW * cap) / 100) : 0;
   let main = '';
   const sub = [];
   if (step.kind === 'rest') {
     return { main: 'PAUSE', sub: step.txt || 'Vollständige Erholung, nicht weitertreten' };
   }
   if (step.w) {
-    const lo = Math.max(100, step.w[0] - off);
-    const hi = Math.max(lo + 50, step.w[1] - off);
+    let lo = Math.max(100, step.w[0] - off);
+    let hi = Math.max(lo + 50, step.w[1] - off);
+    if (capW) {
+      hi = Math.min(hi, capW);
+      lo = Math.min(lo, Math.max(100, hi - 50));
+      sub.push(`Obergrenze ${cap} % deines Max-Watt`);
+    } else if (cap) {
+      sub.push(`höchstens ${cap} % deines Max-Watt`);
+    }
     main = `${lo}–${hi} W`;
     if (off) sub.push(`Anfänger-Modus: −${off} W`);
   } else if (step.maxEffort) {
     if (maxW && step.within) {
-      main = `${r5(maxW * (1 - step.within / 100))}–${maxW} W`;
-      sub.push(`Maximal, höchstens ${step.within} % unter deinem Bestwert (${maxW} W)`);
+      const top = capW || maxW;
+      main = `${r5(top * (1 - step.within / 100))}–${top} W`;
+      sub.push(`Maximal, höchstens ${step.within} % unter deinem Bestwert (${top} W)`);
+    } else if (capW) {
+      main = `bis ${capW} W`;
+      sub.push(`Obergrenze ${cap} % deines Max-Watt`);
     } else {
       main = 'MAXIMAL';
-      sub.push(maxW ? `Bestwert ca. ${maxW} W` : 'Alles geben');
+      sub.push(maxW ? `Bestwert ca. ${maxW} W` : cap ? `höchstens ${cap} % deines Max-Watt` : 'Alles geben');
       if (step.within) sub.push(`höchstens ${step.within} % unter deinem Bestwert`);
     }
   } else if (step.pct !== undefined) {
-    const arr = Array.isArray(step.pct) ? step.pct : [step.pct, step.pct];
+    const raw = Array.isArray(step.pct) ? step.pct : [step.pct, step.pct];
+    const arr = cap ? raw.map((v) => Math.min(v, cap)) : raw;
     const lbl = arr[0] === arr[1] ? `${arr[0]} %` : `${arr[0]}–${arr[1]} %`;
     if (maxW) {
       const top = r5((maxW * arr[1]) / 100);
@@ -358,7 +388,7 @@ export function resolveTarget(step, ctx) {
         const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
         main = `${floor}–${top} W`;
         sub.push(
-          arr[0] === 100
+          raw[0] === 100 && !cap
             ? `Maximal starten (${maxW} W), nicht unter ${floor} W fallen`
             : `${lbl} von deinem Max-Watt starten, nicht unter ${floor} W fallen`,
         );
@@ -406,9 +436,32 @@ export function flatten(session, ctx) {
   return segs;
 }
 
-export function sessionBlocks(session, recoveryKey) {
+const describeSteps = (steps) =>
+  steps.map((st) => `${fmtSecs(st.secs)} ${st.kind === 'rest' ? 'Pause' : st.label.replace(/^\d+(?:-s-| s )/, '')}`).join(' · ');
+
+function scaleBlock(b, p) {
+  if (!b.main) return b;
+  const repeat = Math.max(1, Math.round(b.repeat * p.volume));
+  if (b.fight) return fightHiit({ ...b.fight, reps: repeat, roundSecs: p.roundSecs });
+  const orig = b.steps;
+  const probe = typeof orig === 'function' ? orig(1) : orig;
+  const capped = probe.some((st) => st.kind === 'work' && (st.hold !== undefined || st.maxEffort) && st.secs > p.maxSprintSecs);
+  if (repeat === b.repeat && !capped) return b;
+  const capSteps = (steps) =>
+    steps.map((st) => (st.kind === 'work' && (st.hold !== undefined || st.maxEffort) && st.secs > p.maxSprintSecs ? { ...st, secs: p.maxSprintSecs } : st));
+  const steps =
+    typeof orig === 'function'
+      ? (i) => capSteps(orig(Math.min(b.repeat, Math.max(1, Math.round((i * b.repeat) / repeat)))))
+      : capSteps(orig);
+  const first = typeof steps === 'function' ? steps(1) : steps;
+  const title = capped ? b.title.replace(/(\d+)(-s| s)\b/g, (m, n, u) => (Number(n) > p.maxSprintSecs ? `${p.maxSprintSecs}${u}` : m)) : b.title;
+  return { ...b, title, repeat, steps, desc: `${repeat}× (${describeSteps(first)})` };
+}
+
+export function sessionBlocks(session, recoveryKey, profile) {
   if (session.type === 'recovery') return RECOVERY_OPTIONS[recoveryKey || 'opt1'].blocks;
-  return session.blocks;
+  if (!profile || profile.blocked) return session.blocks;
+  return session.blocks.map((b) => scaleBlock(b, profile));
 }
 
 export function totalSecs(segs) {
