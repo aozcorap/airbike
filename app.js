@@ -1,4 +1,4 @@
-import { WEEKS, PHASES, RECOVERY_OPTIONS, weekOrder, findSession, flatten, sessionBlocks, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { WEEKS, PHASES, PROFILES, RECOVERY_OPTIONS, weekOrder as weekOrderRaw, findSession, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 
 /* ---------------- Zustand ---------------- */
 const KEY = 'redline.v1';
@@ -13,14 +13,16 @@ const DEFAULTS = {
   ack: false,
   notify: false,
   recOpt: 'opt1',
+  profile: 'elite',
+  approved: {},
 };
 
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
-    return { ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {} };
+    return { ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {} };
   } catch {
-    return { ...DEFAULTS, days: { ...DEFAULTS.days }, done: {} };
+    return { ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {} };
   }
 }
 let state = load();
@@ -34,7 +36,30 @@ function save() {
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const DAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
-const ctx = () => ({ maxW: Number(state.maxW) || 0, off: Number(state.off) || 0 });
+const profile = () => {
+  const key = PROFILES[state.profile] ? state.profile : 'elite';
+  return { key, ...PROFILES[key] };
+};
+const profileOk = () => {
+  const p = profile();
+  return p.approved || Boolean(state.approved[p.key]);
+};
+const ctx = () => {
+  const p = profile();
+  return { maxW: Number(state.maxW) || 0, off: p.key === 'elite' ? Number(state.off) || 0 : 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
+};
+const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3);
+const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile());
+function profileBanner() {
+  const p = profile();
+  if (p.blocked) {
+    return `<div class="notice" style="background:#3a1311;border-color:#7a2622;color:#ff8a82"><b>Profil ${esc(p.name)}: Plan gesperrt.</b> Dieser Plan ist für diese Altersklasse nicht vorgesehen. Wechsle das Profil unter <a href="#/settings">Einstellungen</a>.</div>`;
+  }
+  if (!profileOk()) {
+    return `<div class="notice"><b>Profil ${esc(p.name)}:</b> Die Werte sind Platzhalter und noch nicht von einem Fachtrainer freigegeben. Bestätige die Freigabe in den <a href="#/settings">Einstellungen</a>.</div>`;
+  }
+  return '';
+}
 
 const $app = document.getElementById('app');
 const $modal = document.getElementById('modal');
@@ -105,6 +130,9 @@ function blockTargets(b) {
 
 /* ---------------- Ansichten ---------------- */
 function viewHome() {
+  if (profile().blocked) {
+    return `<span class="kicker">Redline</span><h1>10-Wochen Air-Bike-Camp</h1>${profileBanner()}`;
+  }
   const next = nextSession();
   const wk = currentWeekNo();
   let todayHtml = '';
@@ -146,7 +174,7 @@ function viewHome() {
 
   return `<span class="kicker">Redline</span><h1>10-Wochen Air-Bike-Camp</h1>
   <p class="muted">${doneCount} von ${total} Sessions erledigt</p>
-  ${startInfo}${maxNotice}${todayHtml}${nextHtml}
+  ${profileBanner()}${startInfo}${maxNotice}${todayHtml}${nextHtml}
   <h2>Woche ${week.n} · ${esc(week.phase)}</h2>${list}`;
 }
 
@@ -173,7 +201,7 @@ function viewWeek(n) {
     .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`)
     .join('');
   return `<a href="#/plan" class="muted small">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
-  <p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
+  ${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
   ${w.n === 10 ? '<p class="muted small">In Woche 10 steht nur eine Sprint-Session an, damit du frisch in den Kampf gehst.</p>' : ''}`;
 }
 
@@ -208,12 +236,13 @@ function viewSession(id) {
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''} ${adapted ? '<span class="chip amber">angepasst</span>' : ''}</p>
+  ${profileBanner()}
   ${needMax ? `<div class="notice"><b>Max-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage deinen besten 10-s-Sprint ein:<div class="row" style="margin-top:8px"><input id="maxInline" type="number" inputmode="numeric" min="0" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div></div>` : ''}
   ${adapted ? '<div class="notice">Diese Session ist aus einer Laufband-Vorlage auf das Bike umgerechnet. Die Prozentwerte sind eine Schätzung. Richte dich vor allem nach der Belastung 9 von 10.</div>' : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
-    <a class="btn primary" href="#/run/${id}" data-act="start">Starten</a>
+    ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : `<a class="btn primary" href="#/run/${id}" data-act="start">Starten</a>`}
   </div>
   <div class="btn-row">
     ${done ? `<button class="ghost" data-act="unmark" data-id="${id}">Als offen markieren</button>` : `<button class="ghost" data-act="markdone" data-id="${id}">Als erledigt markieren</button>`}
@@ -244,23 +273,44 @@ function viewInfo() {
   <div class="notice">Gesundheitshinweis: Max-Sprints und Training in der Roten Zone sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
 
+function profileSettingsInfo() {
+  const p = profile();
+  if (p.blocked) return '<p class="muted small">Dieser Plan ist für U13–U14 gesperrt (Platzhalter-Entscheidung, bitte mit Fachtrainer klären).</p>';
+  const rows = [
+    ['Rundenlänge', `${p.roundSecs / 60} min`],
+    ['Umfang', `${Math.round(p.volume * 100)} %`],
+    ['Max-Sprint bis', `${p.maxSprintSecs} s`],
+    ['Harte Sessions pro Woche', `${p.hardPerWeek}`],
+    ['Watt-Obergrenze', p.wattCapPct && p.wattCapPct < 100 ? `${p.wattCapPct} % vom Max-Watt` : 'keine'],
+  ];
+  const table = `<table class="targets"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</tbody></table>`;
+  const approve = p.approved
+    ? ''
+    : `${state.approved[p.key] ? '' : '<div class="notice">Platzhalterwerte, nicht freigegeben.</div>'}<label style="font-weight:400;display:flex;gap:10px;align-items:center"><input type="checkbox" style="width:auto" data-approve="${p.key}" ${state.approved[p.key] ? 'checked' : ''}> Ein Fachtrainer hat diese Werte freigegeben</label>`;
+  return table + approve;
+}
+
 function viewSettings() {
   const age = Number(state.age);
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const notifSupported = 'Notification' in window;
   return `<h1>Einstellungen</h1>
+  <h2>Profil (Altersklasse)</h2>
+  <label for="profile">Profil</label>
+  <select id="profile" data-set="profile">${Object.entries(PROFILES).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+  ${profileSettingsInfo()}
   <h2>Training</h2>
   <label for="maxW">Max-Watt (bester 10-s-Sprint)</label>
   <input id="maxW" type="number" inputmode="numeric" min="0" max="3000" step="5" value="${state.maxW || ''}" data-set="maxW" placeholder="z. B. 1000">
   <p class="muted small">Daraus berechnet die App Zielwerte für Sprints in Prozent. Teste ihn nach dem Warm-up mit einem maximalen 10-s-Sprint.</p>
-  <label for="off">Anfänger-Modus</label>
+  ${profile().key === 'elite' ? `<label for="off">Anfänger-Modus</label>
   <select id="off" data-set="off">
     <option value="0" ${!state.off ? 'selected' : ''}>Aus</option>
     <option value="50" ${Number(state.off) === 50 ? 'selected' : ''}>Watt-Ziele −50 W</option>
     <option value="100" ${Number(state.off) === 100 ? 'selected' : ''}>Watt-Ziele −100 W</option>
   </select>
-  <p class="muted small">Senkt nur feste Watt-Bereiche (z. B. 200–350 W). Prozent- und Max-Ziele bleiben.</p>
+  <p class="muted small">Senkt nur feste Watt-Bereiche (z. B. 200–350 W). Prozent- und Max-Ziele bleiben.</p>` : ''}
 
   <h2>Herzfrequenz</h2>
   <label for="age">Alter</label>
@@ -382,6 +432,10 @@ function unlockScreen() {
 }
 
 function runView(id) {
+  if (profile().blocked) {
+    location.hash = '#/';
+    return;
+  }
   const found = findSession(id);
   if (!found) {
     $app.innerHTML = notFound();
@@ -749,7 +803,7 @@ document.addEventListener('change', (e) => {
       try {
         const obj = JSON.parse(txt);
         if (typeof obj !== 'object' || obj === null || typeof obj.done !== 'object') throw new Error('Format');
-        state = { ...DEFAULTS, ...obj, days: { ...DEFAULTS.days, ...(obj.days || {}) } };
+        state = { ...DEFAULTS, ...obj, days: { ...DEFAULTS.days, ...(obj.days || {}) }, approved: obj.approved || {} };
         save();
         route();
         alert('Sicherung wiederhergestellt.');
@@ -757,6 +811,12 @@ document.addEventListener('change', (e) => {
         alert('Datei konnte nicht gelesen werden.');
       }
     });
+    return;
+  }
+  if (t.dataset.approve) {
+    state.approved[t.dataset.approve] = t.checked;
+    save();
+    route();
     return;
   }
   if (t.dataset.set) {
