@@ -340,25 +340,32 @@ export function resolveTarget(step, ctx) {
     main = `${lo}–${hi} W`;
     if (off) sub.push(`Anfänger-Modus: −${off} W`);
   } else if (step.maxEffort) {
-    main = 'MAXIMAL';
-    sub.push(maxW ? `Bestwert ca. ${maxW} W` : 'Alles geben');
-    if (step.within) sub.push(`höchstens ${step.within} % unter deinem Bestwert${maxW ? ` (≥ ${r5(maxW * (1 - step.within / 100))} W)` : ''}`);
+    if (maxW && step.within) {
+      main = `${r5(maxW * (1 - step.within / 100))}–${maxW} W`;
+      sub.push(`Maximal, höchstens ${step.within} % unter deinem Bestwert (${maxW} W)`);
+    } else {
+      main = 'MAXIMAL';
+      sub.push(maxW ? `Bestwert ca. ${maxW} W` : 'Alles geben');
+      if (step.within) sub.push(`höchstens ${step.within} % unter deinem Bestwert`);
+    }
   } else if (step.pct !== undefined) {
     const arr = Array.isArray(step.pct) ? step.pct : [step.pct, step.pct];
     const lbl = arr[0] === arr[1] ? `${arr[0]} %` : `${arr[0]}–${arr[1]} %`;
-    if (arr[0] === 100 && step.hold) {
-      main = 'MAXIMAL';
-      sub.push(
-        maxW
-          ? `Bestwert ca. ${maxW} W · nicht unter ${r5(maxW * (1 - step.hold / 100))} W fallen`
-          : `höchstens ${step.hold} % Leistungsabfall`,
-      );
-    } else if (maxW) {
-      const lo = r5((maxW * arr[0]) / 100);
-      const hi = r5((maxW * arr[1]) / 100);
-      main = lo === hi ? `${lo} W` : `${lo}–${hi} W`;
-      sub.push(`${lbl} von deinem Max-Watt`);
-      if (step.hold) sub.push(`nicht unter ${r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100))} W fallen`);
+    if (maxW) {
+      const top = r5((maxW * arr[1]) / 100);
+      const low = r5((maxW * arr[0]) / 100);
+      if (step.hold) {
+        const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
+        main = `${floor}–${top} W`;
+        sub.push(
+          arr[0] === 100
+            ? `Maximal starten (${maxW} W), nicht unter ${floor} W fallen`
+            : `${lbl} von deinem Max-Watt starten, nicht unter ${floor} W fallen`,
+        );
+      } else {
+        main = low === top ? `${low} W` : `${low}–${top} W`;
+        sub.push(`${lbl} von deinem Max-Watt`);
+      }
     } else {
       main = `${lbl} Max-Watt`;
       sub.push('Max-Watt in den Einstellungen eintragen, dann siehst du Watt-Zahlen');
