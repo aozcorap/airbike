@@ -123,6 +123,10 @@ body.running { padding-bottom: 0; }
 #modal[hidden] { display: none; }
 #modal .card { max-width: 480px; margin: 0; }
 
+table.targets { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 14px; }
+table.targets td { padding: 4px 0; border-bottom: 1px solid var(--line); }
+table.targets td:last-child { text-align: right; white-space: nowrap; color: var(--accent-2); }
+
 ul.plain { padding-left: 20px; margin: 8px 0; }
 ul.plain li { margin: 4px 0; }
 table.rpe { width: 100%; border-collapse: collapse; font-size: 14px; }

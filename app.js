@@ -1,4 +1,4 @@
-import { WEEKS, PHASES, RECOVERY_OPTIONS, weekOrder, findSession, flatten, sessionBlocks, totalSecs, fmtSecs } from './data.js';
+import { WEEKS, PHASES, RECOVERY_OPTIONS, weekOrder, findSession, flatten, sessionBlocks, totalSecs, fmtSecs, resolveTarget } from './data.js';
 
 /* ---------------- Zustand ---------------- */
 const KEY = 'redline.v1';
@@ -78,6 +78,29 @@ function autoDesc(block) {
   const steps = typeof block.steps === 'function' ? block.steps(1) : block.steps;
   const parts = steps.map((st) => `${fmtSecs(st.secs)} ${st.kind === 'rest' ? 'locker' : 'Zone 3'}`);
   return `${block.repeat}× (${parts.join(' · ')})`;
+}
+
+function blockTargets(b) {
+  const c = ctx();
+  const seen = new Map();
+  for (let i = 1; i <= b.repeat; i++) {
+    const steps = typeof b.steps === 'function' ? b.steps(i) : b.steps;
+    steps
+      .filter((st) => st.kind !== 'rest')
+      .forEach((st) => {
+        const main = resolveTarget(st, c).main;
+        if (!/\d W$/.test(main) && main !== 'MAXIMAL') return;
+        const key = `${st.label}|${main}`;
+        if (!seen.has(key)) seen.set(key, { label: st.label, main, reps: [] });
+        if (!seen.get(key).reps.includes(i)) seen.get(key).reps.push(i);
+      });
+  }
+  return [...seen.values()].map((t) => {
+    const all = t.reps.length === b.repeat;
+    const consecutive = t.reps[t.reps.length - 1] - t.reps[0] + 1 === t.reps.length;
+    const when = all ? '' : consecutive ? ` (Wdh. ${t.reps[0]}–${t.reps[t.reps.length - 1]})` : ` (Wdh. ${t.reps.join(', ')})`;
+    return `<tr><td>${esc(t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
+  });
 }
 
 /* ---------------- Ansichten ---------------- */
@@ -171,7 +194,10 @@ function viewSession(id) {
     : '';
 
   const blockHtml = blocks
-    .map((b) => `<div class="block"><h3>${esc(b.title)}</h3><div>${esc(autoDesc(b))}</div>${b.note ? `<div class="note">${esc(b.note)}</div>` : ''}</div>`)
+    .map((b) => {
+      const rows = blockTargets(b);
+      return `<div class="block"><h3>${esc(b.title)}</h3><div>${esc(autoDesc(b))}</div>${rows.length ? `<table class="targets"><tbody>${rows.join('')}</tbody></table>` : ''}${b.note ? `<div class="note">${esc(b.note)}</div>` : ''}</div>`;
+    })
     .join('');
 
   const needMax = !state.maxW && segs.some((s) => s.target.sub.includes('Max-Watt in den Einstellungen'));
@@ -182,7 +208,7 @@ function viewSession(id) {
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''} ${adapted ? '<span class="chip amber">angepasst</span>' : ''}</p>
-  ${needMax ? '<div class="notice">Ohne Max-Watt siehst du nur Prozentwerte. Du kannst ihn in den <a href="#/settings">Einstellungen</a> eintragen.</div>' : ''}
+  ${needMax ? `<div class="notice"><b>Max-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage deinen besten 10-s-Sprint ein:<div class="row" style="margin-top:8px"><input id="maxInline" type="number" inputmode="numeric" min="0" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div></div>` : ''}
   ${adapted ? '<div class="notice">Diese Session ist aus einer Laufband-Vorlage auf das Bike umgerechnet. Die Prozentwerte sind eine Schätzung. Richte dich vor allem nach der Belastung 9 von 10.</div>' : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
@@ -215,8 +241,6 @@ function viewInfo() {
   <p>Kein Aufprall, kaum Technik und Ganzkörperbelastung. Du kannst sehr hart trainieren, ohne Sehnen und Gelenke wie beim Sprinten zu belasten.</p>
   <h2>Grenzen des Air Bikes</h2>
   <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Die Rote Zone erreichst du über hohe Trittfrequenz, nicht nur über Kraft.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern, ohne dass Laktat entsteht.</li></ul>
-  <h2>Quelle</h2>
-  <p class="muted small">Die Trainingsstruktur basiert auf dem Programm „Assault Bike Conditioning“ von Boxing Science. Diese App ist ein privates Projekt, kein offizielles Produkt von Boxing Science.</p>
   <div class="notice">Gesundheitshinweis: Max-Sprints und Training in der Roten Zone sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
 
@@ -652,6 +676,17 @@ document.addEventListener('click', (e) => {
       save();
       route();
       break;
+    case 'savemax': {
+      const v = Number(document.getElementById('maxInline')?.value);
+      if (v >= 100 && v <= 3000) {
+        state.maxW = v;
+        save();
+        route();
+      } else {
+        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
+      }
+      break;
+    }
     case 'tpause':
       runCtl?.toggle();
       break;
