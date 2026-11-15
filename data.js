@@ -3,7 +3,7 @@
 
 // ---------- Schritt-Bausteine ----------
 const work = (label, secs, t = {}) => ({ label, secs, kind: 'work', ...t });
-const easy = (label, secs, t = {}) => ({ label, secs, kind: 'easy', rpe: '2–3', pct: [12, 20], ...t }); // Annahme: Richtwert 12–20 % des Max-Watt
+const easy = (label, secs, t = {}) => ({ label, secs, kind: 'easy', rpe: '2–3', pct: [12, 20], ...t }); // Annahme: Richtwert 12–20 % des Test-Watt
 const rest = (label, secs, t = {}) => ({ label, secs, kind: 'rest', ...t });
 const times = (n, arr) => Array.from({ length: n }, () => arr).flat();
 
@@ -141,21 +141,21 @@ const roundBlock = ({ reps, on, off, pct, roundSecs = 180 }) => {
   };
 };
 
-// ---------- Max-Watt-Test ----------
+// ---------- Fitness-Test (3 Sprints, Durchschnitt = Test-Watt) ----------
 // Vorschlag: 3 Sprints à 10 s mit 1 min Pause.
 // Vermutung: Eine längere Pause (2–3 min) liefert verlässlichere Werte. Hier zentral einstellbar.
 export const TEST_PAUSE_SECS = 60;
 export const TEST_SESSION = {
   id: 'test',
   type: 'test',
-  title: 'Max-Watt-Test',
-  focus: 'Drei maximale 10-Sekunden-Sprints. Dein höchster Wert wird die Grundlage für alle Watt-Ziele.',
+  title: 'Fitness-Test',
+  focus: 'Drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte ist die Grundlage für alle Watt-Ziele.',
   blocks: [
     ...warmup(),
     {
       title: 'Test-Sprints',
       desc: `3 × (10 s maximal · ${TEST_PAUSE_SECS / 60} min Pause)`,
-      note: 'Merke dir den höchsten Wert, den dein Bike während der Sprints anzeigt. Du trägst ihn danach ein.',
+      note: 'Merke dir nach jedem Sprint den höchsten Wert (Watt), den dein Bike anzeigt. Du trägst die drei Werte danach ein.',
       repeat: 3,
       steps: [work('Test-Sprint', 10, { maxEffort: true }), rest('Pause', TEST_PAUSE_SECS)],
     },
@@ -365,38 +365,28 @@ export function fmtSecs(s) {
 }
 
 export function resolveTarget(step, ctx) {
-  const { maxW, off } = ctx;
+  const { maxW } = ctx;
   const cap = ctx.cap || 0;
+  // Feste Wattbereiche der Vorlage gelten für ca. 1000 W; hier als Prozent des persönlichen Test-Watt
+  if (step.w) step = { ...step, pct: step.w.map((v) => v / 10), w: undefined };
   const capW = maxW && cap ? r5((maxW * cap) / 100) : 0;
   let main = '';
   const sub = [];
   if (step.kind === 'rest') {
     return { main: 'PAUSE', sub: step.txt || 'Vollständige Erholung, nicht weitertreten' };
   }
-  if (step.w) {
-    let lo = Math.max(100, step.w[0] - off);
-    let hi = Math.max(lo + 50, step.w[1] - off);
-    if (capW) {
-      hi = Math.min(hi, capW);
-      lo = Math.min(lo, Math.max(100, hi - 50));
-      sub.push(`Obergrenze ${cap} % deines Max-Watt`);
-    } else if (cap) {
-      sub.push(`höchstens ${cap} % deines Max-Watt`);
-    }
-    main = `${lo}–${hi} W`;
-    if (off) sub.push(`Anfänger-Modus: −${off} W`);
-  } else if (step.maxEffort) {
+  if (step.maxEffort) {
     if (maxW && step.within) {
       const top = capW || maxW;
       main = `${r5(top * (1 - step.within / 100))}–${top} W`;
-      sub.push(`Maximal, höchstens ${step.within} % unter deinem Bestwert (${top} W)`);
+      sub.push(`Maximal. Halte mindestens ${r5(top * (1 - step.within / 100))} W (Test-Watt ${top} W)`);
     } else if (capW) {
       main = `bis ${capW} W`;
-      sub.push(`Obergrenze ${cap} % deines Max-Watt`);
+      sub.push(`Obergrenze ${cap} % deines Test-Watt`);
     } else {
       main = 'MAXIMAL';
-      sub.push(maxW ? `Bestwert ca. ${maxW} W` : cap ? `höchstens ${cap} % deines Max-Watt` : 'Alles geben');
-      if (step.within) sub.push(`höchstens ${step.within} % unter deinem Bestwert`);
+      sub.push(maxW ? `Dein Test-Watt: ${maxW} W` : cap ? `höchstens ${cap} % deines Test-Watt` : 'Alles geben');
+      if (step.within) sub.push(`höchstens ${step.within} % unter deinem Test-Watt`);
     }
   } else if (step.pct !== undefined) {
     const raw = Array.isArray(step.pct) ? step.pct : [step.pct, step.pct];
@@ -415,15 +405,15 @@ export function resolveTarget(step, ctx) {
         sub.push(
           raw[0] === 100 && !cap
             ? `Maximal starten (${maxW} W), nicht unter ${floor} W fallen`
-            : `${lbl} von deinem Max-Watt starten, nicht unter ${floor} W fallen`,
+            : `${lbl} von deinem Test-Watt starten, nicht unter ${floor} W fallen`,
         );
       } else {
         main = low === top ? `${low} W` : `${low}–${top} W`;
-        sub.push(`${lbl} von deinem Max-Watt`);
+        sub.push(`${lbl} von deinem Test-Watt`);
       }
     } else {
-      main = `${lbl} Max-Watt`;
-      sub.push('Max-Watt in den Einstellungen eintragen, dann siehst du Watt-Zahlen');
+      main = `${lbl} Test-Watt`;
+      sub.push('Mache den Fitness-Test, dann siehst du Watt-Zahlen');
       if (step.hold) sub.push(`höchstens ${step.hold} % Leistungsabfall`);
     }
   } else if (step.rpe) {
@@ -463,10 +453,15 @@ export function flatten(session, ctx) {
 const describeSteps = (steps) =>
   steps.map((st) => `${fmtSecs(st.secs)} ${st.kind === 'rest' ? 'Pause' : st.label.replace(/^\d+(?:-s-| s )/, '')}`).join(' · ');
 
+// Annahmen (nicht aus der Vorlage, fachlich zu prüfen): Mehr Runden im Kampf bedeuten mehr Kampfrunden im Training
+// (+1 Runde je 2 zusätzliche Kampfrunden, höchstens +5) und etwas mehr Umfang in den übrigen Einheiten (+2,5 % je Runde, höchstens +20 %).
+const extraFightRounds = (rounds) => Math.min(5, Math.ceil((Math.max(3, rounds) - 3) / 2));
+const volumeFactor = (rounds) => Math.min(1.2, 1 + 0.025 * (Math.max(3, rounds) - 3));
 function scaleBlock(b, p) {
   if (!b.main) return b;
-  const repeat = Math.max(1, Math.round(b.repeat * p.volume));
-  if (b.fight) return roundBlock({ ...b.fight, reps: repeat, roundSecs: p.roundSecs });
+  const rounds = p.rounds || 3;
+  if (b.fight) return roundBlock({ ...b.fight, reps: Math.max(1, Math.round((b.repeat + extraFightRounds(rounds)) * p.volume)), roundSecs: p.roundSecs });
+  const repeat = Math.max(1, Math.round(b.repeat * p.volume * volumeFactor(rounds)));
   const orig = b.steps;
   const probe = typeof orig === 'function' ? orig(1) : orig;
   const capped = probe.some((st) => st.kind === 'work' && (st.hold !== undefined || st.maxEffort) && st.secs > p.maxSprintSecs);
@@ -482,10 +477,11 @@ function scaleBlock(b, p) {
   return { ...b, title, repeat, steps, desc: `${repeat}× (${describeSteps(first)})` };
 }
 
-export function sessionBlocks(session, recoveryKey, profile) {
+export function sessionBlocks(session, recoveryKey, profile, format) {
   if (session.type === 'recovery') return RECOVERY_OPTIONS[recoveryKey || 'opt1'].blocks;
   if (!profile || profile.blocked) return session.blocks;
-  return session.blocks.map((b) => scaleBlock(b, profile));
+  const p = { ...profile, rounds: (format && format.rounds) || 3, roundSecs: (format && format.roundSecs) || profile.roundSecs || 180 };
+  return session.blocks.map((b) => scaleBlock(b, p));
 }
 
 export function totalSecs(segs) {

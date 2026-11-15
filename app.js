@@ -11,6 +11,10 @@ const DEFAULTS = {
   fightDate: '',
   freq: 3,
   maxWDate: '',
+  peakW: 0,
+  sprints: [],
+  rounds: 3,
+  roundMin: 3,
   done: {},
   days: { s1: 1, rec: 3, s2: 4, s3: 6 },
   time: '18:00',
@@ -56,10 +60,13 @@ const profileOk = () => {
 };
 const ctx = () => {
   const p = profile();
-  return { maxW: Number(state.maxW) || 0, off: p.key === 'elite' ? Number(state.off) || 0 : 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
+  return { maxW: Number(state.maxW) || 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
 };
 const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
-const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile());
+const fmtRounds = () => Math.max(3, Math.min(12, Number(state.rounds) || 3));
+const fmtRoundSecs = () => (Number(state.roundMin) === 2 ? 120 : 180);
+const formatLabel = () => `${fmtRounds()} Runden à ${fmtRoundSecs() / 60} Minuten`;
+const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile(), { rounds: fmtRounds(), roundSecs: fmtRoundSecs() });
 function profileBanner() {
   const p = profile();
   if (p.blocked) {
@@ -200,6 +207,29 @@ function stepCard(b, no, isRec) {
   </section>`;
 }
 
+/* Test-Watt = Durchschnitt der drei Sprint-Höchstwerte */
+const sprintInputs = (pre) =>
+  `<div class="sprint-grid">${[1, 2, 3]
+    .map((i) => `<div><label for="${pre}${i}" class="small" style="margin:0 0 4px">Sprint ${i}</label><input id="${pre}${i}" type="number" inputmode="numeric" min="100" max="3000" step="1" placeholder="Watt" aria-label="Höchster Wert Sprint ${i} in Watt"></div>`)
+    .join('')}</div>`;
+function saveSprints(pre) {
+  const vals = [1, 2, 3].map((i) => Math.round(Number(document.getElementById(pre + i)?.value)));
+  if (vals.some((v) => !(v >= 100 && v <= 3000))) {
+    alert('Bitte gib alle drei Werte zwischen 100 und 3000 Watt ein.');
+    return false;
+  }
+  state.sprints = vals;
+  state.peakW = Math.max(...vals);
+  state.maxW = Math.round(vals.reduce((x, y) => x + y, 0) / 3);
+  state.maxWDate = new Date().toISOString();
+  save();
+  return true;
+}
+const testWattLine = () =>
+  state.maxW
+    ? `<p>Dein Test-Watt: <b>${state.maxW} W</b>${state.sprints && state.sprints.length === 3 ? ` (Durchschnitt aus ${state.sprints.join(', ')} W)` : ''}${state.maxWDate ? ` · ${fmtDate(new Date(state.maxWDate))}` : ''}</p>`
+    : '';
+
 /* ---------------- Ansichten ---------------- */
 const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
 const APP_NAME_A = 'LAST ';
@@ -223,7 +253,7 @@ function setupCard() {
   const rows = [
     [state.onboarded, 'Altersklasse und Hinweis', '#/settings'],
     [hasDate, 'Kampftermin eintragen', '#/settings'],
-    [Boolean(state.maxW), 'Max-Watt ermitteln', '#/test'],
+    [Boolean(state.maxW), 'Test-Watt ermitteln', '#/test'],
   ];
   if (rows.every((r) => r[0])) return '';
   return `<div class="card setup"><span class="kicker">So kommst du in Gang</span>
@@ -235,10 +265,10 @@ function setupCard() {
 function maxWatNotice() {
   const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
   if (!state.maxW) {
-    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
+    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Fitness-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
   }
   if (state.maxWDate && age >= 28) {
-    return `<div class="card"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test"><u>Max-Watt neu messen</u></a></p></div>`;
+    return `<div class="card"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test"><u>Test-Watt neu messen</u></a></p></div>`;
   }
   return '';
 }
@@ -264,7 +294,7 @@ function viewHome() {
     const d = daysToFight();
     fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
-      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
+      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
@@ -308,23 +338,21 @@ function viewHome() {
 }
 
 function viewTest() {
-  const last = state.maxW
-    ? `<p>Dein aktueller Max-Watt-Wert: <b>${state.maxW} W</b>${state.maxWDate ? ` (${fmtDate(new Date(state.maxWDate))})` : ''}</p>`
-    : '';
-  return `<a href="#/" class="back">← Zurück</a><span class="kicker" style="display:block;margin-top:8px">Grundlage für deine Watt-Ziele</span><h1>Max-Watt-Test</h1>
-  ${last}
-  <p class="muted">Du fährst drei maximale Sprints von je 10 Sekunden. Dein höchster Wert wird zur Grundlage für alle Watt-Ziele im Plan.</p>
+  return `<a href="#/" class="back">← Zurück</a><span class="kicker" style="display:block;margin-top:8px">Grundlage für deine Watt-Ziele</span><h1>Fitness-Test</h1>
+  ${testWattLine()}
+  <p class="muted">Du fährst drei maximale Sprints von je 10 Sekunden. Der Durchschnitt deiner drei Höchstwerte ist dein Test-Watt und die Grundlage für alle Watt-Ziele im Plan.</p>
   <h2>So läuft es ab</h2>
   <ol class="plain">
     <li>Zuerst wärmst du dich etwa 4 Minuten auf.</li>
     <li>Dann kommen 3 Sprints von je 10 Sekunden mit voller Kraft, dazwischen ${TEST_PAUSE_SECS / 60} Minute Pause.</li>
     <li>Merke dir nach jedem Sprint den höchsten Wert auf der Anzeige deines Bikes.</li>
-    <li>Am Ende trägst du den höchsten der drei Werte ein.</li>
+    <li>Am Ende trägst du die drei Werte ein. Die App rechnet den Durchschnitt.</li>
   </ol>
   <div class="notice">Mache den Test nur ausgeruht und aufgewärmt, nicht nach einem harten Trainingstag. Bei Schwindel, Schmerz oder Atemnot sofort abbrechen. Der Wert schwankt mit der Tagesform. Wiederhole den Test alle paar Wochen.</div>
   ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : '<a class="btn primary block" href="#/run/test" data-act="start">Test starten</a>'}
-  <h2>Oder Wert direkt eintragen</h2>
-  <div class="row"><input id="maxInline" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div>`;
+  <h2>Oder Werte direkt eintragen</h2>
+  ${sprintInputs('mi')}
+  <button class="primary block" style="margin-top:12px" data-act="savemax">Speichern</button>`;
 }
 
 function weekRange(w) {
@@ -386,7 +414,7 @@ function viewSession(id) {
 
   const blockHtml = blocks.map((b, i) => stepCard(b, i + 1, isRec)).join('');
 
-  const needMax = !state.maxW && segs.some((s) => s.target.sub.includes('Max-Watt in den Einstellungen'));
+  const needMax = !state.maxW && segs.some((s) => s.target.sub.includes('Mache den Fitness-Test'));
   const done = isDone(id);
 
   return `<a href="#/week/${week.n}" class="back">← Woche ${week.n}</a>
@@ -395,7 +423,7 @@ function viewSession(id) {
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''}</p>
   ${profileBanner()}
-  ${needMax ? `<div class="notice"><b>Max-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage deinen besten 10-s-Sprint ein:<div class="row" style="margin-top:8px"><input id="maxInline" type="number" inputmode="numeric" min="0" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div></div>` : ''}
+  ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage die drei Sprints deines Fitness-Tests ein (<a href="#/test"><u>Test starten</u></a>):${sprintInputs('mi')}<button class="primary block" style="margin-top:10px" data-act="savemax">Speichern</button></div>` : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
@@ -409,13 +437,12 @@ function viewSession(id) {
 function viewInfo() {
   const p = profile();
   const pl = plan();
-  const lvl = { 0: 'Sehr gut trainiert', 50: 'Gut trainiert', 100: 'Wenig Erfahrung' }[Number(state.off)] || 'Sehr gut trainiert';
   const rows = [
     [state.onboarded, 'Altersklasse', p.name, '#/settings'],
     [Boolean(state.fightDate), 'Kampftermin', pl.fight ? fmtDate(pl.fight) : 'offen', '#/settings'],
     [true, 'Training pro Woche', `${effFreq()}× pro Woche`, '#/settings'],
-    ...(p.key === 'elite' ? [[true, 'Trainingsstand', lvl, '#/settings']] : []),
-    [Boolean(state.maxW), 'Max-Watt', state.maxW ? `${state.maxW} W` : 'offen', '#/test'],
+    [true, 'Kampfformat', formatLabel(), '#/settings'],
+    [Boolean(state.maxW), 'Test-Watt', state.maxW ? `${state.maxW} W` : 'offen', '#/test'],
   ];
   return `<span class="kicker">Neu hier?</span><h1>Einführung</h1>
   <p class="muted">So startest du in wenigen Minuten. Hier findest du die Anleitung, das Erklärvideo und dein aktuelles Setup.</p>
@@ -440,7 +467,7 @@ function viewInfo() {
   <h3 style="margin-top:18px">Warum Air Bike?</h3>
   <p>Kein Aufprall, kaum Technik und Ganzkörperbelastung. Du kannst sehr hart trainieren, ohne Sehnen und Gelenke wie beim Sprinten zu belasten.</p>
   <h3 style="margin-top:18px">Grenzen des Air Bikes</h3>
-  <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern. Bleib bewusst im Grundtempo.</li></ul>
+  <ul class="plain"><li>Die Watt-Ziele richten sich nach deinem Test-Watt. Wiederhole den Fitness-Test alle paar Wochen, damit sie zu deiner Form passen.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern. Bleib bewusst im Grundtempo.</li></ul>
   <div class="notice">Gesundheitshinweis: Maximale Sprints sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
 
@@ -448,11 +475,10 @@ function profileSettingsInfo() {
   const p = profile();
   if (p.blocked) return '<p class="muted small">Dieser Plan ist für U13–U14 gesperrt (Platzhalter-Entscheidung, bitte mit Fachtrainer klären).</p>';
   const rows = [
-    ['Rundenlänge', `${p.roundSecs / 60} min`],
     ['Umfang', `${Math.round(p.volume * 100)} %`],
     ['Max-Sprint bis', `${p.maxSprintSecs} s`],
     ['Harte Sessions pro Woche', `${p.hardPerWeek}`],
-    ['Watt-Obergrenze', p.wattCapPct && p.wattCapPct < 100 ? `${p.wattCapPct} % vom Max-Watt` : 'keine'],
+    ['Watt-Obergrenze', p.wattCapPct && p.wattCapPct < 100 ? `${p.wattCapPct} % vom Test-Watt` : 'keine'],
   ];
   const table = `<table class="targets"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</tbody></table>`;
   const approve = p.approved
@@ -474,16 +500,16 @@ function viewSettings() {
   <select id="profile" data-set="profile">${Object.entries(PROFILES).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
   ${profileSettingsInfo()}
   <h2>Training</h2>
-  <label for="maxW">Max-Watt (bester 10-s-Sprint)</label>
+  <label for="maxW">Test-Watt (Durchschnitt deiner 3 Sprints)</label>
   <input id="maxW" type="number" inputmode="numeric" min="0" max="3000" step="5" value="${state.maxW || ''}" data-set="maxW" placeholder="z. B. 1000">
-  <p class="muted small">Daraus berechnet die App alle Watt-Ziele. Am besten ermittelst du ihn mit dem geführten <a href="#/test">Max-Watt-Test</a>.</p>
-  ${profile().key === 'elite' ? `<label for="off">Anfänger-Modus</label>
-  <select id="off" data-set="off">
-    <option value="0" ${!state.off ? 'selected' : ''}>Aus</option>
-    <option value="50" ${Number(state.off) === 50 ? 'selected' : ''}>Watt-Ziele −50 W</option>
-    <option value="100" ${Number(state.off) === 100 ? 'selected' : ''}>Watt-Ziele −100 W</option>
-  </select>
-  <p class="muted small">Senkt nur feste Watt-Bereiche (z. B. 200–350 W). Prozent- und Max-Ziele bleiben.</p>` : ''}
+  <p class="muted small">Daraus berechnet die App alle Watt-Ziele. Am besten ermittelst du ihn mit dem geführten <a href="#/test">Fitness-Test</a>.</p>
+
+  <h2>Kampfformat</h2>
+  <label for="rounds">Anzahl der Runden im nächsten Kampf</label>
+  <select id="rounds" data-set="rounds">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<option value="${n}" ${fmtRounds() === n ? 'selected' : ''}>${n} Runden</option>`).join('')}</select>
+  <label for="roundMin">Länge einer Runde</label>
+  <select id="roundMin" data-set="roundMin">${[2, 3].map((m) => `<option value="${m}" ${fmtRoundSecs() === m * 60 ? 'selected' : ''}>${m} Minuten</option>`).join('')}</select>
+  <p class="muted small">Daran richten sich die Kampfrunden und der Umfang im Plan aus. Die Zuordnung ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>
 
   <h2>Aktive Erholung</h2>
   <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
@@ -732,9 +758,9 @@ function runView(id) {
     el.box.className = 'timer k-done';
     setChrome('done');
     if (session.type === 'test') {
-      el.box.innerHTML = `<div class="t-mid"><div class="t-label">Test geschafft</div><div class="t-target">Dein höchster Wert?</div>
-        <div class="t-sub">Trage den höchsten Wert der drei Sprints ein.</div>
-        <input id="testW" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="Watt" aria-label="Höchster Wert in Watt" style="max-width:220px;text-align:center;font-size:28px;font-weight:800;margin-top:8px"></div>
+      el.box.innerHTML = `<div class="t-mid"><div class="t-label">Test geschafft</div><div class="t-target">Deine drei Werte?</div>
+        <div class="t-sub">Trage den höchsten Wert jedes Sprints ein.</div>
+        <div class="tw-wrap">${sprintInputs('tw')}</div></div>
         <div class="btn-row"><button class="main" style="background:#fff;color:#111" data-act="savetest">Speichern</button></div>
         <button class="t-exit" data-act="texit">Ohne Speichern zurück</button>`;
       return;
@@ -901,7 +927,7 @@ function scheduleReminder() {
 }
 
 /* ---------------- Einführung (So startest du) ---------------- */
-const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'level', 'watt', 'done'];
+const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'format', 'watt', 'done'];
 let ob = { step: 0 };
 
 function videoEmbed(url) {
@@ -945,8 +971,8 @@ function obBody(id) {
           <li><b>Gesundheit</b><span>Kurzer Hinweis vor dem Start</span></li>
           <li><b>Für wen</b><span>Altersklasse wählen</span></li>
           <li><b>Kampftermin</b><span>Plan richtet sich danach</span></li>
-          <li><b>Trainingsstand</b><span>Wie fit bist du am Air Bike?</span></li>
-          <li><b>Max-Watt</b><span>Dein Bestwert in Watt, Grundlage aller Ziele</span></li>
+          <li><b>Kampfformat</b><span>Wie viele Runden, wie lang?</span></li>
+          <li><b>Fitness-Test</b><span>3 Sprints, der Durchschnitt ist die Grundlage aller Ziele</span></li>
         </ol>`;
     case 'health':
       return `<span class="kicker">Schritt 1 von 5</span><h1>Gesundheit</h1>
@@ -966,20 +992,23 @@ function obBody(id) {
         <div class="seg">${[1, 2, 3].map((n) => `<button class="opt sm ${Number(state.freq) === n ? 'sel' : ''}" data-act="ob-freq" data-n="${n}"><b>${n}×</b><span>pro Woche</span></button>`).join('')}</div>
         <p class="muted small">Bei weniger als 3 Einheiten wählt die App die wichtigsten aus.</p>
         <button class="linkbtn" data-act="ob-nodate">Ich habe noch keinen Termin</button>`;
-    case 'level':
-      return `<span class="kicker">Schritt 4 von 5</span><h1>Trainingsstand</h1>
-        <p class="muted">Wie fit bist du am Air Bike? Das bestimmt, wie hoch die festen Watt-Ziele im Aufwärmen und in den Stufen liegen.</p>
-        ${[[0, 'Sehr gut trainiert', 'Ich fahre regelmäßig hart auf dem Air Bike'], [50, 'Gut trainiert', 'Watt-Ziele 50 W niedriger'], [100, 'Wenig Erfahrung am Air Bike', 'Watt-Ziele 100 W niedriger']]
-          .map(([v, t, s]) => `<button class="opt ${ob.levelSet && Number(state.off) === v ? 'sel' : ''}" data-act="ob-level" data-v="${v}"><b>${t}</b><span>${s}</span></button>`)
-          .join('')}`;
+    case 'format':
+      return `<span class="kicker">Schritt 4 von 5</span><h1>Kampfformat</h1>
+        <p class="muted">Über wie viele Runden geht dein nächster Kampf, und wie lang ist eine Runde? Daran richtet sich der Plan aus.</p>
+        <label>Anzahl der Runden</label>
+        <div class="rounds-grid">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<button class="opt sm ${fmtRounds() === n ? 'sel' : ''}" data-act="ob-rounds" data-n="${n}"><b>${n}</b></button>`).join('')}</div>
+        <label>Länge einer Runde</label>
+        <div class="seg2x">${[2, 3].map((m) => `<button class="opt sm ${fmtRoundSecs() === m * 60 ? 'sel' : ''}" data-act="ob-rlen" data-n="${m}"><b>${m} Minuten</b></button>`).join('')}</div>
+        <p class="muted small">Mehr Runden bedeuten mehr Kampfrunden im Training. Wie viel mehr, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>`;
     case 'watt':
-      return `<span class="kicker">Schritt 5 von 5</span><h1>Dein Max-Watt</h1>
-        <p class="muted">Das ist die höchste Leistung, die du bei einem maximalen 10-Sekunden-Sprint erreichst. Daraus berechnet die App jedes Watt-Ziel.</p>
-        <div class="card"><h3>Ich kenne meinen Wert</h3>
-          <div class="row" style="margin-top:8px"><input id="obMax" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="z. B. 1000" value="${state.maxW || ''}" aria-label="Max-Watt"><button class="primary" data-act="ob-savemax">OK</button></div></div>
-        <div class="card"><h3>Ich messe ihn jetzt</h3><p class="muted small" style="margin:4px 0 10px">Geführter Test mit Aufwärmen und drei Sprints, etwa 10 Minuten.</p>
-          <button class="primary block" data-act="ob-test">Max-Watt-Test starten</button></div>
-        <button class="linkbtn" data-act="ob-next">Später eintragen (dann siehst du nur Prozentwerte)</button>`;
+      return `<span class="kicker">Schritt 5 von 5</span><h1>Dein Fitness-Test</h1>
+        <p class="muted">Du fährst drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte (Watt) ist dein Test-Watt. Daraus berechnet die App jedes Watt-Ziel.</p>
+        <div class="card"><h3>Ich kenne meine drei Werte</h3>
+          <div style="margin-top:8px">${sprintInputs('ob')}</div>
+          <button class="primary block" style="margin-top:12px" data-act="ob-savemax">Speichern</button></div>
+        <div class="card"><h3>Ich messe sie jetzt</h3><p class="muted small" style="margin:4px 0 10px">Geführter Test mit Aufwärmen und drei Sprints, etwa 10 Minuten.</p>
+          <button class="primary block" data-act="ob-test">Fitness-Test starten</button></div>
+        <button class="linkbtn" data-act="ob-next">Später machen (dann siehst du nur Prozentwerte)</button>`;
     case 'done': {
       const pl = plan();
       const d = daysToFight();
@@ -988,11 +1017,12 @@ function obBody(id) {
           <li><span>Altersklasse</span><b>${esc(p.name)}</b></li>
           <li><span>Kampf</span><b>${pl.fight ? fmtDate(pl.fight) + (d !== null ? ' · in ' + d + ' Tagen' : '') : 'noch kein Termin'}</b></li>
           <li><span>Plan</span><b>${pl.weeks.length ? wochen(pl.weeks.length) + ', ' + effFreq() + '× pro Woche' : 'noch nicht berechnet'}</b></li>
-          <li><span>Max-Watt</span><b>${state.maxW ? state.maxW + ' W' : 'noch offen'}</b></li>
+          <li><span>Kampfformat</span><b>${formatLabel()}</b></li>
+          <li><span>Test-Watt</span><b>${state.maxW ? state.maxW + ' W' : 'noch offen'}</b></li>
         </ul>
         ${pl.mode === 'start' ? '<p class="muted small">Ohne Kampftermin gilt der volle Plan über 10 Wochen ab heute. Den Termin kannst du später in den Einstellungen eintragen.</p>' : ''}
         <h2>Als Nächstes</h2>
-        ${state.maxW ? `<p>Deine erste Einheit findest du auf der Startseite unter „Nächste Einheit“. Tippe darauf und starte den Timer.</p>` : '<p><b>Mache zuerst den Max-Watt-Test.</b> Er steht oben auf der Startseite. Ohne ihn siehst du nur Prozentwerte statt Watt-Zahlen.</p>'}`;
+        ${state.maxW ? `<p>Deine erste Einheit findest du auf der Startseite unter „Nächste Einheit“. Tippe darauf und starte den Timer.</p>` : '<p><b>Mache zuerst den Fitness-Test.</b> Er steht oben auf der Startseite. Ohne ihn siehst du nur Prozentwerte statt Watt-Zahlen.</p>'}`;
     }
     default:
       return '';
@@ -1026,7 +1056,7 @@ function renderOnboarding() {
 }
 
 function startOnboarding(step = 0) {
-  ob = { step, levelSet: Boolean(state.onboarded) };
+  ob = { step };
   renderOnboarding();
 }
 function closeOnboarding() {
@@ -1042,10 +1072,6 @@ function obNext(noDate = false) {
   if (id === 'health') {
     state.ack = true;
     save();
-  }
-  if (id === 'level' && !ob.levelSet) {
-    alert('Bitte wähle deinen Trainingsstand.');
-    return;
   }
   if (id === 'fight') {
     if (noDate) {
@@ -1072,13 +1098,11 @@ function obNext(noDate = false) {
     save();
   }
   let n = ob.step + 1;
-  if (OB_STEPS[n] === 'level' && profile().key !== 'elite') n += 1;
   ob.step = Math.min(n, OB_STEPS.length - 1);
   renderOnboarding();
 }
 function obBack() {
   let n = ob.step - 1;
-  if (OB_STEPS[n] === 'level' && profile().key !== 'elite') n -= 1;
   ob.step = Math.max(n, 0);
   renderOnboarding();
 }
@@ -1594,7 +1618,7 @@ function legalPrivacy() {
   <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
-  <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Trainingsstand, Max-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
+  <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für Bestätigung und Zurücksetzen des Passworts wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
@@ -1660,7 +1684,7 @@ document.addEventListener('click', (e) => {
       break;
     case 'ob-profile':
       state.profile = t.dataset.key;
-      if (state.profile !== 'elite') state.off = 0;
+      if (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) state.roundMin = PROFILES[state.profile].roundSecs / 60;
       save();
       renderOnboarding();
       break;
@@ -1671,28 +1695,25 @@ document.addEventListener('click', (e) => {
       renderOnboarding();
       break;
     }
-    case 'ob-level':
-      ob.levelSet = true;
-      state.off = Number(t.dataset.v);
+    case 'ob-rounds':
+      state.rounds = Number(t.dataset.n);
+      save();
+      renderOnboarding();
+      break;
+    case 'ob-rlen':
+      state.roundMin = Number(t.dataset.n);
       save();
       renderOnboarding();
       break;
     case 'ob-nodate':
       obNext(true);
       break;
-    case 'ob-savemax': {
-      const v = Math.round(Number(document.getElementById('obMax')?.value));
-      if (v >= 100 && v <= 3000) {
-        state.maxW = v;
-        state.maxWDate = new Date().toISOString();
-        save();
+    case 'ob-savemax':
+      if (saveSprints('ob')) {
         ob.step += 1;
         renderOnboarding();
-      } else {
-        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
       }
       break;
-    }
     case 'ob-test':
       closeOnboarding();
       location.hash = '#/test';
@@ -1723,30 +1744,12 @@ document.addEventListener('click', (e) => {
       save();
       route();
       break;
-    case 'savetest': {
-      const v = Math.round(Number(document.getElementById('testW')?.value));
-      if (v >= 100 && v <= 3000) {
-        state.maxW = v;
-        state.maxWDate = new Date().toISOString();
-        save();
-        location.hash = '#/';
-      } else {
-        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
-      }
+    case 'savetest':
+      if (saveSprints('tw')) location.hash = '#/';
       break;
-    }
-    case 'savemax': {
-      const v = Math.round(Number(document.getElementById('maxInline')?.value));
-      if (v >= 100 && v <= 3000) {
-        state.maxW = v;
-        state.maxWDate = new Date().toISOString();
-        save();
-        route();
-      } else {
-        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
-      }
+    case 'savemax':
+      if (saveSprints('mi')) route();
       break;
-    }
     case 'tpause':
       runCtl?.toggle();
       break;
@@ -1827,8 +1830,7 @@ document.addEventListener('change', (e) => {
   }
   if (t.dataset.set) {
     const k = t.dataset.set;
-    state[k] = ['maxW', 'off', 'age', 'freq'].includes(k) ? Number(t.value) || 0 : t.value;
-    if (k === 'profile' && t.value !== 'elite') state.off = 0;
+    state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Number(t.value) || 0 : t.value;
     save();
     scheduleReminder();
     route();

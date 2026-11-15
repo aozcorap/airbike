@@ -332,3 +332,14 @@ label.chk { display: flex; align-items: flex-start; gap: 12px; font-weight: 400;
 label.chk[hidden] { display: none; }
 label.chk input { width: 24px; height: 24px; flex: none; margin-top: 1px; accent-color: var(--accent); }
 .sheet a { text-decoration: underline; }
+
+/* Fitness-Test und Kampfformat */
+.sprint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.sprint-grid input { text-align: center; font-weight: 700; padding: 12px 6px; }
+.tw-wrap { width: 100%; max-width: 380px; margin-top: 10px; }
+.tw-wrap label { color: #fff; opacity: .9; }
+.tw-wrap input { background: rgba(0,0,0,.3); color: #fff; border-color: rgba(255,255,255,.4); font-size: 22px; }
+.rounds-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.rounds-grid .opt { margin: 0; text-align: center; padding: 14px 4px; }
+.seg2x { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seg2x .opt { margin: 0; text-align: center; }
