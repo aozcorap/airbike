@@ -171,7 +171,7 @@ function stepPill(st) {
 // Fasst bei langen Abfolgen ein sich wiederholendes Paar (z. B. 20 s Arbeit, 10 s Pause) zusammen.
 function stepPills(steps) {
   const same = (x, y) => x.kind === y.kind && x.secs === y.secs && x.label === y.label;
-  if (steps.length > 6 && steps.length >= 4 && same(steps[0], steps[2]) && same(steps[1], steps[3])) {
+  if (steps.length >= 6 && same(steps[0], steps[2]) && same(steps[1], steps[3])) {
     let k = 1;
     while (steps[2 * k + 1] && same(steps[0], steps[2 * k]) && same(steps[1], steps[2 * k + 1])) k++;
     const rest = steps.slice(2 * k);
@@ -264,7 +264,7 @@ function viewHome() {
       <span class="kicker">Nächste Einheit · Woche ${w.n}</span>
       <h2 style="margin:6px 0 4px">${esc(s.title)}</h2>
       <p class="muted" style="margin:0 0 12px">${esc(s.focus)}</p>
-      <span class="chip red">${s.type === 'recovery' ? '30–40 min' : 'ca. ' + mins(sessionSecs(s))}</span> <span class="chip">${esc(w.phase)}</span>
+      <span class="chip red">${'ca. ' + mins(sessionSecs(s))}</span> <span class="chip">${esc(w.phase)}</span>
     </a>`;
   }
 
@@ -274,7 +274,7 @@ function viewHome() {
   const list = week
     ? `<h2>Woche ${week.n} · ${esc(week.phase)}</h2>` +
       weekOrder(week)
-        .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`)
+        .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${mins(sessionSecs(s))}</span></span></a>`)
         .join('')
     : '';
 
@@ -332,7 +332,7 @@ function viewPlan() {
 
 function sessionRow(w, s) {
   const d = sessionDate(w, dayOf(s));
-  return `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]}${d ? ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : ''} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`;
+  return `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]}${d ? ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : ''} · ${mins(sessionSecs(s))}</span></span></a>`;
 }
 
 function viewWeek(n) {
@@ -445,7 +445,7 @@ function viewSettings() {
   <h2>Aktive Erholung</h2>
   <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
   <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
-  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist eine Schätzung aus dem Alter.</p>` : ''}
+  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter.</p>` : ''}
 
   <h2>Kampf und Termine</h2>
   <label for="fightDate">Kampftermin (Turnier)</label>
@@ -653,7 +653,7 @@ function runView(id) {
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
     const nx = segs[i + 1];
-    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
+    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
   }

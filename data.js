@@ -1,4 +1,4 @@
-// Trainingsplan: 10 Wochen Air-Bike-Conditioning.
+// Trainingsplan: 10 Wochen Air-Bike-Training.
 // Aufbau: Woche -> Sessions -> Blöcke -> Schritte. Alles wird zur Laufzeit in eine Timer-Folge umgerechnet.
 
 // ---------- Schritt-Bausteine ----------
@@ -99,7 +99,7 @@ const repeated = (reps, pacing, hint) => ({
   },
 });
 
-const pyramid = (counts) => {
+const ladder = (counts) => {
   const loads = [
     [1, 60, 60, counts[0], [200, 350]],
     [2, 40, 20, counts[1], [250, 400]],
@@ -112,7 +112,7 @@ const pyramid = (counts) => {
     [9, 60, 0, counts[8], [200, 350]],
   ];
   return loads.map(([n, on, off, reps, w]) => ({
-    title: `Stufe ${n}`,
+    title: `${fmtSecs(on)} an${off ? ' · ' + fmtSecs(off) + ' aus' : ''}`,
     desc: `${reps} × ${on} s Arbeit${off ? ' · ' + off + ' s Pause' : ''} · ${w ? w[0] + '–' + w[1] + ' W' : 'maximale Anstrengung'}`,
     repeat: reps,
     steps: [
@@ -122,7 +122,7 @@ const pyramid = (counts) => {
   }));
 };
 
-const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
+const roundBlock = ({ reps, on, off, pct, roundSecs = 180 }) => {
   const inner = Math.max(1, Math.floor(roundSecs / (on + off)));
   const minutes = roundSecs / 60;
   return {
@@ -136,13 +136,13 @@ const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
         work(`${on} s Arbeit`, on, { pct, rpe: '9' }),
         rest(`${off} s Pause`, off),
       ]),
-      rest('Pause zwischen den Runden', 60),
+      rest('Rundenpause', 60),
     ],
   };
 };
 
 // ---------- Max-Watt-Test ----------
-// Vorschlag des Auftraggebers: 1–3 Sprints à 10 s mit 1 min Pause. Das PDF beschreibt keinen Test.
+// Vorschlag: 3 Sprints à 10 s mit 1 min Pause.
 // Vermutung: Eine längere Pause (2–3 min) liefert verlässlichere Werte. Hier zentral einstellbar.
 export const TEST_PAUSE_SECS = 60;
 export const TEST_SESSION = {
@@ -163,11 +163,11 @@ export const TEST_SESSION = {
 };
 
 // ---------- Aktive Erholung (auf das Bike umgeschrieben) ----------
-const REC_TXT = '70–80 % HFmax, Belastung 2–3 von 10';
-const on = (m) => easy(`${m} min Grundtempo`, m * 60, { txt: REC_TXT });
-const onS = (s) => easy(`${s} s Grundtempo`, s, { txt: REC_TXT });
-const off = (m) => rest(`${m} min locker rollen`, m * 60, { txt: 'Sehr locker weiterrollen' });
-const offS = (s) => rest(`${s} s locker rollen`, s, { txt: 'Sehr locker weiterrollen' });
+const REC_TXT = '70–80\u00A0% HFmax';
+const on = (m) => easy('Grundtempo', m * 60, { txt: REC_TXT });
+const onS = (s) => easy('Grundtempo', s, { txt: REC_TXT });
+const off = (m) => rest('Locker rollen', m * 60, { txt: 'Sehr locker weiterrollen' });
+const offS = (s) => rest('Locker rollen', s, { txt: 'Sehr locker weiterrollen' });
 
 export const RECOVERY_OPTIONS = {
   opt1: {
@@ -177,7 +177,7 @@ export const RECOVERY_OPTIONS = {
       { title: 'Block B', repeat: 1, steps: [on(4), off(2)] },
       { title: 'Block C', repeat: 10, steps: [onS(30), offS(30)] },
       { title: 'Block D', repeat: 2, steps: [on(6), off(2)] },
-      { title: 'Block E', repeat: 1, steps: [easy('10 min gleichmäßig', 600, { txt: REC_TXT })] },
+      { title: 'Block E', repeat: 1, steps: [easy('Gleichmäßig', 600, { txt: REC_TXT })] },
     ],
   },
   opt2: {
@@ -188,12 +188,12 @@ export const RECOVERY_OPTIONS = {
       { title: 'Block C', repeat: 4, steps: [on(1), offS(30)] },
       { title: 'Block D', repeat: 8, steps: [onS(30), offS(30)] },
       { title: 'Block E', repeat: 2, steps: [on(2), off(1)] },
-      { title: 'Block F', repeat: 1, steps: [on(4), off(1), easy('10 min gleichmäßig', 600, { txt: REC_TXT })] },
+      { title: 'Block F', repeat: 1, steps: [on(4), off(1), easy('Gleichmäßig', 600, { txt: REC_TXT })] },
     ],
   },
   opt3: {
     name: 'Option 3 · Gleichmäßig (35 min)',
-    blocks: [{ title: 'Gleichmäßig', repeat: 1, steps: [easy('35 min gleichmäßig', 2100, { txt: REC_TXT })] }],
+    blocks: [{ title: 'Gleichmäßig', repeat: 1, steps: [easy('Gleichmäßig', 2100, { txt: REC_TXT })] }],
   },
 };
 
@@ -221,7 +221,7 @@ const NON_MAIN = new Set(['Warm-up', 'Pause vor Hauptteil', 'Erweitertes Warm-up
 const S = (id, type, title, focus, blocks) => ({ id, type, title, focus, blocks: blocks.map((b) => ({ ...b, main: !NON_MAIN.has(b.title) })) });
 
 const T = {
-  pyramid: ['Stufen-Intervalle', 'Viel Intensität bei kleinem Umfang: kurze und lange Intervalle mit steigendem und sinkendem Tempo.'],
+  ladder: ['Stufen-Intervalle', 'Viel Intensität bei kleinem Umfang: kurze und lange Intervalle mit steigendem und sinkendem Tempo.'],
   speed: ['Sprints · Tempo-Ausdauer', '20-s-Sprints bei maximaler Intensität. Erst Höchstleistung erreichen, dann um höchstens 20 % abfallen.'],
   periph: ['Sprints · Kraftausdauer', 'Maximale Sprints für schnelle Anpassungen der Muskelzelle. Attackiere jede Wiederholung.'],
   gears: ['Tempo-Stufen', 'Eine Minute in drei Stufen mit steigender Leistung. Kontrolliert bleiben (7–8 von 10).'],
@@ -239,11 +239,11 @@ function buildWeeks() {
   const W = [];
 
   // Woche 1 und 2
-  const pyr1 = pyramid([2, 1, 2, 2, 3, 2, 2, 1, 1]);
-  const pyr2 = pyramid([2, 2, 2, 3, 4, 3, 2, 2, 1]);
+  const lad1 = ladder([2, 1, 2, 2, 3, 2, 2, 1, 1]);
+  const lad2 = ladder([2, 2, 2, 3, 4, 3, 2, 2, 1]);
   const speed = [...std, ext4, maxSprints({ secs: 20, reps: 4, drop: 20 })];
-  W.push([mk('w1s1', 'pyramid', [...std, ...pyr1]), mk('w1s2', 'speed', speed), mk('w1s3', 'pyramid', [...std, ...pyr1])]);
-  W.push([mk('w2s1', 'pyramid', [...std, ...pyr2]), mk('w2s2', 'speed', speed), mk('w2s3', 'pyramid', [...std, ...pyr2])]);
+  W.push([mk('w1s1', 'ladder', [...std, ...lad1]), mk('w1s2', 'speed', speed), mk('w1s3', 'ladder', [...std, ...lad1])]);
+  W.push([mk('w2s1', 'ladder', [...std, ...lad2]), mk('w2s2', 'speed', speed), mk('w2s3', 'ladder', [...std, ...lad2])]);
 
   // Woche 3
   W.push([
@@ -293,7 +293,7 @@ function buildWeeks() {
 
   // Woche 9 und 10
   W.push([
-    mk('w9s1', 'fight', [...std, fightHiit({ reps: 5, on: 20, off: 10, pct: [60, 75] })]),
+    mk('w9s1', 'fight', [...std, roundBlock({ reps: 5, on: 20, off: 10, pct: [60, 75] })]),
     mk('w9s2', 'sprintsMax', [
       ...std,
       ext4,
@@ -305,7 +305,7 @@ function buildWeeks() {
         steps: [work('Max-Sprint', 10, { maxEffort: true }), rest('Erholung', 120)],
       },
     ]),
-    mk('w9s3', 'fight', [...std, fightHiit({ reps: 4, on: 15, off: 15, pct: [65, 80] })]),
+    mk('w9s3', 'fight', [...std, roundBlock({ reps: 4, on: 15, off: 15, pct: [65, 80] })]),
   ]);
   W.push([
     mk('w10s1', 'finish', [
@@ -334,7 +334,7 @@ export const WEEKS = SESSIONS.map((sessions, idx) => {
     phaseText: phase.text,
     load: LOAD[n],
     sessions,
-    recovery: { id: `w${n}r`, type: 'recovery', title: 'Aktive Erholung', focus: 'Locker bleiben (2–3 von 10, 70–80 % HFmax), 30–40 min. Bringt Abwechslung und verbessert die Ausdauer, ohne dich zu ermüden.', blocks: [] },
+    recovery: { id: `w${n}r`, type: 'recovery', title: 'Aktive Erholung', focus: 'Locker bleiben (Belastung 2–3 von 10, 70–80\u00A0% HFmax). Bringt Abwechslung und verbessert die Ausdauer, ohne dich zu ermüden.', blocks: [] },
   };
 });
 
@@ -466,7 +466,7 @@ const describeSteps = (steps) =>
 function scaleBlock(b, p) {
   if (!b.main) return b;
   const repeat = Math.max(1, Math.round(b.repeat * p.volume));
-  if (b.fight) return fightHiit({ ...b.fight, reps: repeat, roundSecs: p.roundSecs });
+  if (b.fight) return roundBlock({ ...b.fight, reps: repeat, roundSecs: p.roundSecs });
   const orig = b.steps;
   const probe = typeof orig === 'function' ? orig(1) : orig;
   const capped = probe.some((st) => st.kind === 'work' && (st.hold !== undefined || st.maxEffort) && st.secs > p.maxSprintSecs);

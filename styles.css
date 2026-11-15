@@ -140,7 +140,7 @@ body.running { padding-bottom: 0; }
 .timer.k-done { background: linear-gradient(180deg, #0f2a18 0%, #08170d 100%); }
 .t-top { display: flex; justify-content: space-between; font-size: 17px; font-weight: 600; opacity: .9; }
 .t-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; gap: 6px; min-height: 0; padding-top: 8vh; }
-.t-label { font-size: 26px; font-weight: 700; letter-spacing: .16em; opacity: .92; min-height: 1.4em; line-height: 1.4; }
+.t-label { font-size: 26px; font-weight: 700; letter-spacing: .16em; opacity: .92; min-height: 1.4em; line-height: 1.4; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .t-mid .t-target { min-height: 1.2em; }
 .t-mid .t-sub { min-height: 4.4em; }
 .t-time { font-size: clamp(88px, 30vw, 170px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.03em; }

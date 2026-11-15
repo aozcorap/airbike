@@ -1,7 +1,7 @@
 // Plan-Logik: baut aus dem 10-Wochen-Grundplan einen persönlichen Plan nach Kampftermin und Trainingshäufigkeit.
 //
 // ACHTUNG: Die Regeln in diesem Modul (Kürzung auf weniger als 10 Wochen, Auswahl der Sessions bei 1× oder 2× pro Woche)
-// sind Annahmen und NICHT wissenschaftlich belegt oder von einem Fachtrainer geprüft. Die Vorlage kennt nur 10 Wochen mit 3 Sessions.
+// sind Annahmen und NICHT wissenschaftlich belegt oder von einem Fachtrainer geprüft. Der Grundplan hat 10 Wochen mit je 3 Sessions.
 import { WEEKS } from './data.js';
 
 export const DAY = 86400000;
