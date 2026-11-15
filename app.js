@@ -355,6 +355,7 @@ function route() {
     cleanup = null;
   }
   document.body.classList.remove('running');
+  setChrome('idle');
   const parts = location.hash.replace(/^#\/?/, '').split('/');
   const [view, arg] = parts;
   document.querySelectorAll('#nav a').forEach((a) => {
@@ -381,6 +382,13 @@ function route() {
 }
 
 /* ---------------- Timer ---------------- */
+const CHROME = { prep: '#2a2370', work: '#b3141b', rest: '#12263f', easy: '#0f3b3a', done: '#0f2a18', idle: '#0b0d12' };
+function setChrome(kind) {
+  const col = CHROME[kind] || CHROME.idle;
+  document.getElementById('themeColor')?.setAttribute('content', col);
+  document.documentElement.style.background = col;
+  document.body.style.background = col;
+}
 let actx = null;
 function ensureAudio() {
   try {
@@ -492,6 +500,7 @@ function runView(id) {
   function paintSegment() {
     const seg = segs[i];
     el.box.className = `timer k-${seg.kind}`;
+    setChrome(seg.kind);
     el.block.textContent = seg.kind === 'prep' ? session.title : `${seg.block}${seg.reps > 1 ? ` · ${seg.rep}/${seg.reps}` : ''}`;
     el.count.textContent = `${i + 1} / ${segs.length}`;
     el.label.textContent = seg.label.toLowerCase() === seg.target.main.toLowerCase() || (seg.kind === 'rest' && seg.label === 'Pause') ? '' : seg.label;
@@ -527,6 +536,7 @@ function runView(id) {
     setTimeout(() => beep(1400, 360), 480);
     vib([200, 100, 200, 100, 400]);
     el.box.className = 'timer k-done';
+    setChrome('done');
     el.box.innerHTML = `<div class="t-mid"><div class="t-label">Geschafft</div><div class="t-target">${esc(session.title)}</div><div class="t-sub">Gut gemacht. Trinken, locker auslaufen lassen und kurz notieren, wie es sich angefühlt hat.</div></div>
       <div class="btn-row"><button class="main" style="background:#fff;color:#111" data-act="tdone" data-id="${esc(id)}">Als erledigt markieren</button></div>
       <button class="t-exit" data-act="texit">Ohne Markieren zurück</button>`;
