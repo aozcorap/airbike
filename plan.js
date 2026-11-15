@@ -1,15 +1,15 @@
 // Plan-Logik: baut aus dem 10-Wochen-Grundplan einen persönlichen Plan nach Kampftermin und Trainingshäufigkeit.
 //
 // ACHTUNG: Die Regeln in diesem Modul (Kürzung auf weniger als 10 Wochen, Auswahl der Sessions bei 1× oder 2× pro Woche)
-// sind Annahmen und NICHT wissenschaftlich belegt oder von einem Fachtrainer geprüft. Die Vorlage kennt nur 10 Wochen mit 3 Sessions.
+// sind Annahmen und NICHT wissenschaftlich belegt oder von einem Fachtrainer geprüft. Der Grundplan hat 10 Wochen mit je 3 Sessions.
 import { WEEKS } from './data.js';
 
 export const DAY = 86400000;
 export const MAX_WEEKS = WEEKS.length; // 10
-export const TAPER_GAP_DAYS = 2; // Annahme: letzte harte Session spätestens 2 Tage vor dem Kampf
+export const FIGHT_GAP_DAYS = 2; // Annahme: letzte harte Session spätestens 2 Tage vor dem Kampf
 
 // Annahme: Bei weniger als 10 Wochen fallen zuerst die Grundlagenwochen (Woche 1–2) weg.
-// Die Taper-Wochen 9 und 10 bleiben immer erhalten. Schlüssel = Anzahl der Vorbereitungswochen vor dem Taper.
+// Die Abschlusswochen 9 und 10 bleiben immer erhalten. Schlüssel = Anzahl der Vorbereitungswochen davor.
 export const LEAD_WEEKS = {
   0: [],
   1: [5],
@@ -84,7 +84,7 @@ export function sessionDate(week, dayNo) {
 }
 
 export function tooCloseToFight(date, fight) {
-  return Boolean(date && fight && date > addDays(fight, -TAPER_GAP_DAYS));
+  return Boolean(date && fight && date > addDays(fight, -FIGHT_GAP_DAYS));
 }
 
 export function buildPlan({ today, fightDate, startDate, freq }) {
