@@ -324,7 +324,6 @@ function viewSession(id) {
   const blocks = sessionBlocks(session, state.recOpt);
   const secs = sessionSecs(session);
   const segs = flatten({ ...session, blocks }, ctx());
-  const adapted = segs.some((s) => s.target.sub.includes('Schätzung'));
 
   const optBtns = isRec
     ? `<h2>Variante</h2><div class="btn-row" style="flex-direction:column">${Object.entries(RECOVERY_OPTIONS)
@@ -346,10 +345,9 @@ function viewSession(id) {
   <span class="kicker" style="display:block;margin-top:8px">Woche ${week.n} · ${esc(week.phase)}</span>
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
-  <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''} ${adapted ? '<span class="chip amber">angepasst</span>' : ''}</p>
+  <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''}</p>
   ${profileBanner()}
   ${needMax ? `<div class="notice"><b>Max-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage deinen besten 10-s-Sprint ein:<div class="row" style="margin-top:8px"><input id="maxInline" type="number" inputmode="numeric" min="0" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div></div>` : ''}
-  ${adapted ? '<div class="notice">Diese Session ist aus einer Laufband-Vorlage auf das Bike umgerechnet. Die Prozentwerte sind eine Schätzung. Richte dich vor allem nach der Belastung 9 von 10.</div>' : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
@@ -634,7 +632,7 @@ function runView(id) {
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
     const nx = segs[i + 1];
-    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main}`) : 'Letztes Intervall';
+    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
   }

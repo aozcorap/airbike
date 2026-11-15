@@ -128,12 +128,12 @@ const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
   return {
     title: 'Fight-HIIT',
     desc: `${reps} × ${minutes}-min-Runde (${inner} × ${on} s Arbeit · ${off} s Pause) · 1 min Pause zwischen den Runden`,
-    note: 'Aus der Laufband-Vorlage auf das Bike umgerechnet (Orientierung: RPE 9/10, Prozentwerte vom Max-Watt sind eine Schätzung).',
+    note: 'Richte dich nach der Belastung: 9 von 10.',
     repeat: reps,
     fight: { on, off, pct },
     steps: [
       ...times(inner, [
-        work(`${on} s Arbeit`, on, { pct, rpe: '9/10', adapted: true }),
+        work(`${on} s Arbeit`, on, { pct, rpe: '9' }),
         rest(`${off} s Pause`, off),
       ]),
       rest('Pause zwischen den Runden', 60),
@@ -429,7 +429,6 @@ export function resolveTarget(step, ctx) {
   }
   if (step.rpe && (step.w || step.maxEffort || step.pct !== undefined)) sub.push(`Belastung ${step.rpe} von 10`);
   if (step.txt) sub.push(step.txt);
-  if (step.adapted) sub.push('vom Laufband umgerechnet (Schätzung)');
   return { main, sub: sub.join(' · ') };
 }
 
