@@ -1,4 +1,4 @@
-import { PHASES, PROFILES, RECOVERY_OPTIONS, HOWTO_VIDEO, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 import * as cloud from './cloud.js';
 import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
@@ -258,7 +258,6 @@ function setupCard() {
   if (rows.every((r) => r[0])) return '';
   return `<div class="card setup"><span class="kicker">So kommst du in Gang</span>
     ${rows.map(([ok, label, href]) => `<a class="setup-row" href="${href}"><span class="check ${ok ? 'done' : ''}">${ok ? '✓' : ''}</span><span class="grow">${label}</span><span class="muted small">${ok ? 'Erledigt' : 'Offen'}</span></a>`).join('')}
-    ${videoCard()}
     <button class="linkbtn" data-act="ob-replay">Einführung noch einmal ansehen</button></div>`;
 }
 
@@ -437,21 +436,23 @@ function viewSession(id) {
 function viewInfo() {
   const p = profile();
   const pl = plan();
-  const rows = [
-    [state.onboarded, 'Altersklasse', p.name, '#/settings'],
-    [Boolean(state.fightDate), 'Kampftermin', pl.fight ? fmtDate(pl.fight) : 'offen', '#/settings'],
-    [true, 'Training pro Woche', `${effFreq()}× pro Woche`, '#/settings'],
-    [true, 'Kampfformat', formatLabel(), '#/settings'],
-    [Boolean(state.maxW), 'Test-Watt', state.maxW ? `${state.maxW} W` : 'offen', '#/test'],
+  const steps = [
+    { done: Boolean(state.onboarded && state.fightDate), title: 'Einrichten', text: 'Altersklasse, Kampftermin und Kampfformat eintragen. Daraus baut die App deinen Plan.', value: state.onboarded && state.fightDate ? `${p.name} · Kampf ${fmtDate(pl.fight)} · ${formatLabel()}` : '', btn: state.onboarded ? '<a class="btn primary" href="#/settings">Eintragen</a>' : '<button class="primary" data-act="ob-replay">Jetzt einrichten</button>', again: '<a class="stepchange" href="#/settings">Ändern</a>' },
+    { done: Boolean(state.maxW), title: 'Fitness-Test', text: 'Drei Sprints à 10 Sekunden auf dem Air Bike, 1 Minute Pause dazwischen. Du trägst danach die drei Höchstwerte ein. Der Durchschnitt ist dein Test-Watt, daraus berechnet die App alle Watt-Ziele.', value: state.maxW ? `Test-Watt: ${state.maxW} W` : '', btn: '<a class="btn primary" href="#/test">Test starten</a>', again: '<a class="stepchange" href="#/test">Wiederholen</a>' },
+    { done: Object.keys(state.done || {}).length > 0, title: 'Erste Einheit trainieren', text: 'Öffne deine nächste Einheit und tippe auf Starten. Der Timer führt dich durch jede Runde und zeigt dir das Watt-Ziel.', value: Object.keys(state.done || {}).length ? `${Object.keys(state.done).length} Einheit(en) erledigt` : '', btn: nextSession() ? `<a class="btn primary" href="#/s/${nextSession().s.id}">Einheit öffnen</a>` : '<a class="btn primary" href="#/plan">Zum Plan</a>', again: '<a class="stepchange" href="#/plan">Zum Plan</a>' },
   ];
-  return `<span class="kicker">Neu hier?</span><h1>Einführung</h1>
-  <p class="muted">So startest du in wenigen Minuten. Hier findest du die Anleitung, das Erklärvideo und dein aktuelles Setup.</p>
-  ${videoCard()}
-  <button class="primary block" data-act="ob-replay">Einführung starten</button>
-  <h2>Dein Stand</h2>
-  <div class="card">${rows
-    .map(([ok, label, val, href]) => `<a class="setup-row" href="${href}"><span class="check ${ok ? 'done' : ''}">${ok ? '✓' : ''}</span><span class="grow">${label}</span><b class="${ok ? '' : 'muted'}">${esc(val)}</b></a>`)
-    .join('')}</div>
+  const cur = steps.findIndex((x) => !x.done);
+  const stepHtml = steps
+    .map((x, i) => {
+      const cls = x.done ? 'done' : i === cur ? 'current' : 'later';
+      return `<li class="stepcard ${cls}"><span class="stepnum">${x.done ? '✓' : i + 1}</span><div class="stepbody"><h3>${x.title}${i === cur ? '<span class="steptag">Jetzt</span>' : ''}</h3><p>${x.text}</p>${x.value ? `<p class="stepval">${esc(x.value)}</p>` : ''}${i === cur ? `<div class="stepact">${x.btn}</div>` : x.done ? `<div class="stepact">${x.again}</div>` : ''}</div></li>`;
+    })
+    .join('');
+  return `<span class="kicker">Neu hier?</span><h1>So startest du</h1>
+  <p class="muted">Drei Schritte, dann trainierst du nach deinem Plan.</p>
+  <ol class="steps">${stepHtml}</ol>
+  ${cur === -1 ? '<div class="notice">Alles eingerichtet. Deine nächste Einheit findest du unter <a href="#/"><u>Heute</u></a>.</div>' : ''}
+  <button class="linkbtn" data-act="ob-replay">Schritt-für-Schritt-Einführung noch einmal ansehen</button>
   <h2>Gut zu wissen</h2>
   <h3>Belastungsskala von 1 bis 10</h3>
   <table class="rpe"><tbody>
@@ -930,28 +931,6 @@ function scheduleReminder() {
 const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'format', 'watt', 'done'];
 let ob = { step: 0 };
 
-function videoEmbed(url) {
-  const yt = url.match(/(?:(?:m\.|www\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{6,})/);
-  if (yt) return `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&rel=0" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
-  const vm = url.match(/vimeo\.com\/(?:video\/)?(\d{5,})/);
-  if (vm) return `<iframe src="https://player.vimeo.com/video/${vm[1]}?autoplay=1" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-  return `<video src="${esc(url)}" controls autoplay playsinline preload="metadata"></video>`;
-}
-function videoCard() {
-  const has = Boolean(HOWTO_VIDEO.url);
-  return `<button class="videocard ${has ? '' : 'off'}" ${has ? 'data-act="video"' : 'disabled'} aria-label="${esc(HOWTO_VIDEO.title)}">
-    <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
-    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (unter 1 Minute)' : 'Erklärvideo folgt in Kürze'}</span></span>
-  </button>`;
-}
-function showVideo() {
-  $modal.hidden = false;
-  $modal.className = 'vidmode';
-  $modal.innerHTML = `<div class="vidfull" role="dialog" aria-modal="true" aria-label="${esc(HOWTO_VIDEO.title)}"><div class="vid">${videoEmbed(HOWTO_VIDEO.url)}</div>
-    <button class="vidclose" data-act="closemodal" aria-label="Video schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
-  $modal.querySelector('.vidclose')?.focus();
-}
-
 function obProfileOpts() {
   const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche', u14: 'Für diese Altersklasse ist der Plan nicht geeignet' };
   return Object.entries(PROFILES)
@@ -966,7 +945,6 @@ function obBody(id) {
       return `<div class="ob-hero"><img src="img/hero.jpg" alt="" onerror="this.remove()"><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
         <h1>So startest du</h1>
         <p class="muted">In wenigen Minuten ist dein Plan bereit. Du brauchst dein Alter, deinen Kampftermin und deine Leistung in Watt auf dem Air Bike.</p>
-        ${videoCard()}
         <ol class="ob-list">
           <li><b>Gesundheit</b><span>Kurzer Hinweis vor dem Start</span></li>
           <li><b>Für wen</b><span>Altersklasse wählen</span></li>
@@ -1717,9 +1695,6 @@ document.addEventListener('click', (e) => {
     case 'ob-test':
       closeOnboarding();
       location.hash = '#/test';
-      break;
-    case 'video':
-      showVideo();
       break;
     case 'closemodal':
       $modal.hidden = true;

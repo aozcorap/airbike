@@ -499,4 +499,3 @@ export function totalSecs(segs) {
 
 // Erklärvideo "So startest du". Eine YouTube-Adresse oder eine MP4-Datei eintragen (z. B. 'video/start.mp4').
 // Leer lassen, dann zeigt die App "Erklärvideo folgt in Kürze".
-export const HOWTO_VIDEO = { title: 'So startest du', url: 'video/start.mp4' };
