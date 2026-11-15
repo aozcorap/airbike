@@ -308,3 +308,5 @@ body.obopen { overflow: hidden; }
   .ob-list li::before { top: 6px; }
   .videocard { margin: 8px 0; padding: 8px 12px; }
 }
+
+.setup-row b { text-align: right; }
