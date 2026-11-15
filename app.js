@@ -632,7 +632,7 @@ function runView(id) {
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
     const nx = segs[i + 1];
-    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main}`) : 'Letztes Intervall';
+    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
   }
