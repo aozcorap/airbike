@@ -1,7 +1,7 @@
 {
-  "name": "AirMaschine – Kondition wie eine Maschine",
-  "short_name": "AirMaschine",
-  "description": "Kondition wie eine Maschine: Air-Bike-Training für Boxer bis zum Kampf.",
+  "name": "Last Round – Kondition bis zur letzten Runde",
+  "short_name": "Last Round",
+  "description": "Last Round: Kondition bis zur letzten Runde. Air-Bike-Training für Boxer. Dein Plan rückwärts vom Kampftermin bis zur letzten Runde.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
