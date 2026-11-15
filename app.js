@@ -615,14 +615,14 @@ function runView(id) {
   document.body.classList.add('running');
   $app.innerHTML = `<div class="timer k-prep" id="timer">
     <div class="t-top"><span id="t-block"></span><span id="t-count"></span></div>
-    <div class="t-mid"><div class="t-label" id="t-label"></div><div class="t-time" id="t-time">0:00</div><div class="t-target" id="t-target"></div><div class="t-sub" id="t-sub"></div></div>
+    <div class="t-mid"><div class="t-blockname" id="t-blockname"></div><div class="t-round" id="t-round"></div><div class="t-label" id="t-label"></div><div class="t-time" id="t-time">0:00</div><div class="t-target" id="t-target"></div><div class="t-sub" id="t-sub"></div></div>
     <div class="t-next" id="t-next"></div>
     <div class="t-bar"><i id="t-bar"></i></div>
     <div class="t-btns"><button data-act="tprev">Zurück</button><button class="main" data-act="tpause" id="t-play">Pause</button><button data-act="tnext">Weiter</button></div>
     <button class="t-exit" data-act="texit">Abbrechen</button>
   </div>`;
   const q = (i) => document.getElementById(i);
-  const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
+  const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), blockname: q('t-blockname'), round: q('t-round'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
 
   let i = 0;
   let elapsed = 0; // ms im aktuellen Segment
@@ -649,6 +649,8 @@ function runView(id) {
     setChrome(seg.kind);
     el.block.textContent = seg.kind === 'prep' ? session.title : `${seg.block}${seg.reps > 1 ? ` · ${seg.rep}/${seg.reps}` : ''}`;
     el.count.textContent = `${i + 1} / ${segs.length}`;
+    el.blockname.textContent = seg.kind === 'prep' || seg.block.toLowerCase() === seg.label.toLowerCase() ? '' : seg.block;
+    el.round.textContent = seg.kind !== 'prep' && seg.reps > 1 ? `Runde ${seg.rep} von ${seg.reps}` : '';
     el.label.textContent = seg.label.toLowerCase() === seg.target.main.toLowerCase() || (seg.kind === 'rest' && seg.label === 'Pause') ? '' : seg.label;
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
