@@ -1,5 +1,5 @@
 // Service Worker: App-Dateien offline verfügbar machen (Cache zuerst, bei neuer Version aktualisieren).
-const CACHE = 'redline-v25';
+const CACHE = 'redline-v27';
 const FILES = [
   './',
   'index.html',
@@ -7,6 +7,9 @@ const FILES = [
   'app.js',
   'data.js',
   'plan.js',
+  'cloud.js',
+  'config.js',
+  'vendor/supabase.js',
   'img/hero.jpg',
   'manifest.webmanifest',
   'icons/icon.svg',
@@ -27,6 +30,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== location.origin) return; // Konto-Server direkt ansprechen, nie zwischenspeichern
   if (e.request.url.endsWith('.mp4') || e.request.headers.has('range')) return; // Video direkt vom Server (Teil-Anfragen)
   e.respondWith(
     caches.match(e.request).then((hit) => {
