@@ -906,7 +906,7 @@ function videoCard() {
   const has = Boolean(HOWTO_VIDEO.url);
   return `<button class="videocard ${has ? '' : 'off'}" ${has ? 'data-act="video"' : 'disabled'} aria-label="${esc(HOWTO_VIDEO.title)}">
     <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
-    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (1 Minute)' : 'Erklärvideo folgt in Kürze'}</span></span>
+    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (unter 1 Minute)' : 'Erklärvideo folgt in Kürze'}</span></span>
   </button>`;
 }
 function showVideo() {
