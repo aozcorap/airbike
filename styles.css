@@ -197,3 +197,30 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 
 .card.accent { border-color: var(--line); }
 .card.accent .kicker { color: var(--accent); }
+
+/* Zurück-Link */
+.back { display: inline-flex; align-items: center; min-height: 44px; font-size: 18px; font-weight: 600; text-decoration: none; color: var(--text); padding: 6px 0; }
+
+/* Ablauf einer Einheit */
+.step { --c: var(--accent); background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0) 60%), var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--c); border-radius: var(--radius); padding: 14px 14px 14px 14px; margin: 12px 0; }
+.step.warm { --c: #36c9b8; }
+.step.rest { --c: #6f7fa3; }
+.step.easy { --c: var(--ok); }
+.step-head { display: flex; align-items: center; gap: 10px; }
+.step-no { width: 30px; height: 30px; border-radius: 50%; background: var(--c); color: #07080c; font-weight: 800; display: grid; place-items: center; flex: none; }
+.step-head h3 { flex: 1; font-size: 19px; margin: 0; }
+.badge { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--c); }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-top: 12px; }
+.rep { font-family: var(--display); font-size: 34px; font-weight: 700; align-self: center; margin-right: 2px; }
+.rep.sm { font-size: 24px; }
+.group { display: flex; gap: 8px; align-items: stretch; padding: 6px; border: 1px dashed var(--line); border-radius: 14px; }
+.pill { min-width: 84px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); text-align: center; }
+.pill b { display: block; font-size: 22px; line-height: 1.15; }
+.pill span { display: block; font-size: 14px; color: var(--muted); }
+.pill.work { border-color: rgba(255,45,70,.55); background: rgba(255,45,70,.1); }
+.pill.work span { color: var(--data); font-weight: 700; }
+.pill.easy { border-color: rgba(48,209,88,.5); background: rgba(48,209,88,.08); }
+.pill.easy span { color: var(--data); font-weight: 700; }
+.pill.rest { background: rgba(111,127,163,.12); }
+.step .note { color: var(--muted); font-size: 15px; margin-top: 10px; line-height: 1.4; }
+.step table.targets { font-size: 15px; margin-top: 12px; }

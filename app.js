@@ -134,13 +134,6 @@ function planSummary() {
   return txt;
 }
 
-function autoDesc(block) {
-  if (block.desc) return block.desc;
-  const steps = typeof block.steps === 'function' ? block.steps(1) : block.steps;
-  const parts = steps.map((st) => `${fmtSecs(st.secs)} ${st.kind === 'rest' ? 'locker' : 'Zone 3'}`);
-  return `${block.repeat}× (${parts.join(' · ')})`;
-}
-
 function blockTargets(b) {
   const c = ctx();
   const seen = new Map();
@@ -162,6 +155,43 @@ function blockTargets(b) {
     const when = all ? '' : consecutive ? ` (Wdh. ${t.reps[0]}–${t.reps[t.reps.length - 1]})` : ` (Wdh. ${t.reps.join(', ')})`;
     return `<tr><td>${esc(t.label === b.title ? 'Zielbereich' : t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
   });
+}
+
+function stepPill(st) {
+  const t = resolveTarget(st, ctx());
+  const dur = fmtSecs(st.secs);
+  let sub;
+  if (st.kind === 'rest') sub = /locker|rollen/i.test(st.label) ? 'locker' : 'Pause';
+  else if (t.main === 'MAXIMAL') sub = 'Maximal';
+  else if (t.main && t.main !== 'ARBEIT') sub = t.main;
+  else sub = st.label;
+  return `<div class="pill ${st.kind}"><b>${esc(dur)}</b><span>${esc(sub)}</span></div>`;
+}
+
+// Fasst bei langen Abfolgen ein sich wiederholendes Paar (z. B. 20 s Arbeit, 10 s Pause) zusammen.
+function stepPills(steps) {
+  const same = (x, y) => x.kind === y.kind && x.secs === y.secs && x.label === y.label;
+  if (steps.length > 6 && steps.length >= 4 && same(steps[0], steps[2]) && same(steps[1], steps[3])) {
+    let k = 1;
+    while (steps[2 * k + 1] && same(steps[0], steps[2 * k]) && same(steps[1], steps[2 * k + 1])) k++;
+    const rest = steps.slice(2 * k);
+    return `<div class="group"><span class="rep sm">${k}×</span>${stepPill(steps[0])}${stepPill(steps[1])}</div>${rest.map(stepPill).join('')}`;
+  }
+  return steps.map(stepPill).join('');
+}
+
+function stepCard(b, no, isRec) {
+  const warm = /warm-up/i.test(b.title);
+  const type = isRec ? 'easy' : warm ? 'warm' : b.title === 'Pause vor Hauptteil' ? 'rest' : 'main';
+  const badge = { easy: 'Locker', warm: 'Aufwärmen', rest: 'Pause', main: 'Hauptteil' }[type];
+  const steps = typeof b.steps === 'function' ? b.steps(1) : b.steps;
+  const rows = typeof b.steps === 'function' ? blockTargets(b) : [];
+  return `<section class="step ${type}">
+    <div class="step-head"><span class="step-no">${no}</span><h3>${esc(b.title)}</h3><span class="badge">${badge}</span></div>
+    <div class="pills">${b.repeat > 1 ? `<span class="rep">${b.repeat}×</span>` : ''}${stepPills(steps)}</div>
+    ${rows.length ? `<table class="targets"><tbody>${rows.join('')}</tbody></table>` : ''}
+    ${b.note ? `<div class="note">${esc(b.note)}</div>` : ''}
+  </section>`;
 }
 
 /* ---------------- Ansichten ---------------- */
@@ -258,7 +288,7 @@ function viewTest() {
   const last = state.maxW
     ? `<p>Dein aktueller Max-Watt-Wert: <b>${state.maxW} W</b>${state.maxWDate ? ` (${fmtDate(new Date(state.maxWDate))})` : ''}</p>`
     : '';
-  return `<a href="#/" class="muted small">← Zurück</a><span class="kicker" style="display:block;margin-top:8px">Grundlage für deine Watt-Ziele</span><h1>Max-Watt-Test</h1>
+  return `<a href="#/" class="back">← Zurück</a><span class="kicker" style="display:block;margin-top:8px">Grundlage für deine Watt-Ziele</span><h1>Max-Watt-Test</h1>
   ${last}
   <p class="muted">Du fährst drei maximale Sprints von je 10 Sekunden. Dein höchster Wert wird zur Grundlage für alle Watt-Ziele im Plan.</p>
   <h2>So läuft es ab</h2>
@@ -309,7 +339,7 @@ function viewWeek(n) {
   const w = plan().weeks[n - 1];
   if (!w) return notFound();
   const list = weekOrder(w).map((s) => sessionRow(w, s)).join('');
-  return `<a href="#/plan" class="muted small">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
+  return `<a href="#/plan" class="back">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
   ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
   ${list ? '' : '<p class="muted">In dieser Woche steht keine Einheit mehr an. Ruh dich aus.</p>'}
   ${w.tpl === 10 ? '<p class="muted small">In der Kampfwoche steht nur eine leichte Sprint-Einheit an, damit du frisch in den Kampf gehst.</p>' : ''}`;
@@ -331,17 +361,12 @@ function viewSession(id) {
         .join('')}</div>`
     : '';
 
-  const blockHtml = blocks
-    .map((b) => {
-      const rows = blockTargets(b);
-      return `<div class="block"><h3>${esc(b.title)}</h3><div>${esc(autoDesc(b))}</div>${rows.length ? `<table class="targets"><tbody>${rows.join('')}</tbody></table>` : ''}${b.note ? `<div class="note">${esc(b.note)}</div>` : ''}</div>`;
-    })
-    .join('');
+  const blockHtml = blocks.map((b, i) => stepCard(b, i + 1, isRec)).join('');
 
   const needMax = !state.maxW && segs.some((s) => s.target.sub.includes('Max-Watt in den Einstellungen'));
   const done = isDone(id);
 
-  return `<a href="#/week/${week.n}" class="muted small">← Woche ${week.n}</a>
+  return `<a href="#/week/${week.n}" class="back">← Woche ${week.n}</a>
   <span class="kicker" style="display:block;margin-top:8px">Woche ${week.n} · ${esc(week.phase)}</span>
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
@@ -360,26 +385,22 @@ function viewSession(id) {
 
 function viewInfo() {
   return `<h1>Wissen</h1>
-  <h2>Die Rote Zone</h2>
-  <p>Boxen zwingt dich immer wieder über 90 % deines Maximalpulses. Die harten Sessions trainieren genau das: klar denken, schnelle Füße und kräftige Schläge, auch wenn die Atmung schwer geht.</p>
-  <h2>Belastungsskala (RPE)</h2>
+  <h2>Belastungsskala von 1 bis 10</h2>
   <table class="rpe"><tbody>
-    <tr><td>0</td><td>Ruhe</td></tr><tr><td>1–2</td><td>Sehr, sehr leicht bis leicht</td></tr><tr><td>3</td><td>Moderat</td></tr>
-    <tr><td>4–6</td><td>Hart</td></tr><tr><td>7–8</td><td>Sehr hart (Muskelpufferung, Gänge, Wiederholte Sprints)</td></tr>
-    <tr><td>9</td><td>Fast maximal (Rote Zone, HIIT)</td></tr><tr><td>10</td><td>Maximal</td></tr>
+    <tr><td>1–2</td><td>Sehr leicht bis leicht</td></tr><tr><td>3</td><td>Moderat, du kannst dich noch gut unterhalten</td></tr>
+    <tr><td>4–6</td><td>Hart</td></tr><tr><td>7–8</td><td>Sehr hart (Tempo-Stufen, Kurz-Sprints)</td></tr>
+    <tr><td>9</td><td>Fast maximal (Kampfrunden)</td></tr><tr><td>10</td><td>Maximal</td></tr>
   </tbody></table>
-  <p class="muted small">Die Belastung 10 ist das Maximum, das du über die jeweilige Dauer einmalig geben könntest. Ziehst du ein bisschen davon ab, hast du 9 von 10. Ein 15-s-Intervall und ein 4-min-Intervall können beide bei 9 von 10 liegen, auch wenn die Watt sehr verschieden sind.</p>
-  <h2>Keine Grauzone</h2>
-  <p>Fast alles ist entweder sehr hart (Zone 3) oder bewusst locker (Erholung). Dauerhaftes „mittelhartes“ Tempo bringt wenig und ermüdet trotzdem. Rund 75–80 % des Trainings sollten hart sein, 10–20 % Erholung.</p>
+  <p class="muted">Die 10 ist das Maximum, das du über die jeweilige Dauer einmal geben könntest. Ziehst du ein bisschen davon ab, hast du 9 von 10. Ein 15-Sekunden-Sprint und ein 4-Minuten-Intervall können beide bei 9 von 10 liegen, auch wenn die Watt sehr verschieden sind.</p>
   <h2>Pausen</h2>
-  <p>In den Pausen komplett erholen: absteigen, nicht weitertreten. Nur die Aktive-Erholung-Sessions sind locker durchgehend.</p>
+  <p>In den Pausen komplett erholen: absteigen, nicht weitertreten. Nur die Aktive Erholung ist durchgehend locker.</p>
   <h2>Wöchentlicher Rhythmus</h2>
-  <p>Beispiel: Mo Conditioning, Mi Aktive Erholung, Do Conditioning, Sa Conditioning. Halte mindestens 1–2 Tage zwischen den harten HIIT-Sessions. Die Tage kannst du in den Einstellungen anpassen.</p>
+  <p>Halte mindestens 1–2 Tage zwischen den harten Einheiten. Die Tage kannst du in den Einstellungen anpassen.</p>
   <h2>Warum Air Bike?</h2>
   <p>Kein Aufprall, kaum Technik und Ganzkörperbelastung. Du kannst sehr hart trainieren, ohne Sehnen und Gelenke wie beim Sprinten zu belasten.</p>
   <h2>Grenzen des Air Bikes</h2>
-  <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Die Rote Zone erreichst du über hohe Trittfrequenz, nicht nur über Kraft.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern, ohne dass Laktat entsteht.</li></ul>
-  <div class="notice">Gesundheitshinweis: Max-Sprints und Training in der Roten Zone sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
+  <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern. Bleib bewusst im Grundtempo.</li></ul>
+  <div class="notice">Gesundheitshinweis: Maximale Sprints sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
 
 function profileSettingsInfo() {
@@ -421,10 +442,10 @@ function viewSettings() {
   </select>
   <p class="muted small">Senkt nur feste Watt-Bereiche (z. B. 200–350 W). Prozent- und Max-Ziele bleiben.</p>` : ''}
 
-  <h2>Herzfrequenz</h2>
-  <label for="age">Alter</label>
+  <h2>Aktive Erholung</h2>
+  <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
   <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
-  ${hf ? `<p>Geschätzter HFmax: <b>${hf} bpm</b> (208 − 0,7 × Alter)<br>Rote Zone ab 90 %: <b>${Math.round(hf * 0.9)} bpm</b><br>Aktive Erholung 70–80 %: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} bpm</b></p><p class="muted small">Das ist eine Schätzformel. Ein echter Maximalpuls-Test ist genauer.</p>` : ''}
+  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist eine Schätzung aus dem Alter.</p>` : ''}
 
   <h2>Kampf und Termine</h2>
   <label for="fightDate">Kampftermin (Turnier)</label>
@@ -755,7 +776,7 @@ function showDisclaimer() {
   $modal.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="dtitle">
     <span class="kicker">Bevor es losgeht</span>
     <h2 id="dtitle" style="margin-top:6px">Gesundheitshinweis</h2>
-    <p>Max-Sprints und Training in der Roten Zone sind extrem belastend. Lass dich bei Vorerkrankungen oder Unsicherheit vorher ärztlich untersuchen.</p>
+    <p>Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen oder Unsicherheit vorher ärztlich untersuchen.</p>
     <ul class="plain"><li>Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen.</li><li>Immer zuerst aufwärmen.</li><li>Du trainierst auf eigene Verantwortung.</li></ul>
     <button class="primary block" data-act="ack">Verstanden</button></div>`;
   $modal.querySelector('button')?.focus();

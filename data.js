@@ -3,7 +3,7 @@
 
 // ---------- Schritt-Bausteine ----------
 const work = (label, secs, t = {}) => ({ label, secs, kind: 'work', ...t });
-const easy = (label, secs, t = {}) => ({ label, secs, kind: 'easy', rpe: '2–3', ...t });
+const easy = (label, secs, t = {}) => ({ label, secs, kind: 'easy', rpe: '2–3', pct: [12, 20], ...t }); // Annahme: Richtwert 12–20 % des Max-Watt
 const rest = (label, secs, t = {}) => ({ label, secs, kind: 'rest', ...t });
 const times = (n, arr) => Array.from({ length: n }, () => arr).flat();
 
@@ -14,7 +14,7 @@ const warmup = () => [
   {
     title: 'Warm-up',
     desc: '4 × (30 s Arbeit · 30 s Pause) · 200–400 W',
-    note: 'Ziel: am Ende knapp unter der roten Zone. Liegt der Puls nach 2 Wiederholungen unter 80 % HFmax, Intensität erhöhen.',
+    note: 'Am Ende bist du warm und kurz vor deiner Höchstbelastung. Fühlt es sich zu leicht an, steigere die Intensität.',
     repeat: 4,
     trimLast: true,
     steps: [work('Warm-up', 30, { w: [200, 400] }), rest('Pause', 30)],
@@ -26,7 +26,7 @@ const warmupLong = () => [
   {
     title: 'Warm-up',
     desc: '4 min Arbeit · 1 min Pause · 150–300 W',
-    note: 'Ziel: am Ende knapp unter der roten Zone.',
+    note: 'Am Ende bist du warm und kurz vor deiner Höchstbelastung.',
     repeat: 1,
     steps: [work('Warm-up', 240, { w: [150, 300] }), rest('Pause', 60)],
   },
@@ -73,14 +73,14 @@ const tripleSprint = (reps) => ({
 });
 
 const gears = (reps) => ({
-  title: 'Gänge hochschalten',
+  title: 'Tempo-Stufen',
   desc: `${reps} × (30 s @ 300–450 W → 20 s @ 450–600 W → 10 s @ 600–1000 W · 3 min Pause)`,
   note: 'Belastung 7–8 von 10. Nach jeder Wiederholung prüfen: bei mehr als 8 Intensität senken.',
   repeat: reps,
   steps: [
-    work('Gang 1 · 30 s', 30, { w: [300, 450], rpe: '7–8' }),
-    work('Gang 2 · 20 s', 20, { w: [450, 600], rpe: '7–8' }),
-    work('Gang 3 · 10 s', 10, { w: [600, 1000], rpe: '7–8' }),
+    work('Stufe 1 · 30 s', 30, { w: [300, 450], rpe: '7–8' }),
+    work('Stufe 2 · 20 s', 20, { w: [450, 600], rpe: '7–8' }),
+    work('Stufe 3 · 10 s', 10, { w: [600, 1000], rpe: '7–8' }),
     rest('Erholung', 180),
   ],
 });
@@ -126,7 +126,7 @@ const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
   const inner = Math.max(1, Math.floor(roundSecs / (on + off)));
   const minutes = roundSecs / 60;
   return {
-    title: 'Fight-HIIT',
+    title: 'Kampfrunden',
     desc: `${reps} × ${minutes}-min-Runde (${inner} × ${on} s Arbeit · ${off} s Pause) · 1 min Pause zwischen den Runden`,
     note: 'Richte dich nach der Belastung: 9 von 10.',
     repeat: reps,
@@ -164,8 +164,8 @@ export const TEST_SESSION = {
 
 // ---------- Aktive Erholung (auf das Bike umgeschrieben) ----------
 const REC_TXT = '70–80 % HFmax, Belastung 2–3 von 10';
-const on = (m) => easy(`${m} min Zone 3`, m * 60, { txt: REC_TXT });
-const onS = (s) => easy(`${s} s Zone 3`, s, { txt: REC_TXT });
+const on = (m) => easy(`${m} min Grundtempo`, m * 60, { txt: REC_TXT });
+const onS = (s) => easy(`${s} s Grundtempo`, s, { txt: REC_TXT });
 const off = (m) => rest(`${m} min locker rollen`, m * 60, { txt: 'Sehr locker weiterrollen' });
 const offS = (s) => rest(`${s} s locker rollen`, s, { txt: 'Sehr locker weiterrollen' });
 
@@ -208,10 +208,10 @@ export const PROFILES = {
 
 // ---------- Phasen ----------
 export const PHASES = [
-  { weeks: [1, 2], name: 'Tempo freischalten', text: 'Pyramiden und 20-s-Sprints bauen die Basis auf und holen Geschwindigkeit in die rote Zone.' },
-  { weeks: [3, 5], name: 'Max-Effort-Sprints', text: 'Maximale 30-s-, 20-s- und 10-s-Sprints trainieren die Sauerstoffverwertung in der Muskulatur.' },
-  { weeks: [6, 8], name: 'Muskelpufferung', text: 'Kontrollierte Intervalle (Belastung 7–8 von 10) trainieren den Umgang mit Übersäuerung.' },
-  { weeks: [9, 10], name: 'Fight-HIIT & Taper', text: 'Kampfspezifische 3-min-Runden und kurze Sprints bringen dich frisch und scharf zum Kampf.' },
+  { weeks: [1, 2], name: 'Tempo aufbauen', text: 'Stufen-Intervalle und 20-s-Sprints bauen die Basis auf und bringen Geschwindigkeit.' },
+  { weeks: [3, 5], name: 'Maximale Sprints', text: 'Maximale 30-s-, 20-s- und 10-s-Sprints trainieren die Sauerstoffverwertung in der Muskulatur.' },
+  { weeks: [6, 8], name: 'Belastbarkeit', text: 'Kontrollierte Intervalle (Belastung 7–8 von 10) trainieren den Umgang mit Übersäuerung.' },
+  { weeks: [9, 10], name: 'Kampfrunden & Feinschliff', text: 'Kampfspezifische 3-min-Runden und kurze Sprints bringen dich frisch und scharf zum Kampf.' },
 ];
 
 const LOAD = { 1: 'Mittel', 2: 'Mittel', 3: 'Mittel', 4: 'Mittel–Hoch', 5: 'Hoch', 6: 'Mittel', 7: 'Mittel–Hoch', 8: 'Hoch', 9: 'Mittel', 10: 'Niedrig' };
@@ -221,14 +221,14 @@ const NON_MAIN = new Set(['Warm-up', 'Pause vor Hauptteil', 'Erweitertes Warm-up
 const S = (id, type, title, focus, blocks) => ({ id, type, title, focus, blocks: blocks.map((b) => ({ ...b, main: !NON_MAIN.has(b.title) })) });
 
 const T = {
-  pyramid: ['Pyramiden-HIIT', 'Viel Intensität bei kleinem Umfang: kurze und lange Intervalle mit steigendem und sinkendem Tempo.'],
-  speed: ['Max-Sprints · Speed-Ausdauer', '20-s-Sprints bei maximaler Intensität. Erst Höchstleistung erreichen, dann um höchstens 20 % abfallen.'],
-  periph: ['Max-Sprints · Periphere Anpassung', 'Maximale Sprints für schnelle Anpassungen der Muskelzelle. Attackiere jede Wiederholung.'],
-  gears: ['Gänge hochschalten', 'Eine Minute in drei Stufen mit steigender Leistung. Kontrolliert bleiben (7–8 von 10).'],
-  repeated: ['Wiederholte Sprints', 'Viele kurze Sprints (12 s) mit langer Pause. Die Tempostrategie steuert die Intensität.'],
-  fight: ['Fight-HIIT', 'Boxrunden-Struktur: 3-min-Runden, aufgeteilt in kurze harte Intervalle.'],
-  sprintsMax: ['Sprint-Session · Taper', '10-s-Sprints, um das Nervensystem scharf zu machen. Du sollst frisch sein, nicht müde.'],
-  taper: ['Sprint-Taper', 'Leichte Sprint-Session vor dem Kampf. Du sollst dich danach nicht müde fühlen.'],
+  pyramid: ['Stufen-Intervalle', 'Viel Intensität bei kleinem Umfang: kurze und lange Intervalle mit steigendem und sinkendem Tempo.'],
+  speed: ['Sprints · Tempo-Ausdauer', '20-s-Sprints bei maximaler Intensität. Erst Höchstleistung erreichen, dann um höchstens 20 % abfallen.'],
+  periph: ['Sprints · Kraftausdauer', 'Maximale Sprints für schnelle Anpassungen der Muskelzelle. Attackiere jede Wiederholung.'],
+  gears: ['Tempo-Stufen', 'Eine Minute in drei Stufen mit steigender Leistung. Kontrolliert bleiben (7–8 von 10).'],
+  repeated: ['Kurz-Sprints', 'Viele kurze Sprints (12 s) mit langer Pause. Die Tempostrategie steuert die Intensität.'],
+  fight: ['Kampfrunden', 'Boxrunden-Struktur: 3-min-Runden, aufgeteilt in kurze harte Intervalle.'],
+  sprintsMax: ['Sprints · Kampfform', '10-s-Sprints, um das Nervensystem scharf zu machen. Du sollst frisch sein, nicht müde.'],
+  finish: ['Sprints · Feinschliff', 'Leichte Sprint-Session vor dem Kampf. Du sollst dich danach nicht müde fühlen.'],
 };
 
 const mk = (id, key, blocks) => S(id, key, T[key][0], T[key][1], blocks);
@@ -308,11 +308,11 @@ function buildWeeks() {
     mk('w9s3', 'fight', [...std, fightHiit({ reps: 4, on: 15, off: 15, pct: [65, 80] })]),
   ]);
   W.push([
-    mk('w10s1', 'taper', [
+    mk('w10s1', 'finish', [
       ...std,
       ext4,
       {
-        title: '10-s-Sprints bei 90 %',
+        title: '10-s-Sprints bei 90\u00A0%',
         desc: '6 × (10 s bei 90 % des Bestwerts aus Woche 9 · 2 min Pause)',
         note: 'Du sollst dich danach nicht müde fühlen, nur aufgeladen.',
         repeat: 6,
@@ -403,8 +403,12 @@ export function resolveTarget(step, ctx) {
     const arr = cap ? raw.map((v) => Math.min(v, cap)) : raw;
     const lbl = arr[0] === arr[1] ? `${arr[0]} %` : `${arr[0]}–${arr[1]} %`;
     if (maxW) {
-      const top = r5((maxW * arr[1]) / 100);
-      const low = r5((maxW * arr[0]) / 100);
+      let top = r5((maxW * arr[1]) / 100);
+      let low = r5((maxW * arr[0]) / 100);
+      if (step.kind === 'easy') {
+        low = Math.max(low, 80);
+        top = Math.max(top, low + 40);
+      }
       if (step.hold) {
         const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
         main = `${floor}–${top} W`;
