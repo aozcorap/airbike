@@ -4,9 +4,9 @@ Web-App (installierbar auf dem Handy) für ein 10-Wochen-Air-Bike-Training für 
 
 ## Funktionen
 - 10-Wochen-Plan, der sich nach Kampftermin und Trainingshäufigkeit (1×, 2× oder 3× pro Woche) richtet. Die Kürzungsregeln sind Annahmen und nicht fachlich geprüft.
-- Geführter Max-Watt-Test (3 × 10 s), aus dem Bestwert werden alle Watt-Ziele berechnet
+- Geführter Fitness-Test (3 × 10 s), aus dem Durchschnitt (Test-Watt) werden alle Watt-Ziele berechnet
 - Intervall-Timer mit Ton, Vibration und aktivem Bildschirm
-- Anfänger-Modus (−50 / −100 W, nur Profil Elite)
+- Kampfformat (3–12 Runden, 2 oder 3 Minuten) und Altersklasse steuern Umfang und Wattgrenzen
 - Altersklassen-Profile (Rundenlänge, Umfang, Sprintdauer, harte Sessions pro Woche, Watt-Obergrenze). Die Werte stehen in `data.js` unter `PROFILES`. **Die Jugendwerte sind Platzhalter und müssen von einem Fachtrainer freigegeben werden.** U13–U14 ist gesperrt.
 - Aktive Erholung
 - Wochenplan, Kalender-Datei (.ics) mit Erinnerungen, Sicherung/Wiederherstellung
