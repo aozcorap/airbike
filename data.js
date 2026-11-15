@@ -17,7 +17,7 @@ const warmup = () => [
     note: 'Ziel: am Ende knapp unter der roten Zone. Liegt der Puls nach 2 Wiederholungen unter 80 % HFmax, Intensität erhöhen.',
     repeat: 4,
     trimLast: true,
-    steps: [work('Zügig', 30, { w: [200, 400] }), rest('Pause', 30)],
+    steps: [work('Warm-up', 30, { w: [200, 400] }), rest('Pause', 30)],
   },
   pause(60, 'Pause vor Hauptteil'),
 ];

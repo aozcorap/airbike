@@ -160,25 +160,39 @@ function blockTargets(b) {
     const all = t.reps.length === b.repeat;
     const consecutive = t.reps[t.reps.length - 1] - t.reps[0] + 1 === t.reps.length;
     const when = all ? '' : consecutive ? ` (Wdh. ${t.reps[0]}–${t.reps[t.reps.length - 1]})` : ` (Wdh. ${t.reps.join(', ')})`;
-    return `<tr><td>${esc(t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
+    return `<tr><td>${esc(t.label === b.title ? 'Zielbereich' : t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
   });
 }
 
 /* ---------------- Ansichten ---------------- */
+const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
+const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>RED<i>LINE</i></b></div>`;
+const WHEEL_ART = (() => {
+  const spokes = Array.from({ length: 24 }, (_, i) => {
+    const a = (i * Math.PI) / 12;
+    const x1 = (160 + Math.cos(a) * 16).toFixed(1);
+    const y1 = (160 + Math.sin(a) * 16).toFixed(1);
+    const x2 = (160 + Math.cos(a) * 118).toFixed(1);
+    const y2 = (160 + Math.sin(a) * 118).toFixed(1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  }).join('');
+  return `<svg class="art" viewBox="0 0 320 320" fill="none" aria-hidden="true"><defs><radialGradient id="wg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff2d46" stop-opacity=".38"/><stop offset="1" stop-color="#ff2d46" stop-opacity="0"/></radialGradient></defs><circle cx="160" cy="160" r="156" fill="url(#wg)"/><g stroke="#fff" stroke-opacity=".13" stroke-width="1.5">${spokes}</g><circle cx="160" cy="160" r="118" stroke="#ff2d46" stroke-opacity=".7" stroke-width="3"/><circle cx="160" cy="160" r="104" stroke="#fff" stroke-opacity=".1" stroke-width="2"/><circle cx="160" cy="160" r="16" fill="#ff2d46" fill-opacity=".85"/></svg>`;
+})();
+
 function maxWatNotice() {
   const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
   if (!state.maxW) {
-    return `<a class="card link" href="#/test" style="border-color:var(--accent)"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
+    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
   }
   if (state.maxWDate && age >= 28) {
-    return `<a class="card link"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test">Max-Watt neu messen</a></p></a>`;
+    return `<div class="card"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test"><u>Max-Watt neu messen</u></a></p></div>`;
   }
   return '';
 }
 
 function viewHome() {
   if (profile().blocked) {
-    return `<span class="kicker">Redline</span><h1>Kampfvorbereitung</h1>${profileBanner()}`;
+    return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>${profileBanner()}`;
   }
   const p = plan();
   const next = nextSession();
@@ -195,11 +209,16 @@ function viewHome() {
   let fightInfo = '';
   if (p.status === 'ok' && p.fight) {
     const d = daysToFight();
-    fightInfo = `<div class="card"><span class="kicker">Kampf</span><h3 style="margin-top:6px">${fmtDate(p.fight)} · ${d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen'}</h3><p class="muted small" style="margin:4px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan">Details</a>)' : ''}</p></div>`;
+    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
+      <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
+      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
-    fightInfo = `<div class="notice">Trage in den <a href="#/settings">Einstellungen</a> deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.</div>`;
+    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampfvorbereitung</span>
+      <div class="bannerlbl" style="font-size:28px;line-height:1.1;margin:6px 0 4px;color:#fff;letter-spacing:.04em">Dein Plan bis zum Kampf</div>
+      <p class="muted small">Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.</p>
+      <a class="btn primary" href="#/settings">Kampftermin eintragen</a></div></div>`;
   }
 
   let nextHtml;
@@ -229,9 +248,10 @@ function viewHome() {
         .join('')
     : '';
 
-  return `<span class="kicker">Redline</span><h1>Kampfvorbereitung</h1>
-  ${total ? `<p class="muted">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
-  ${profileBanner()}${fightInfo}${maxWatNotice()}${todayHtml}${nextHtml}${list}`;
+  return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
+  ${profileBanner()}${fightInfo}
+  ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
+  ${maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
 
 function viewTest() {
@@ -479,12 +499,12 @@ function route() {
 }
 
 /* ---------------- Timer ---------------- */
-const CHROME = { prep: '#2a2370', work: '#b3141b', rest: '#12263f', easy: '#0f3b3a', done: '#0f2a18', idle: '#0b0d12' };
+const CHROME = { prep: '#2a2370', work: '#b3141b', rest: '#12263f', easy: '#0f3b3a', done: '#0f2a18', idle: '#07080c' };
 function setChrome(kind) {
   const col = CHROME[kind] || CHROME.idle;
   document.getElementById('themeColor')?.setAttribute('content', col);
-  document.documentElement.style.background = col;
-  document.body.style.background = col;
+  document.documentElement.style.background = kind === 'idle' ? '' : col;
+  document.body.style.background = kind === 'idle' ? '' : col;
   // iOS 26 Safari ignoriert theme-color und färbt die obere Leiste nach einem festen Element am oberen Rand.
   // Das Element wird bei jedem Wechsel neu erzeugt, damit Safari die Farbe neu liest.
   document.getElementById('chromeTint')?.remove();
@@ -614,7 +634,7 @@ function runView(id) {
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
     const nx = segs[i + 1];
-    el.next.textContent = nx ? `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main}` : 'Letztes Intervall';
+    el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label} · ${fmtSecs(nx.secs)} · ${nx.target.main}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
   }
