@@ -166,7 +166,7 @@ body.running { padding-bottom: 0; }
   animation: splashOut .45s ease 1.5s forwards;
 }
 #splash svg { width: 150px; height: 150px; filter: drop-shadow(0 0 24px rgba(255, 45, 70, .55)); }
-#splash .word { font-family: var(--display); font-size: 46px; letter-spacing: .24em; font-weight: 700; margin-left: .24em; }
+#splash .word { font-family: var(--display); font-size: 40px; letter-spacing: .1em; font-weight: 700; margin-left: .1em; white-space: nowrap; }
 #splash .word i { font-style: normal; color: var(--accent); }
 #splash .tag { font-family: var(--display); font-size: 15px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; margin-left: .16em; text-align: center; padding: 0 20px; }
 #splash .bar { width: 180px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; margin-top: 18px; }

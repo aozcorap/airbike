@@ -1,7 +1,7 @@
 {
-  "name": "Redline – 10-Wochen Air-Bike-Camp",
-  "short_name": "Redline",
-  "description": "10-Wochen Air-Bike-Training für Boxer mit Intervall-Timer.",
+  "name": "AirMaschine – Kondition wie eine Maschine",
+  "short_name": "AirMaschine",
+  "description": "Kondition wie eine Maschine: Air-Bike-Training für Boxer bis zum Kampf.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
