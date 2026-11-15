@@ -900,13 +900,13 @@ function videoEmbed(url) {
   if (yt) return `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&rel=0" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
   const vm = url.match(/vimeo\.com\/(?:video\/)?(\d{5,})/);
   if (vm) return `<iframe src="https://player.vimeo.com/video/${vm[1]}?autoplay=1" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-  return `<video src="${esc(url)}" controls autoplay playsinline></video>`;
+  return `<video src="${esc(url)}" controls autoplay playsinline preload="metadata"></video>`;
 }
 function videoCard() {
   const has = Boolean(HOWTO_VIDEO.url);
   return `<button class="videocard ${has ? '' : 'off'}" ${has ? 'data-act="video"' : 'disabled'} aria-label="${esc(HOWTO_VIDEO.title)}">
     <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
-    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (1–2 Minuten)' : 'Erklärvideo folgt in Kürze'}</span></span>
+    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (1 Minute)' : 'Erklärvideo folgt in Kürze'}</span></span>
   </button>`;
 }
 function showVideo() {
