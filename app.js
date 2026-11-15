@@ -1,4 +1,4 @@
-import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, findSession, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 import { buildPlan, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
@@ -52,7 +52,7 @@ const ctx = () => {
   const p = profile();
   return { maxW: Number(state.maxW) || 0, off: p.key === 'elite' ? Number(state.off) || 0 : 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
 };
-const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3);
+const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
 const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile());
 function profileBanner() {
   const p = profile();
@@ -71,11 +71,13 @@ const $modal = document.getElementById('modal');
 /* ---------------- Hilfsfunktionen ---------------- */
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+const effFreq = () => Math.max(1, Math.min(Number(state.freq) || 3, profile().hardPerWeek || 3));
+const wochen = (n) => `${n} ${n === 1 ? 'Woche' : 'Wochen'}`;
 let planCache = { key: '', value: null };
 function plan() {
-  const key = [state.fightDate, state.startDate, state.freq, new Date().toDateString()].join('|');
+  const key = [state.fightDate, state.startDate, effFreq(), new Date().toDateString()].join('|');
   if (planCache.key !== key) {
-    planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: Number(state.freq) || 3 }) };
+    planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq() }) };
   }
   return planCache.value;
 }
@@ -85,7 +87,7 @@ function findInPlan(id) {
     const s = [...w.sessions, w.recovery].find((x) => x.id === id);
     if (s) return { session: s, week: w };
   }
-  return findSession(id);
+  return null;
 }
 function allSessions() {
   return plan().weeks.flatMap((w) => weekOrder(w).map((s) => ({ s, w })));
@@ -116,17 +118,17 @@ function daysToFight() {
 }
 function planSummary() {
   const p = plan();
-  const freq = Number(state.freq) || 3;
+  const freq = effFreq();
   if (p.status === 'invalid') return 'Das Datum ist ungültig.';
   if (p.status === 'past') return 'Der Kampftermin liegt in der Vergangenheit. Bitte ein neues Datum eintragen.';
   if (p.mode === 'none') return 'Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.';
   let txt = '';
   if (p.mode === 'fight') {
-    txt = `${p.fight ? `Noch ${daysToFight()} Tage bis zum Kampf. ` : ''}Dein Plan hat ${p.weeks.length} Wochen mit ${freq}× Training pro Woche.`;
+    txt = `${p.fight ? `Noch ${daysToFight()} Tage bis zum Kampf. ` : ''}Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
     if (p.startsIn > 0) txt += ` Er beginnt am ${fmtDate(p.weeks[0].monday)}, vorher ist noch Zeit.`;
     if (p.compressed) txt += ' Der Plan ist gekürzt. Wie gekürzt wird, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.';
   } else {
-    txt = `Dein Plan hat ${p.weeks.length} Wochen mit ${freq}× Training pro Woche.`;
+    txt = `Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
   }
   if (freq < 3) txt += ' Bei weniger als 3 Einheiten pro Woche wählt die App die wichtigsten aus. Die Auswahl ist eine Annahme.';
   return txt;
@@ -193,7 +195,7 @@ function viewHome() {
   let fightInfo = '';
   if (p.status === 'ok' && p.fight) {
     const d = daysToFight();
-    fightInfo = `<div class="card"><span class="kicker">Kampf</span><h3 style="margin-top:6px">${fmtDate(p.fight)} · ${d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen'}</h3><p class="muted small" style="margin:4px 0 0">Dein Plan: ${p.weeks.length} Wochen, ${Number(state.freq) || 3}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan">Details</a>)' : ''}</p></div>`;
+    fightInfo = `<div class="card"><span class="kicker">Kampf</span><h3 style="margin-top:6px">${fmtDate(p.fight)} · ${d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen'}</h3><p class="muted small" style="margin:4px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan">Details</a>)' : ''}</p></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
@@ -203,6 +205,8 @@ function viewHome() {
   let nextHtml;
   if (p.status !== 'ok' || !p.weeks.length) {
     nextHtml = '';
+  } else if (!allSessions().length) {
+    nextHtml = `<div class="card hero"><span class="kicker">Kampfwoche</span><h2 style="margin-top:6px">Keine Einheit mehr vor dem Kampf</h2><p class="muted">Ruh dich aus, iss und trink gut und schlaf viel.</p></div>`;
   } else if (!next) {
     nextHtml = `<div class="card hero"><span class="kicker">Geschafft</span><h2 style="margin-top:6px">Plan abgeschlossen</h2><p class="muted">Alle Einheiten sind erledigt.</p></div>`;
   } else {
@@ -226,7 +230,7 @@ function viewHome() {
     : '';
 
   return `<span class="kicker">Redline</span><h1>Kampfvorbereitung</h1>
-  <p class="muted">${doneCount} von ${total} Einheiten erledigt</p>
+  ${total ? `<p class="muted">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
   ${profileBanner()}${fightInfo}${maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
 
@@ -278,8 +282,7 @@ function viewPlan() {
 
 function sessionRow(w, s) {
   const d = sessionDate(w, dayOf(s));
-  const close = tooCloseToFight(d, plan().fight);
-  return `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]}${d ? ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : ''} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}${close ? ' · zu nah am Kampf, lieber weglassen' : ''}</span></span></a>`;
+  return `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]}${d ? ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : ''} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`;
 }
 
 function viewWeek(n) {
@@ -288,10 +291,12 @@ function viewWeek(n) {
   const list = weekOrder(w).map((s) => sessionRow(w, s)).join('');
   return `<a href="#/plan" class="muted small">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
   ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
+  ${list ? '' : '<p class="muted">In dieser Woche steht keine Einheit mehr an. Ruh dich aus.</p>'}
   ${w.tpl === 10 ? '<p class="muted small">In der Kampfwoche steht nur eine leichte Sprint-Einheit an, damit du frisch in den Kampf gehst.</p>' : ''}`;
 }
 
 function viewSession(id) {
+  if (id === 'test') return viewTest();
   const found = findInPlan(id);
   if (!found) return notFound();
   const { session, week } = found;
@@ -414,8 +419,8 @@ function viewSettings() {
   <div class="field-row">
     <div><label>Einheit 1</label>${dayOpts('s1')}</div>
     <div><label>Aktive Erholung</label>${dayOpts('rec')}</div>
-    ${Number(state.freq) >= 2 ? `<div><label>Einheit 2</label>${dayOpts('s2')}</div>` : ''}
-    ${Number(state.freq) >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
+    ${effFreq() >= 2 ? `<div><label>Einheit 2</label>${dayOpts('s2')}</div>` : ''}
+    ${effFreq() >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
   </div>
   <label for="time">Uhrzeit</label>
   <input id="time" type="time" value="${esc(state.time)}" data-set="time">

@@ -31,7 +31,9 @@ export function startOfDay(d) {
 export function parseDay(str) {
   if (!str || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
   const d = new Date(str + 'T00:00:00');
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) return null;
+  const back = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return back === str ? d : null; // 2026-02-31 ist ungültig
 }
 
 export function mondayOf(d) {
