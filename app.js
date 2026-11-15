@@ -402,21 +402,39 @@ function viewSession(id) {
 }
 
 function viewInfo() {
-  return `<h1>Wissen</h1>
-  <h2>Belastungsskala von 1 bis 10</h2>
+  const p = profile();
+  const pl = plan();
+  const lvl = { 0: 'Sehr gut trainiert', 50: 'Gut trainiert', 100: 'Wenig Erfahrung' }[Number(state.off)] || 'Sehr gut trainiert';
+  const rows = [
+    [state.onboarded, 'Altersklasse', p.name, '#/settings'],
+    [Boolean(state.fightDate), 'Kampftermin', pl.fight ? fmtDate(pl.fight) : 'offen', '#/settings'],
+    [true, 'Training pro Woche', `${effFreq()}× pro Woche`, '#/settings'],
+    ...(p.key === 'elite' ? [[true, 'Trainingsstand', lvl, '#/settings']] : []),
+    [Boolean(state.maxW), 'Max-Watt', state.maxW ? `${state.maxW} W` : 'offen', '#/test'],
+  ];
+  return `<span class="kicker">Neu hier?</span><h1>Einführung</h1>
+  <p class="muted">So startest du in wenigen Minuten. Hier findest du die Anleitung, das Erklärvideo und dein aktuelles Setup.</p>
+  ${videoCard()}
+  <button class="primary block" data-act="ob-replay">Einführung starten</button>
+  <h2>Dein Stand</h2>
+  <div class="card">${rows
+    .map(([ok, label, val, href]) => `<a class="setup-row" href="${href}"><span class="check ${ok ? 'done' : ''}">${ok ? '✓' : ''}</span><span class="grow">${label}</span><b class="${ok ? '' : 'muted'}">${esc(val)}</b></a>`)
+    .join('')}</div>
+  <h2>Gut zu wissen</h2>
+  <h3>Belastungsskala von 1 bis 10</h3>
   <table class="rpe"><tbody>
     <tr><td>1–2</td><td>Sehr leicht bis leicht</td></tr><tr><td>3</td><td>Moderat, du kannst dich noch gut unterhalten</td></tr>
     <tr><td>4–6</td><td>Hart</td></tr><tr><td>7–8</td><td>Sehr hart (Tempo-Stufen, Kurz-Sprints)</td></tr>
     <tr><td>9</td><td>Fast maximal (Kampfrunden)</td></tr><tr><td>10</td><td>Maximal</td></tr>
   </tbody></table>
   <p class="muted">Die 10 ist das Maximum, das du über die jeweilige Dauer einmal geben könntest. Ziehst du ein bisschen davon ab, hast du 9 von 10. Ein 15-Sekunden-Sprint und ein 4-Minuten-Intervall können beide bei 9 von 10 liegen, auch wenn die Watt sehr verschieden sind.</p>
-  <h2>Pausen</h2>
+  <h3 style="margin-top:18px">Pausen</h3>
   <p>In den Pausen komplett erholen: absteigen, nicht weitertreten. Nur die Aktive Erholung ist durchgehend locker.</p>
-  <h2>Wöchentlicher Rhythmus</h2>
+  <h3 style="margin-top:18px">Wöchentlicher Rhythmus</h3>
   <p>Halte mindestens 1–2 Tage zwischen den harten Einheiten. Die Tage kannst du in den Einstellungen anpassen.</p>
-  <h2>Warum Air Bike?</h2>
+  <h3 style="margin-top:18px">Warum Air Bike?</h3>
   <p>Kein Aufprall, kaum Technik und Ganzkörperbelastung. Du kannst sehr hart trainieren, ohne Sehnen und Gelenke wie beim Sprinten zu belasten.</p>
-  <h2>Grenzen des Air Bikes</h2>
+  <h3 style="margin-top:18px">Grenzen des Air Bikes</h3>
   <ul class="plain"><li>Leichtere oder schwächere Athleten erreichen Watt-Ziele schwerer. Dann Anfänger-Modus nutzen.</li><li>Sehr lockere Erholung ist auf dem Air Bike schwer zu steuern. Bleib bewusst im Grundtempo.</li></ul>
   <div class="notice">Gesundheitshinweis: Maximale Sprints sind sehr belastend. Bei Herz-Kreislauf-Problemen, Vorerkrankungen oder Beschwerden vorher ärztlich abklären. Bei Schwindel, Brustschmerz oder Atemnot sofort abbrechen.</div>`;
 }
