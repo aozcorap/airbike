@@ -160,7 +160,7 @@ function blockTargets(b) {
     const all = t.reps.length === b.repeat;
     const consecutive = t.reps[t.reps.length - 1] - t.reps[0] + 1 === t.reps.length;
     const when = all ? '' : consecutive ? ` (Wdh. ${t.reps[0]}–${t.reps[t.reps.length - 1]})` : ` (Wdh. ${t.reps.join(', ')})`;
-    return `<tr><td>${esc(t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
+    return `<tr><td>${esc(t.label === b.title ? 'Zielbereich' : t.label)}${when}</td><td><b>${esc(t.main)}</b></td></tr>`;
   });
 }
 
@@ -182,10 +182,10 @@ const WHEEL_ART = (() => {
 function maxWatNotice() {
   const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
   if (!state.maxW) {
-    return `<a class="card link" href="#/test" style="border-color:var(--accent)"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
+    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
   }
   if (state.maxWDate && age >= 28) {
-    return `<a class="card link"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test">Max-Watt neu messen</a></p></a>`;
+    return `<div class="card"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test"><u>Max-Watt neu messen</u></a></p></div>`;
   }
   return '';
 }
