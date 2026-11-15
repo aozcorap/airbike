@@ -6,7 +6,6 @@ import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays,
 const KEY = 'redline.v1';
 const DEFAULTS = {
   maxW: 0,
-  off: 0,
   startDate: '',
   fightDate: '',
   freq: 3,
@@ -14,7 +13,7 @@ const DEFAULTS = {
   peakW: 0,
   sprints: [],
   rounds: 3,
-  roundMin: 3,
+  roundMin: 0,
   done: {},
   days: { s1: 1, rec: 3, s2: 4, s3: 6 },
   time: '18:00',
@@ -64,7 +63,7 @@ const ctx = () => {
 };
 const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
 const fmtRounds = () => Math.max(3, Math.min(12, Number(state.rounds) || 3));
-const fmtRoundSecs = () => (Number(state.roundMin) === 2 ? 120 : 180);
+const fmtRoundSecs = () => (state.roundMin ? (Number(state.roundMin) === 2 ? 120 : 180) : (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) || 180);
 const formatLabel = () => `${fmtRounds()} Runden à ${fmtRoundSecs() / 60} Minuten`;
 const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile(), { rounds: fmtRounds(), roundSecs: fmtRoundSecs() });
 function profileBanner() {
@@ -213,11 +212,12 @@ const sprintInputs = (pre) =>
     .map((i) => `<div><label for="${pre}${i}" class="small" style="margin:0 0 4px">Sprint ${i}</label><input id="${pre}${i}" type="number" inputmode="numeric" min="100" max="3000" step="1" placeholder="Watt" aria-label="Höchster Wert Sprint ${i} in Watt"></div>`)
     .join('')}</div>`;
 function saveSprints(pre) {
-  const vals = [1, 2, 3].map((i) => Math.round(Number(document.getElementById(pre + i)?.value)));
-  if (vals.some((v) => !(v >= 100 && v <= 3000))) {
+  const raw = [1, 2, 3].map((i) => Number(document.getElementById(pre + i)?.value));
+  if (raw.some((v) => !(v >= 100 && v <= 3000))) {
     alert('Bitte gib alle drei Werte zwischen 100 und 3000 Watt ein.');
     return false;
   }
+  const vals = raw.map(Math.round);
   state.sprints = vals;
   state.peakW = Math.max(...vals);
   state.maxW = Math.round(vals.reduce((x, y) => x + y, 0) / 3);
@@ -265,7 +265,7 @@ function setupCard() {
 function maxWatNotice() {
   const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
   if (!state.maxW) {
-    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Fitness-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
+    return `<a class="card link accent" href="#/test"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Fitness-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Test-Watt berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
   }
   if (state.maxWDate && age >= 28) {
     return `<div class="card"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test"><u>Test-Watt neu messen</u></a></p></div>`;
@@ -1831,6 +1831,8 @@ document.addEventListener('change', (e) => {
   if (t.dataset.set) {
     const k = t.dataset.set;
     state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Number(t.value) || 0 : t.value;
+    if (k === 'maxW') { state.sprints = []; state.peakW = 0; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
+    if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
     save();
     scheduleReminder();
     route();

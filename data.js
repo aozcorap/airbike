@@ -13,7 +13,7 @@ const pause = (secs, title = 'Pause') => ({ title, repeat: 1, steps: [rest('Paus
 const warmup = () => [
   {
     title: 'Warm-up',
-    desc: '4 × (30 s Arbeit · 30 s Pause) · 200–400 W',
+    desc: '4 × (30 s Arbeit · 30 s Pause) · 20–40 % Test-Watt',
     note: 'Am Ende bist du warm und kurz vor deiner Höchstbelastung. Fühlt es sich zu leicht an, steigere die Intensität.',
     repeat: 4,
     trimLast: true,
@@ -25,7 +25,7 @@ const warmup = () => [
 const warmupLong = () => [
   {
     title: 'Warm-up',
-    desc: '4 min Arbeit · 1 min Pause · 150–300 W',
+    desc: '4 min Arbeit · 1 min Pause · 15–30 % Test-Watt',
     note: 'Am Ende bist du warm und kurz vor deiner Höchstbelastung.',
     repeat: 1,
     steps: [work('Warm-up', 240, { w: [150, 300] }), rest('Pause', 60)],
@@ -60,7 +60,7 @@ const doubleSprint = (reps) => ({
 
 const tripleSprint = (reps) => ({
   title: '3 × 10 s Max-Sprint',
-  desc: `${reps} × (3 × 10 s maximal mit 10 s Pause · 3 min Erholung) · jede Wiederholung höchstens 10 % unter Bestwert`,
+  desc: `${reps} × (3 × 10 s maximal mit 10 s Pause · 3 min Erholung) · jede Wiederholung höchstens 10 % unter deinem Test-Watt`,
   repeat: reps,
   steps: [
     work('Sprint 1', 10, { maxEffort: true, within: 10 }),
@@ -74,7 +74,7 @@ const tripleSprint = (reps) => ({
 
 const gears = (reps) => ({
   title: 'Tempo-Stufen',
-  desc: `${reps} × (30 s @ 300–450 W → 20 s @ 450–600 W → 10 s @ 600–1000 W · 3 min Pause)`,
+  desc: `${reps} × (30 s bei 30–45 % → 20 s bei 45–60 % → 10 s bei 60–100 % Test-Watt · 3 min Pause)`,
   note: 'Belastung 7–8 von 10. Nach jeder Wiederholung prüfen: bei mehr als 8 Intensität senken.',
   repeat: reps,
   steps: [
@@ -151,7 +151,15 @@ export const TEST_SESSION = {
   title: 'Fitness-Test',
   focus: 'Drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte ist die Grundlage für alle Watt-Ziele.',
   blocks: [
-    ...warmup(),
+    {
+      title: 'Warm-up',
+      desc: '4 × (30 s Arbeit · 30 s Pause) · 200–400 W',
+      note: 'Am Ende bist du warm und kurz vor deiner Höchstbelastung. Fühlt es sich zu leicht an, steigere die Intensität.',
+      repeat: 4,
+      trimLast: true,
+      steps: [work('Warm-up', 30, { wAbs: [200, 400] }), rest('Pause', 30)],
+    },
+    pause(60, 'Pause vor Hauptteil'),
     {
       title: 'Test-Sprints',
       desc: `3 × (10 s maximal · ${TEST_PAUSE_SECS / 60} min Pause)`,
@@ -211,7 +219,7 @@ export const PHASES = [
   { weeks: [1, 2], name: 'Tempo aufbauen', text: 'Stufen-Intervalle und 20-s-Sprints bauen die Basis auf und bringen Geschwindigkeit.' },
   { weeks: [3, 5], name: 'Maximale Sprints', text: 'Maximale 30-s-, 20-s- und 10-s-Sprints trainieren die Sauerstoffverwertung in der Muskulatur.' },
   { weeks: [6, 8], name: 'Belastbarkeit', text: 'Kontrollierte Intervalle (Belastung 7–8 von 10) trainieren den Umgang mit Übersäuerung.' },
-  { weeks: [9, 10], name: 'Kampfrunden & Feinschliff', text: 'Kampfspezifische 3-min-Runden und kurze Sprints bringen dich frisch und scharf zum Kampf.' },
+  { weeks: [9, 10], name: 'Kampfrunden & Feinschliff', text: 'Kampfspezifische Runden (Länge nach deinem Kampfformat) und kurze Sprints bringen dich frisch und scharf zum Kampf.' },
 ];
 
 const LOAD = { 1: 'Mittel', 2: 'Mittel', 3: 'Mittel', 4: 'Mittel–Hoch', 5: 'Hoch', 6: 'Mittel', 7: 'Mittel–Hoch', 8: 'Hoch', 9: 'Mittel', 10: 'Niedrig' };
@@ -226,7 +234,7 @@ const T = {
   periph: ['Sprints · Kraftausdauer', 'Maximale Sprints für schnelle Anpassungen der Muskelzelle. Attackiere jede Wiederholung.'],
   gears: ['Tempo-Stufen', 'Eine Minute in drei Stufen mit steigender Leistung. Kontrolliert bleiben (7–8 von 10).'],
   repeated: ['Kurz-Sprints', 'Viele kurze Sprints (12 s) mit langer Pause. Die Tempostrategie steuert die Intensität.'],
-  fight: ['Kampfrunden', 'Boxrunden-Struktur: 3-min-Runden, aufgeteilt in kurze harte Intervalle.'],
+  fight: ['Kampfrunden', 'Boxrunden-Struktur: Runden in deiner Kampflänge, aufgeteilt in kurze harte Intervalle.'],
   sprintsMax: ['Sprints · Kampfform', '10-s-Sprints, um das Nervensystem scharf zu machen. Du sollst frisch sein, nicht müde.'],
   finish: ['Sprints · Feinschliff', 'Leichte Sprint-Session vor dem Kampf. Du sollst dich danach nicht müde fühlen.'],
 };
@@ -300,7 +308,7 @@ function buildWeeks() {
       {
         title: '10-s-Max-Sprints',
         desc: '10 × (10 s maximal · 2 min Pause)',
-        note: 'Peile deine persönlichen Bestwerte an. Du sollst dich aufgeladen und bereit fühlen.',
+        note: 'Peile deinen Test-Watt an. Du sollst dich aufgeladen und bereit fühlen.',
         repeat: 10,
         steps: [work('Max-Sprint', 10, { maxEffort: true }), rest('Erholung', 120)],
       },
@@ -313,7 +321,7 @@ function buildWeeks() {
       ext4,
       {
         title: '10-s-Sprints bei 90\u00A0%',
-        desc: '6 × (10 s bei 90 % des Bestwerts aus Woche 9 · 2 min Pause)',
+        desc: '6 × (10 s bei 90 % deines Test-Watt · 2 min Pause)',
         note: 'Du sollst dich danach nicht müde fühlen, nur aufgeladen.',
         repeat: 6,
         steps: [work('Sprint bei 90 %', 10, { pct: 90, rpe: '8–9' }), rest('Erholung', 120)],
@@ -368,6 +376,7 @@ export function resolveTarget(step, ctx) {
   const { maxW } = ctx;
   const cap = ctx.cap || 0;
   // Feste Wattbereiche der Vorlage gelten für ca. 1000 W; hier als Prozent des persönlichen Test-Watt
+  if (step.wAbs) return { main: `${step.wAbs[0]}–${step.wAbs[1]} W`, sub: 'Richtwert, da du noch keinen Test-Watt hast' };
   if (step.w) step = { ...step, pct: step.w.map((v) => v / 10), w: undefined };
   const capW = maxW && cap ? r5((maxW * cap) / 100) : 0;
   let main = '';
