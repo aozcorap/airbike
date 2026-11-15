@@ -1,5 +1,5 @@
-import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
-import { buildPlan, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
+import { PHASES, PROFILES, RECOVERY_OPTIONS, HOWTO_VIDEO, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
 const KEY = 'redline.v1';
@@ -19,6 +19,7 @@ const DEFAULTS = {
   recOpt: 'opt1',
   profile: 'elite',
   approved: {},
+  onboarded: false,
 };
 
 function load() {
@@ -196,7 +197,9 @@ function stepCard(b, no, isRec) {
 
 /* ---------------- Ansichten ---------------- */
 const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
-const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>AIR<i>MASCHINE</i></b></div>`;
+const APP_NAME_A = 'AIR';
+const APP_NAME_B = 'MASCHINE';
+const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div>`;
 const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" onerror="this.remove()">';
 const WHEEL_ART = (() => {
   const spokes = Array.from({ length: 24 }, (_, i) => {
@@ -209,6 +212,20 @@ const WHEEL_ART = (() => {
   }).join('');
   return `<svg class="art" viewBox="0 0 320 320" fill="none" aria-hidden="true"><defs><radialGradient id="wg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff2d46" stop-opacity=".38"/><stop offset="1" stop-color="#ff2d46" stop-opacity="0"/></radialGradient></defs><circle cx="160" cy="160" r="156" fill="url(#wg)"/><g stroke="#fff" stroke-opacity=".13" stroke-width="1.5">${spokes}</g><circle cx="160" cy="160" r="118" stroke="#ff2d46" stroke-opacity=".7" stroke-width="3"/><circle cx="160" cy="160" r="104" stroke="#fff" stroke-opacity=".1" stroke-width="2"/><circle cx="160" cy="160" r="16" fill="#ff2d46" fill-opacity=".85"/></svg>`;
 })();
+
+function setupCard() {
+  const hasDate = Boolean(state.fightDate);
+  const rows = [
+    [state.onboarded, 'Altersklasse und Hinweis', '#/settings'],
+    [hasDate, 'Kampftermin eintragen', '#/settings'],
+    [Boolean(state.maxW), 'Max-Watt ermitteln', '#/test'],
+  ];
+  if (rows.every((r) => r[0])) return '';
+  return `<div class="card setup"><span class="kicker">So kommst du in Gang</span>
+    ${rows.map(([ok, label, href]) => `<a class="setup-row" href="${href}"><span class="check ${ok ? 'done' : ''}">${ok ? '✓' : ''}</span><span class="grow">${label}</span><span class="muted small">${ok ? 'Erledigt' : 'Offen'}</span></a>`).join('')}
+    ${videoCard()}
+    <button class="linkbtn" data-act="ob-replay">Einführung noch einmal ansehen</button></div>`;
+}
 
 function maxWatNotice() {
   const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
@@ -282,7 +299,7 @@ function viewHome() {
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
   ${profileBanner()}${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
-  ${maxWatNotice()}${todayHtml}${nextHtml}${list}`;
+  ${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
 
 function viewTest() {
@@ -427,6 +444,7 @@ function viewSettings() {
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const notifSupported = 'Notification' in window;
   return `<h1>Einstellungen</h1>
+  <div class="btn-row"><button class="ghost" data-act="ob-replay">Einführung noch einmal ansehen</button></div>
   <h2>Profil (Altersklasse)</h2>
   <label for="profile">Profil</label>
   <select id="profile" data-set="profile">${Object.entries(PROFILES).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
@@ -774,17 +792,6 @@ function runView(id) {
 let runCtl = null;
 
 /* ---------------- Modal / Hinweis ---------------- */
-function showDisclaimer() {
-  $modal.hidden = false;
-  $modal.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="dtitle">
-    <span class="kicker">Bevor es losgeht</span>
-    <h2 id="dtitle" style="margin-top:6px">Gesundheitshinweis</h2>
-    <p>Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen oder Unsicherheit vorher ärztlich untersuchen.</p>
-    <ul class="plain"><li>Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen.</li><li>Immer zuerst aufwärmen.</li><li>Du trainierst auf eigene Verantwortung.</li></ul>
-    <button class="primary block" data-act="ack">Verstanden</button></div>`;
-  $modal.querySelector('button')?.focus();
-}
-
 /* ---------------- Kalender (.ics) ---------------- */
 function icsEscape(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/[,;]/g, '\\$&').replace(/\n/g, '\\n');
@@ -866,15 +873,251 @@ function scheduleReminder() {
   }, wait);
 }
 
+/* ---------------- Einführung (So startest du) ---------------- */
+const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'level', 'watt', 'done'];
+let ob = { step: 0 };
+
+function videoEmbed(url) {
+  const yt = url.match(/(?:(?:m\.|www\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{6,})/);
+  if (yt) return `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&rel=0" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+  const vm = url.match(/vimeo\.com\/(?:video\/)?(\d{5,})/);
+  if (vm) return `<iframe src="https://player.vimeo.com/video/${vm[1]}?autoplay=1" title="${esc(HOWTO_VIDEO.title)}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+  return `<video src="${esc(url)}" controls autoplay playsinline></video>`;
+}
+function videoCard() {
+  const has = Boolean(HOWTO_VIDEO.url);
+  return `<button class="videocard ${has ? '' : 'off'}" ${has ? 'data-act="video"' : 'disabled'} aria-label="${esc(HOWTO_VIDEO.title)}">
+    <span class="play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
+    <span class="vtxt"><b>${esc(HOWTO_VIDEO.title)}</b><span>${has ? 'Video ansehen (1–2 Minuten)' : 'Erklärvideo folgt in Kürze'}</span></span>
+  </button>`;
+}
+function showVideo() {
+  $modal.hidden = false;
+  $modal.innerHTML = `<div class="card vidbox" role="dialog" aria-modal="true"><div class="vid">${videoEmbed(HOWTO_VIDEO.url)}</div><button class="primary block" data-act="closemodal">Schließen</button></div>`;
+}
+
+function obProfileOpts() {
+  const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche', u14: 'Für diese Altersklasse ist der Plan nicht geeignet' };
+  return Object.entries(PROFILES)
+    .map(([k, p]) => `<button class="opt ${state.profile === k ? 'sel' : ''}" data-act="ob-profile" data-key="${k}"><b>${esc(p.name)}</b><span>${esc(sub[k] || '')}</span></button>`)
+    .join('');
+}
+
+function obBody(id) {
+  const p = profile();
+  switch (id) {
+    case 'welcome':
+      return `<div class="ob-hero"><img src="img/hero.jpg" alt="" onerror="this.remove()"><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
+        <h1>So startest du</h1>
+        <p class="muted">In wenigen Minuten ist dein Plan bereit. Du brauchst dein Alter, deinen Kampftermin und deine Leistung in Watt auf dem Air Bike.</p>
+        ${videoCard()}
+        <ol class="ob-list">
+          <li><b>Gesundheit</b><span>Kurzer Hinweis vor dem Start</span></li>
+          <li><b>Für wen</b><span>Altersklasse wählen</span></li>
+          <li><b>Kampftermin</b><span>Plan richtet sich danach</span></li>
+          <li><b>Trainingsstand</b><span>Wie fit bist du am Air Bike?</span></li>
+          <li><b>Max-Watt</b><span>Dein Bestwert in Watt, Grundlage aller Ziele</span></li>
+        </ol>`;
+    case 'health':
+      return `<span class="kicker">Schritt 1 von 5</span><h1>Gesundheit</h1>
+        <p>Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen oder Unsicherheit vorher ärztlich untersuchen.</p>
+        <ul class="plain"><li>Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen.</li><li>Immer zuerst aufwärmen.</li><li>Du trainierst auf eigene Verantwortung.</li></ul>`;
+    case 'profile':
+      return `<span class="kicker">Schritt 2 von 5</span><h1>Für wen?</h1><p class="muted">Die Altersklasse bestimmt Umfang und Sprintdauer.</p>
+        ${p.blocked ? '<div class="notice" style="background:rgba(255,45,70,.12);border-color:rgba(255,45,70,.5);color:#ff9aa6">Der Plan ist für diese Altersklasse gesperrt. Du kannst die App trotzdem einrichten, Einheiten starten geht aber nicht.</div>' : ''}
+        ${!p.approved && !p.blocked ? '<div class="notice">Die Werte für diese Altersklasse sind Platzhalter und müssen von einem verantwortlichen Trainer freigegeben werden.</div>' : ''}
+        ${obProfileOpts()}`;
+    case 'fight':
+      return `<span class="kicker">Schritt 3 von 5</span><h1>Kampftermin</h1>
+        <p class="muted">Der Plan wird rückwärts bis zu deinem Kampf oder Turnier gebaut.</p>
+        <label for="obFight">Datum des Kampfes</label>
+        <input id="obFight" type="date" value="${esc(ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}">
+        <label>Wie oft pro Woche kannst du aufs Air Bike?</label>
+        <div class="seg">${[1, 2, 3].map((n) => `<button class="opt sm ${Number(state.freq) === n ? 'sel' : ''}" data-act="ob-freq" data-n="${n}"><b>${n}×</b><span>pro Woche</span></button>`).join('')}</div>
+        <p class="muted small">Bei weniger als 3 Einheiten wählt die App die wichtigsten aus.</p>
+        <button class="linkbtn" data-act="ob-nodate">Ich habe noch keinen Termin</button>`;
+    case 'level':
+      return `<span class="kicker">Schritt 4 von 5</span><h1>Trainingsstand</h1>
+        <p class="muted">Wie fit bist du am Air Bike? Das bestimmt, wie hoch die festen Watt-Ziele im Aufwärmen und in den Stufen liegen.</p>
+        ${[[0, 'Sehr gut trainiert', 'Ich fahre regelmäßig hart auf dem Air Bike'], [50, 'Gut trainiert', 'Watt-Ziele 50 W niedriger'], [100, 'Wenig Erfahrung am Air Bike', 'Watt-Ziele 100 W niedriger']]
+          .map(([v, t, s]) => `<button class="opt ${ob.levelSet && Number(state.off) === v ? 'sel' : ''}" data-act="ob-level" data-v="${v}"><b>${t}</b><span>${s}</span></button>`)
+          .join('')}`;
+    case 'watt':
+      return `<span class="kicker">Schritt 5 von 5</span><h1>Dein Max-Watt</h1>
+        <p class="muted">Das ist die höchste Leistung, die du bei einem maximalen 10-Sekunden-Sprint erreichst. Daraus berechnet die App jedes Watt-Ziel.</p>
+        <div class="card"><h3>Ich kenne meinen Wert</h3>
+          <div class="row" style="margin-top:8px"><input id="obMax" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="z. B. 1000" value="${state.maxW || ''}" aria-label="Max-Watt"><button class="primary" data-act="ob-savemax">OK</button></div></div>
+        <div class="card"><h3>Ich messe ihn jetzt</h3><p class="muted small" style="margin:4px 0 10px">Geführter Test mit Aufwärmen und drei Sprints, etwa 10 Minuten.</p>
+          <button class="primary block" data-act="ob-test">Max-Watt-Test starten</button></div>
+        <button class="linkbtn" data-act="ob-next">Später eintragen (dann siehst du nur Prozentwerte)</button>`;
+    case 'done': {
+      const pl = plan();
+      const d = daysToFight();
+      return `<span class="kicker">Fertig</span><h1>Dein Plan steht</h1>
+        <ul class="sum">
+          <li><span>Altersklasse</span><b>${esc(p.name)}</b></li>
+          <li><span>Kampf</span><b>${pl.fight ? fmtDate(pl.fight) + (d !== null ? ' · in ' + d + ' Tagen' : '') : 'noch kein Termin'}</b></li>
+          <li><span>Plan</span><b>${pl.weeks.length ? wochen(pl.weeks.length) + ', ' + effFreq() + '× pro Woche' : 'noch nicht berechnet'}</b></li>
+          <li><span>Max-Watt</span><b>${state.maxW ? state.maxW + ' W' : 'noch offen'}</b></li>
+        </ul>
+        ${pl.mode === 'start' ? '<p class="muted small">Ohne Kampftermin gilt der volle Plan über 10 Wochen ab heute. Den Termin kannst du später in den Einstellungen eintragen.</p>' : ''}
+        <h2>Als Nächstes</h2>
+        ${state.maxW ? `<p>Deine erste Einheit findest du auf der Startseite unter „Nächste Einheit“. Tippe darauf und starte den Timer.</p>` : '<p><b>Mache zuerst den Max-Watt-Test.</b> Er steht oben auf der Startseite. Ohne ihn siehst du nur Prozentwerte statt Watt-Zahlen.</p>'}`;
+    }
+    default:
+      return '';
+  }
+}
+
+function renderOnboarding() {
+  let sheet = document.getElementById('onboard');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'onboard';
+    sheet.className = 'sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    document.body.appendChild(sheet);
+  }
+  document.body.classList.add('obopen');
+  const id = OB_STEPS[ob.step];
+  const last = ob.step === OB_STEPS.length - 1;
+  const first = ob.step === 0;
+  const nextLabel = id === 'welcome' ? 'Los geht’s' : id === 'health' ? 'Verstanden, weiter' : last ? 'Zur Übersicht' : 'Weiter';
+  const showNext = id !== 'watt';
+  sheet.innerHTML = `<div class="sheet-in">
+    <div class="ob-top">${first ? '<span></span>' : '<button class="ob-back" data-act="ob-back" aria-label="Zurück">← Zurück</button>'}
+      <div class="dots" aria-hidden="true">${first ? '' : [1, 2, 3, 4, 5].map((i) => `<i class="${i <= ob.step || last ? 'on' : ''}"></i>`).join('')}</div>
+      ${first ? '<button class="ob-skip" data-act="ob-skip">Überspringen</button>' : '<span></span>'}</div>
+    <div class="ob-body">${obBody(id)}</div>
+    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? 'ob-finish' : 'ob-next'}">${nextLabel}</button></div>` : ''}
+  </div>`;
+  sheet.scrollTop = 0;
+}
+
+function startOnboarding(step = 0) {
+  ob = { step, levelSet: Boolean(state.onboarded) };
+  renderOnboarding();
+}
+function closeOnboarding() {
+  document.getElementById('onboard')?.remove();
+  document.body.classList.remove('obopen');
+  state.onboarded = true;
+  save();
+  scheduleReminder();
+  route();
+}
+function obNext(noDate = false) {
+  const id = OB_STEPS[ob.step];
+  if (id === 'health') {
+    state.ack = true;
+    save();
+  }
+  if (id === 'level' && !ob.levelSet) {
+    alert('Bitte wähle deinen Trainingsstand.');
+    return;
+  }
+  if (id === 'fight') {
+    if (noDate) {
+      const n = new Date();
+      state.fightDate = '';
+      state.startDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+      ob.fightDraft = undefined;
+    } else {
+      const v = document.getElementById('obFight')?.value || '';
+      if (v) {
+        const d = parseDay(v);
+        if (!d || d <= startOfDay(new Date())) {
+          alert('Bitte ein Datum in der Zukunft eintragen (frühestens morgen).');
+          return;
+        }
+        state.fightDate = v;
+        state.startDate = '';
+        ob.fightDraft = undefined;
+      } else if (!state.fightDate && !state.startDate) {
+        alert('Trage deinen Kampftermin ein oder wähle „Ich habe noch keinen Termin“.');
+        return;
+      }
+    }
+    save();
+  }
+  let n = ob.step + 1;
+  if (OB_STEPS[n] === 'level' && profile().key !== 'elite') n += 1;
+  ob.step = Math.min(n, OB_STEPS.length - 1);
+  renderOnboarding();
+}
+function obBack() {
+  let n = ob.step - 1;
+  if (OB_STEPS[n] === 'level' && profile().key !== 'elite') n -= 1;
+  ob.step = Math.max(n, 0);
+  renderOnboarding();
+}
+
 /* ---------------- Ereignisse ---------------- */
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-act]');
   if (!t) return;
   const act = t.dataset.act;
   switch (act) {
-    case 'ack':
-      state.ack = true;
+    case 'ob-next':
+      obNext();
+      break;
+    case 'ob-back':
+      obBack();
+      break;
+    case 'ob-skip':
+      closeOnboarding();
+      break;
+    case 'ob-finish':
+      closeOnboarding();
+      location.hash = '#/';
+      break;
+    case 'ob-replay':
+      startOnboarding(0);
+      break;
+    case 'ob-profile':
+      state.profile = t.dataset.key;
+      if (state.profile !== 'elite') state.off = 0;
       save();
+      renderOnboarding();
+      break;
+    case 'ob-freq': {
+      ob.fightDraft = document.getElementById('obFight')?.value || '';
+      state.freq = Number(t.dataset.n);
+      save();
+      renderOnboarding();
+      break;
+    }
+    case 'ob-level':
+      ob.levelSet = true;
+      state.off = Number(t.dataset.v);
+      save();
+      renderOnboarding();
+      break;
+    case 'ob-nodate':
+      obNext(true);
+      break;
+    case 'ob-savemax': {
+      const v = Math.round(Number(document.getElementById('obMax')?.value));
+      if (v >= 100 && v <= 3000) {
+        state.maxW = v;
+        state.maxWDate = new Date().toISOString();
+        save();
+        ob.step += 1;
+        renderOnboarding();
+      } else {
+        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
+      }
+      break;
+    }
+    case 'ob-test':
+      closeOnboarding();
+      location.hash = '#/test';
+      break;
+    case 'video':
+      showVideo();
+      break;
+    case 'closemodal':
       $modal.hidden = true;
       $modal.innerHTML = '';
       break;
@@ -897,7 +1140,7 @@ document.addEventListener('click', (e) => {
       route();
       break;
     case 'savetest': {
-      const v = Number(document.getElementById('testW')?.value);
+      const v = Math.round(Number(document.getElementById('testW')?.value));
       if (v >= 100 && v <= 3000) {
         state.maxW = v;
         state.maxWDate = new Date().toISOString();
@@ -909,7 +1152,7 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'savemax': {
-      const v = Number(document.getElementById('maxInline')?.value);
+      const v = Math.round(Number(document.getElementById('maxInline')?.value));
       if (v >= 100 && v <= 3000) {
         state.maxW = v;
         state.maxWDate = new Date().toISOString();
@@ -1001,6 +1244,7 @@ document.addEventListener('change', (e) => {
   if (t.dataset.set) {
     const k = t.dataset.set;
     state[k] = ['maxW', 'off', 'age', 'freq'].includes(k) ? Number(t.value) || 0 : t.value;
+    if (k === 'profile' && t.value !== 'elite') state.off = 0;
     save();
     scheduleReminder();
     route();
@@ -1016,7 +1260,7 @@ window.addEventListener('hashchange', route);
 
 /* ---------------- Start ---------------- */
 route();
-if (!state.ack) showDisclaimer();
+if (!state.onboarded) startOnboarding();
 scheduleReminder();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
