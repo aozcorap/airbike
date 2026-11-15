@@ -197,6 +197,7 @@ function stepCard(b, no, isRec) {
 /* ---------------- Ansichten ---------------- */
 const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
 const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>AIR<i>MASCHINE</i></b></div>`;
+const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" onerror="this.remove()">';
 const WHEEL_ART = (() => {
   const spokes = Array.from({ length: 24 }, (_, i) => {
     const a = (i * Math.PI) / 12;
@@ -239,13 +240,13 @@ function viewHome() {
   let fightInfo = '';
   if (p.status === 'ok' && p.fight) {
     const d = daysToFight();
-    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
+    fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
       <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
-    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampfvorbereitung</span>
+    fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampfvorbereitung</span>
       <div class="bannerlbl" style="font-size:28px;line-height:1.1;margin:6px 0 4px;color:#fff;letter-spacing:.04em">Dein Plan bis zum Kampf</div>
       <p class="muted small">Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.</p>
       <a class="btn primary" href="#/settings">Kampftermin eintragen</a></div></div>`;
