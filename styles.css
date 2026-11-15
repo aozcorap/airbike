@@ -288,15 +288,6 @@ body.obopen { overflow: hidden; }
 .sum li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .sum li span { color: var(--muted); }
 .sum li b { text-align: right; }
-.videocard { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 12px; border-radius: 16px; margin: 12px 0; background: linear-gradient(135deg, #2a0f18, var(--surface)); border: 1px solid #5e1a26; }
-.videocard.off { opacity: .6; }
-.videocard .play { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(180deg, #ff4a5f, var(--accent-dark)); display: grid; place-items: center; flex: none; }
-.videocard .play svg { width: 24px; height: 24px; margin-left: 3px; }
-.videocard .vtxt b { display: block; font-size: 17px; }
-.videocard .vtxt span { color: var(--muted); font-size: 14px; font-weight: 500; }
-.vidbox { width: 100%; max-width: 560px; padding: 12px; }
-.vid { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
-.vid iframe, .vid video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .setup-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
 .card.setup .kicker { display: block; margin-bottom: 4px; }
 
@@ -306,40 +297,24 @@ body.obopen { overflow: hidden; }
   .ob-list { margin: 6px 0; }
   .ob-list li { padding: 6px 0 6px 44px; }
   .ob-list li::before { top: 6px; }
-  .videocard { margin: 8px 0; padding: 8px 12px; }
 }
 
 .setup-row b { text-align: right; }
 
-/* Video im Vollbild (Handy) */
-#modal.vidmode { padding: 0; background: #000; display: block; overflow: hidden; }
-.vidfull { position: fixed; inset: 0; background: #000; }
-.vidfull .vid { position: absolute; inset: 0; aspect-ratio: auto; margin: 0; border-radius: 0; background: #000; }
-.vidfull .vid video, .vidfull .vid iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border: 0; background: #000; }
-.vidclose { position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; z-index: 2; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.4); color: #fff; }
-.vidclose svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
-
-/* Anmeldung */
-.auth-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; }
-.auth-brand svg { width: 38px; height: 38px; }
-.auth-brand b { font-family: var(--display); font-size: 36px; letter-spacing: .1em; }
-.auth-brand b i { font-style: normal; color: var(--accent); }
-.center { text-align: center; }
-.seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); margin: 6px 0 12px; }
-.seg2 button { background: transparent; padding: 12px 8px; border-radius: 10px; color: var(--muted); }
-.seg2 button.sel { background: var(--surface-2); color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
-label.chk { display: flex; align-items: flex-start; gap: 12px; font-weight: 400; margin: 14px 0; line-height: 1.4; }
-label.chk[hidden] { display: none; }
-label.chk input { width: 24px; height: 24px; flex: none; margin-top: 1px; accent-color: var(--accent); }
-.sheet a { text-decoration: underline; }
-
-/* Fitness-Test und Kampfformat */
-.sprint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-.sprint-grid input { text-align: center; font-weight: 700; padding: 12px 6px; }
-.tw-wrap { width: 100%; max-width: 380px; margin-top: 10px; }
-.tw-wrap label { color: #fff; opacity: .9; }
-.tw-wrap input { background: rgba(0,0,0,.3); color: #fff; border-color: rgba(255,255,255,.4); font-size: 22px; }
-.rounds-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.rounds-grid .opt { margin: 0; text-align: center; padding: 14px 4px; }
-.seg2x { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.seg2x .opt { margin: 0; text-align: center; }
+/* Einführung: Schritte */
+.steps { list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 12px; }
+.stepcard { display: flex; gap: 14px; padding: 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+.stepnum { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 20px; border: 2px solid var(--line); color: var(--muted); }
+.stepbody { min-width: 0; flex: 1; }
+.stepbody h3 { margin: 2px 0 6px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stepbody p { margin: 0 0 8px; color: var(--muted); font-size: 16px; line-height: 1.45; }
+.stepbody p.stepval { color: var(--text); font-weight: 700; }
+.stepact { margin-top: 12px; }
+.stepact .btn, .stepact button { width: 100%; }
+.stepchange { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; }
+.steptag { background: var(--accent); color: #fff; font-family: inherit; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; }
+.stepcard.current { border-color: var(--accent); background: linear-gradient(135deg, #2a0f18, var(--surface)); box-shadow: 0 0 0 1px var(--accent) inset; }
+.stepcard.current .stepnum { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stepcard.current p { color: var(--text); }
+.stepcard.done .stepnum { background: var(--ok); border-color: var(--ok); color: #05210e; }
+.stepcard.later { opacity: .65; }
