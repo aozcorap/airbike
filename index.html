@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Redline – 10-Wochen Air-Bike-Camp</title>
   <meta name="description" content="10-Wochen Air-Bike-Training für Boxer mit Intervall-Timer.">
-  <meta name="theme-color" content="#0b0d12" id="themeColor">
+  <meta name="theme-color" content="#07080c" id="themeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Redline">
@@ -16,14 +16,40 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="splash" aria-hidden="true">
+    <svg viewBox="0 0 120 120" fill="none">
+      <defs>
+        <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient>
+      </defs>
+      <circle cx="60" cy="64" r="44" stroke="#1d2230" stroke-width="10"/>
+      <path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#sg)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M60 64 L88 36" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="60" cy="64" r="9" fill="#fff"/>
+      <path d="M8 98h30M82 98h30M20 108h20M80 108h20" stroke="#ff2d46" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+    </svg>
+    <div class="word">RED<i>LINE</i></div>
+    <div class="tag">Air-Bike Kampfvorbereitung</div>
+    <div class="bar"><i></i></div>
+  </div>
   <div id="app" aria-live="polite"></div>
   <nav id="nav" aria-label="Hauptnavigation">
-    <a href="#/" data-nav="home">Heute</a>
-    <a href="#/plan" data-nav="plan">Plan</a>
-    <a href="#/info" data-nav="info">Wissen</a>
-    <a href="#/settings" data-nav="settings">Einstellungen</a>
+    <a href="#/" data-nav="home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/></svg>Heute
+    </a>
+    <a href="#/plan" data-nav="plan">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M8 14h2M14 14h2M8 17.2h2"/></svg>Plan
+    </a>
+    <a href="#/info" data-nav="info">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v16H7.5A2.5 2.5 0 0 0 5 20.5z"/><path d="M5 20.5A2.5 2.5 0 0 0 7.5 23H19v-5"/><path d="M9 7h6M9 10.5h4"/></svg>Wissen
+    </a>
+    <a href="#/settings" data-nav="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.6"/><circle cx="8" cy="17" r="2.6"/></svg>Einstellungen
+    </a>
   </nav>
   <div id="modal" hidden></div>
+  <script>
+    try { if (sessionStorage.getItem('rl-splash')) document.getElementById('splash').remove(); else sessionStorage.setItem('rl-splash', '1'); } catch (e) {}
+  </script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
