@@ -571,7 +571,7 @@ function runView(id) {
       ensureAudio();
       paused = !paused;
       last = Date.now();
-      el.play.textContent = paused ? 'Weiter' : 'Pause';
+      el.play.textContent = paused ? 'Fortsetzen' : 'Pause';
       if (!paused) lockScreen();
     },
     prev() {
