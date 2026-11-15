@@ -141,6 +141,27 @@ const fightHiit = ({ reps, on, off, pct, roundSecs = 180 }) => {
   };
 };
 
+// ---------- Max-Watt-Test ----------
+// Vorschlag des Auftraggebers: 1–3 Sprints à 10 s mit 1 min Pause. Das PDF beschreibt keinen Test.
+// Vermutung: Eine längere Pause (2–3 min) liefert verlässlichere Werte. Hier zentral einstellbar.
+export const TEST_PAUSE_SECS = 60;
+export const TEST_SESSION = {
+  id: 'test',
+  type: 'test',
+  title: 'Max-Watt-Test',
+  focus: 'Drei maximale 10-Sekunden-Sprints. Dein höchster Wert wird die Grundlage für alle Watt-Ziele.',
+  blocks: [
+    ...warmup(),
+    {
+      title: 'Test-Sprints',
+      desc: `3 × (10 s maximal · ${TEST_PAUSE_SECS / 60} min Pause)`,
+      note: 'Merke dir den höchsten Wert, den dein Bike während der Sprints anzeigt. Du trägst ihn danach ein.',
+      repeat: 3,
+      steps: [work('Test-Sprint', 10, { maxEffort: true }), rest('Pause', TEST_PAUSE_SECS)],
+    },
+  ],
+};
+
 // ---------- Aktive Erholung (auf das Bike umgeschrieben) ----------
 const REC_TXT = '70–80 % HFmax, Belastung 2–3 von 10';
 const on = (m) => easy(`${m} min Zone 3`, m * 60, { txt: REC_TXT });
