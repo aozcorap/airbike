@@ -516,7 +516,7 @@ function viewSettings() {
   }
 
   <h2>Daten</h2>
-  <p class="muted small">Dein Fortschritt liegt nur in diesem Browser. Wenn du Browserdaten löschst oder das Gerät wechselst, ist er weg. Sichere ihn regelmäßig.</p>
+  <p class="muted small">${account ? 'Dein Fortschritt wird in deinem Konto gesichert. Zusätzlich kannst du ihn hier als Datei speichern.' : 'Dein Fortschritt liegt nur in diesem Browser. Wenn du Browserdaten löschst oder das Gerät wechselst, ist er weg. Sichere ihn regelmäßig.'}</p>
   <div class="btn-row"><button class="ghost" data-act="export">Sichern</button><label class="btn ghost" style="margin:0">Wiederherstellen<input type="file" accept="application/json" data-act="import" hidden></label></div>
   <div class="btn-row"><button class="danger" data-act="reset">Fortschritt zurücksetzen</button></div>
   ${accountDangerZone()}`;
@@ -1089,6 +1089,7 @@ let account = null; // { id, email } sobald angemeldet
 let syncStatus = ''; // 'ok' | 'pending' | 'offline' | 'error'
 let pushTimer = null;
 let authView = 'login';
+let authPrev = 'login';
 let authMsg = '';
 let authEmail = '';
 const MIN_AGE = 14; // nach Geburtsjahr, im Zweifel streng (siehe Datenbank-Regel)
@@ -1108,6 +1109,45 @@ const writeSync = (patch) => {
     /* Speicher blockiert */
   }
 };
+const BASE_KEY = 'redline.base';
+const readBase = () => {
+  try {
+    return JSON.parse(localStorage.getItem(BASE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const writeBase = (s) => {
+  try {
+    localStorage.setItem(BASE_KEY, JSON.stringify(s));
+  } catch {
+    /* Speicher blockiert */
+  }
+};
+const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+// Dreiwege-Zusammenführung: Was auf diesem Gerät gegenüber dem letzten gemeinsamen Stand geändert wurde, gewinnt;
+// alles andere kommt vom Konto. Erledigte Einheiten und Unterobjekte werden je Schlüssel zusammengeführt.
+function mergeStates(base, local, remote) {
+  const out = { ...remote };
+  for (const k of new Set([...Object.keys(local), ...Object.keys(base)])) {
+    if (isObj(local[k]) && isObj(remote[k])) {
+      const merged = { ...remote[k] };
+      for (const kk of new Set([...Object.keys(local[k]), ...Object.keys(base[k] || {})])) {
+        if (!same(local[k][kk], (base[k] || {})[kk])) {
+          if (kk in local[k]) merged[kk] = local[k][kk];
+          else delete merged[kk];
+        }
+      }
+      out[k] = merged;
+    } else if (!same(local[k], base[k])) {
+      if (k in local) out[k] = local[k];
+      else delete out[k];
+    }
+  }
+  return out;
+}
+const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 const freshState = () => ({ ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {} });
 const normalizeState = (raw) => ({ ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {} });
 const hasProgress = (s) => Boolean(s.onboarded || s.maxW || Object.keys(s.done || {}).length);
@@ -1118,25 +1158,56 @@ function schedulePush(delay = 1500) {
   syncStatus = 'pending';
   pushTimer = setTimeout(pushNow, delay);
 }
+let pushing = null;
 async function pushNow() {
   clearTimeout(pushTimer);
   if (!account) return true;
+  if (!readSync().dirty) return true;
   if (!navigator.onLine) {
     syncStatus = 'offline';
     return false;
   }
-  try {
-    const at = await cloud.pushState(account.id, state);
-    writeSync({ dirty: false, syncedAt: at });
-    syncStatus = 'ok';
-    return true;
-  } catch {
-    syncStatus = 'error';
-    return false;
-  }
+  if (pushing) return pushing;
+  pushing = (async () => {
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let version = readSync().syncedAt;
+        if (!version) {
+          const remote = await withTimeout(cloud.pullState(account.id), 8000);
+          version = remote ? remote.updated_at : '';
+          if (!version) throw new Error('keine Zeile');
+          if (remote.state && Object.keys(remote.state).length) {
+            state = normalizeState(mergeStates(readBase(), state, remote.state));
+            save(true);
+          }
+        }
+        const r = await withTimeout(cloud.pushStateIf(account.id, state, version), 8000);
+        if (r.ok) {
+          writeSync({ dirty: false, syncedAt: r.updated_at });
+          writeBase(state);
+          syncStatus = 'ok';
+          return true;
+        }
+        // Konflikt: Stand vom Konto holen, zusammenführen, erneut versuchen
+        const remote = await withTimeout(cloud.pullState(account.id), 8000);
+        state = normalizeState(mergeStates(readBase(), state, (remote && remote.state) || {}));
+        save(true);
+        writeSync({ syncedAt: remote ? remote.updated_at : '' });
+      }
+      syncStatus = 'error';
+      return false;
+    } catch {
+      syncStatus = navigator.onLine ? 'error' : 'offline';
+      return false;
+    } finally {
+      pushing = null;
+    }
+  })();
+  return pushing;
 }
 const syncLabel = () => {
   const i = readSync();
+  if (i.dirty && !navigator.onLine) return 'Offline, wird später gesichert';
   if (syncStatus === 'ok' || (!i.dirty && i.syncedAt)) return 'Gesichert im Konto';
   if (syncStatus === 'offline') return 'Offline, wird später gesichert';
   if (syncStatus === 'error') return 'Sicherung fehlgeschlagen, wird erneut versucht';
@@ -1162,16 +1233,25 @@ async function syncOnLogin(user) {
   const info2 = readSync();
   const remoteHas = Boolean(remote && remote.state && Object.keys(remote.state).length);
   if (!remoteHas) {
-    writeSync({ owner: user.id, email: user.email });
-    if (hasProgress(state)) await pushNow();
-    else writeSync({ syncedAt: remote ? remote.updated_at : '', dirty: false });
+    writeSync({ owner: user.id, email: user.email, syncedAt: remote ? remote.updated_at : '' });
+    if (hasProgress(state)) {
+      writeSync({ dirty: true });
+      await pushNow();
+    } else writeSync({ dirty: false });
   } else if (!info2.owner && hasProgress(state)) {
     const useDevice = confirm('Auf diesem Gerät ist schon Fortschritt gespeichert.\n\nOK = Gerätedaten ins Konto übernehmen\nAbbrechen = Daten aus dem Konto laden');
     writeSync({ owner: user.id, email: user.email });
-    if (useDevice) await pushNow();
-    else applyRemote(remote);
+    if (useDevice) {
+      writeSync({ syncedAt: remote.updated_at, dirty: true });
+      await pushNow();
+    } else applyRemote(remote);
   } else if (info2.dirty) {
     writeSync({ owner: user.id, email: user.email });
+    if (remote.updated_at !== info2.syncedAt) {
+      state = normalizeState(mergeStates(readBase(), state, remote.state));
+      save(true);
+      writeSync({ syncedAt: remote.updated_at });
+    }
     await pushNow();
   } else {
     writeSync({ owner: user.id, email: user.email });
@@ -1182,13 +1262,30 @@ async function syncOnLogin(user) {
 function applyRemote(remote) {
   state = normalizeState(remote.state);
   save(true);
+  writeBase(state);
   writeSync({ syncedAt: remote.updated_at, dirty: false });
   syncStatus = 'ok';
 }
 
-async function startSession(user) {
+async function startSession(user, quick = false) {
   account = { id: user.id, email: user.email || readSync().email || '' };
-  await syncOnLogin(account);
+  if (quick) {
+    // Server nicht erreichbar: sofort mit lokalen Daten starten, Abgleich läuft im Hintergrund
+    syncStatus = 'offline';
+    withTimeout(syncOnLogin(account), 60000)
+      .then(() => {
+        if (!document.querySelector('.timer') && !document.getElementById('onboard')) route();
+      })
+      .catch(() => {
+        syncStatus = navigator.onLine ? 'error' : 'offline';
+      });
+  } else {
+    try {
+      await withTimeout(syncOnLogin(account), 8000);
+    } catch {
+      syncStatus = navigator.onLine ? 'error' : 'offline'; // mit lokalen Daten weiterarbeiten, später erneut versuchen
+    }
+  }
   closeAuth();
   route();
   if (!state.onboarded) startOnboarding();
@@ -1198,29 +1295,61 @@ function closeAuth() {
   document.getElementById('auth')?.remove();
   if (!document.getElementById('onboard')) document.body.classList.remove('obopen');
 }
+function renderLoading() {
+  authShell(`${authBrand()}<p class="muted center" style="margin-top:30px">Lade …</p>`);
+}
+let recovering = /type=recovery/.test(cloud.INITIAL_HASH || '');
 async function boot() {
+  renderLoading();
+  let quickStart = false;
   let user = null;
+  let timedOut = false;
   try {
-    user = await cloud.currentUser();
+    user = await withTimeout(cloud.currentUser(), 4000);
   } catch {
-    user = null;
+    timedOut = true;
   }
   if (/access_token=|error_description=|type=recovery/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
-  if (!user && cloud.hasStoredSession() && !navigator.onLine && readSync().owner) user = { id: readSync().owner, email: readSync().email };
+  if (!user && cloud.hasStoredSession() && readSync().owner && (!navigator.onLine || timedOut)) {
+    user = { id: readSync().owner, email: readSync().email };
+    quickStart = true;
+  }
   if (!user) {
     renderAuth('login');
     return;
   }
-  await startSession(user);
+  if (recovering) {
+    renderAuth('newpw');
+    return;
+  }
+  await startSession(user, quickStart);
 }
 cloud.onAuth((event) => {
-  if (event === 'PASSWORD_RECOVERY') renderAuth('newpw');
+  if (event === 'PASSWORD_RECOVERY') {
+    recovering = true;
+    renderAuth('newpw');
+  }
 });
 window.addEventListener('online', () => {
   if (account && readSync().dirty) pushNow();
 });
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && account && readSync().dirty) pushNow();
+document.addEventListener('visibilitychange', async () => {
+  if (!account) return;
+  if (document.visibilityState === 'hidden') {
+    if (readSync().dirty) pushNow();
+    return;
+  }
+  if (!navigator.onLine) return;
+  try {
+    if (readSync().dirty) return void (await pushNow());
+    const remote = await withTimeout(cloud.pullState(account.id), 6000);
+    if (remote && remote.state && Object.keys(remote.state).length && remote.updated_at !== readSync().syncedAt) {
+      applyRemote(remote);
+      if (!document.getElementById('onboard') && !document.querySelector('.timer')) route();
+    }
+  } catch {
+    /* später wieder */
+  }
 });
 
 /* ---- Anmeldeseiten ---- */
@@ -1259,6 +1388,9 @@ const legalLinks = () => `<p class="muted small center" style="margin-top:18px">
 function renderAuth(view = 'login') {
   const prevEmail = document.getElementById('aEmail')?.value;
   if (prevEmail !== undefined) authEmail = prevEmail.trim();
+  if (view === 'privacy' || view === 'imprint') {
+    if (authView !== 'privacy' && authView !== 'imprint') authPrev = authView;
+  }
   authView = view;
   const em = esc(authEmail);
   let body = '';
@@ -1291,7 +1423,7 @@ function renderAuth(view = 'login') {
       <label for="aPw2">Wiederholen</label><input id="aPw2" type="password" autocomplete="new-password">
       <button class="primary block" style="margin-top:16px" data-act="auth-newpw">Passwort speichern</button>`;
   } else if (view === 'privacy' || view === 'imprint') {
-    body = `<button class="ob-back" data-act="auth-view" data-v="${account ? 'login' : 'login'}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
+    body = `<button class="ob-back" data-act="auth-view" data-v="${authPrev}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
   }
   authShell(body);
   if (view === 'register') updateAgeUi();
@@ -1403,6 +1535,7 @@ async function doNewPw(btn) {
       return renderAuth('newpw');
     }
     authMsg = '';
+    recovering = false;
     await startSession(data.user);
   });
 }
@@ -1462,13 +1595,14 @@ function legalPrivacy() {
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Trainingsstand, Max-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
-  <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse.</li></ul>
+  <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
+  <li><b>E-Mails:</b> Für Bestätigung und Zurücksetzen des Passworts wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
   <h2>Kinder und Jugendliche</h2><p>Bis zu einem Alter von 16 Jahren ist die Einwilligung eines Elternteils nötig. Die App ist nicht für Kinder unter 14 Jahren vorgesehen. Das Alter wird nur anhand des Geburtsjahres geprüft, ohne Nachweis. [Prüfen lassen]</p>
   <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
-  <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen und Fortschritt zusätzlich in deinem Browser, damit sie auch offline funktioniert. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
-  <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten endgültig gelöscht.</p>
+  <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen, Fortschritt und dein Anmelde-Token zusätzlich in deinem Browser (lokaler Speicher), damit sie auch offline funktioniert und du angemeldet bleibst. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
+  <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten in der Datenbank gelöscht. Sicherungskopien und Protokolle des Anbieters können noch eine begrenzte Zeit weiter bestehen. [Fristen prüfen und ergänzen]</p>
   <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
 }
 function legalImprint() {

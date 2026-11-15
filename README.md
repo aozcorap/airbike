@@ -10,7 +10,7 @@ Web-App (installierbar auf dem Handy) für ein 10-Wochen-Air-Bike-Training für 
 - Altersklassen-Profile (Rundenlänge, Umfang, Sprintdauer, harte Sessions pro Woche, Watt-Obergrenze). Die Werte stehen in `data.js` unter `PROFILES`. **Die Jugendwerte sind Platzhalter und müssen von einem Fachtrainer freigegeben werden.** U13–U14 ist gesperrt.
 - Aktive Erholung
 - Wochenplan, Kalender-Datei (.ics) mit Erinnerungen, Sicherung/Wiederherstellung
-- Alle Daten bleiben lokal im Browser
+- Pflicht-Login mit Konto (Supabase). Der Fortschritt wird je Konto gesichert und auch offline lokal zwischengespeichert; Datenschutz und Impressum sind nur Entwürfe
 
 ## Lokal starten
 ```

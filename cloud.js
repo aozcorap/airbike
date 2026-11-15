@@ -1,4 +1,6 @@
 // Anbindung an das Konto-System (Supabase): Anmeldung und Sicherung des Fortschritts je Konto.
+// Hash der Adresse sichern, bevor die Bibliothek ihn auswertet und löscht (Passwort-Link, Bestätigungs-Link)
+export const INITIAL_HASH = typeof location !== 'undefined' ? location.hash : '';
 import { createClient } from './vendor/supabase.js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
@@ -35,10 +37,13 @@ export async function pullState(userId) {
   if (error) throw error;
   return data;
 }
-export async function pushState(userId, state) {
-  const { data, error } = await client.from('user_state').upsert({ user_id: userId, state }, { onConflict: 'user_id' }).select('updated_at').single();
+// Schreibt nur, wenn niemand seit unserem letzten Stand etwas geändert hat (Versionsprüfung über updated_at).
+// Ergebnis: { ok: true, updated_at } oder { ok: false } bei Konflikt.
+export async function pushStateIf(userId, state, expectedVersion) {
+  const { data, error } = await client.from('user_state').update({ state }).eq('user_id', userId).eq('updated_at', expectedVersion).select('updated_at');
   if (error) throw error;
-  return data.updated_at;
+  if (!data || !data.length) return { ok: false };
+  return { ok: true, updated_at: data[0].updated_at };
 }
 export async function deleteAccount() {
   const { error } = await client.rpc('delete_my_account');
