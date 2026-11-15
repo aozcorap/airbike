@@ -491,3 +491,7 @@ export function sessionBlocks(session, recoveryKey, profile) {
 export function totalSecs(segs) {
   return segs.reduce((a, s) => a + s.secs, 0);
 }
+
+// Erklärvideo "So startest du". Eine YouTube-Adresse oder eine MP4-Datei eintragen (z. B. 'video/start.mp4').
+// Leer lassen, dann zeigt die App "Erklärvideo folgt in Kürze".
+export const HOWTO_VIDEO = { title: 'So startest du', url: '' };
