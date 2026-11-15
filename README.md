@@ -1,4 +1,4 @@
-# Redline – 10-Wochen Air-Bike-Camp
+# AirMaschine – Kondition wie eine Maschine
 
 Web-App (installierbar auf dem Handy) für ein 10-Wochen-Air-Bike-Training für Boxer, mit Intervall-Timer.
 

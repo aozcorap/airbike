@@ -139,10 +139,10 @@ body.running { padding-bottom: 0; }
 .timer.k-easy { background: linear-gradient(180deg, #0f3b3a 0%, #082220 100%); }
 .timer.k-done { background: linear-gradient(180deg, #0f2a18 0%, #08170d 100%); }
 .t-top { display: flex; justify-content: space-between; font-size: 17px; font-weight: 600; opacity: .9; }
-.t-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; gap: 6px; min-height: 0; padding-top: 8vh; }
-.t-label { font-size: 26px; font-weight: 700; letter-spacing: .16em; opacity: .92; min-height: 1.4em; line-height: 1.4; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-mid { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; gap: 6px; min-height: 0; padding-top: 3vh; }
+.t-label { font-size: 26px; font-weight: 700; letter-spacing: .16em; opacity: .92; height: 36px; line-height: 36px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .t-mid .t-target { min-height: 1.2em; }
-.t-mid .t-sub { min-height: 4.4em; }
+.t-mid .t-sub { min-height: 3.9em; }
 .t-time { font-size: clamp(88px, 30vw, 170px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.03em; }
 .t-target { font-size: clamp(34px, 11vw, 54px); font-weight: 700; line-height: 1.05; letter-spacing: .02em; }
 .t-sub { font-size: 21px; line-height: 1.3; opacity: .95; max-width: 440px; }
@@ -166,7 +166,7 @@ body.running { padding-bottom: 0; }
   animation: splashOut .45s ease 1.5s forwards;
 }
 #splash svg { width: 150px; height: 150px; filter: drop-shadow(0 0 24px rgba(255, 45, 70, .55)); }
-#splash .word { font-family: var(--display); font-size: 46px; letter-spacing: .24em; font-weight: 700; margin-left: .24em; }
+#splash .word { font-family: var(--display); font-size: 40px; letter-spacing: .1em; font-weight: 700; margin-left: .1em; white-space: nowrap; }
 #splash .word i { font-style: normal; color: var(--accent); }
 #splash .tag { font-family: var(--display); font-size: 15px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; margin-left: .16em; text-align: center; padding: 0 20px; }
 #splash .bar { width: 180px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; margin-top: 18px; }
@@ -224,3 +224,30 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 .pill.rest { background: rgba(111,127,163,.12); }
 .step .note { color: var(--muted); font-size: 15px; margin-top: 10px; line-height: 1.4; }
 .step table.targets { font-size: 15px; margin-top: 12px; }
+
+/* Runde und Block mittig bei der Uhr */
+.t-blockname { font-size: 17px; font-weight: 600; opacity: .85; height: 24px; line-height: 24px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-round { font-family: var(--display); font-size: 32px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; height: 40px; line-height: 40px; }
+
+/* Kleine Bildschirme (z. B. 640 px Höhe) */
+@media (max-height: 700px) {
+  .t-mid { padding-top: 1vh; gap: 4px; }
+  .t-time { font-size: clamp(72px, 24vw, 120px); }
+  .t-round { font-size: 26px; height: 34px; line-height: 34px; }
+  .t-label { font-size: 22px; height: 30px; line-height: 30px; }
+  .t-target { font-size: clamp(28px, 9vw, 40px); }
+  .t-sub { font-size: 18px; }
+  .t-mid .t-sub { min-height: 3.4em; }
+  .t-next { font-size: 17px; min-height: 44px; margin: 4px 0; }
+  .t-btns button { padding: 14px 6px; }
+  .t-exit { min-height: 48px; margin-top: 8px; }
+}
+
+/* Foto im Banner (Entwurf) */
+.banner .art-photo { position: absolute; right: 0; top: 0; width: 70%; height: 100%; object-fit: cover; object-position: 42% 20%; opacity: .95; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 60%); mask-image: linear-gradient(to right, transparent 0%, #000 60%); }
+.banner:has(.art-photo) .art { display: none; }
+.banner:has(.art-photo) { min-height: 250px; }
+.banner:has(.art-photo)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,8,12,0) 45%, rgba(7,8,12,.55) 100%); pointer-events: none; }
+.banner-in { z-index: 1; }
+#splash::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,5,7,.8), rgba(5,5,7,.68) 45%, rgba(5,5,7,.92)), url(img/hero.jpg) 42% 12% / cover no-repeat; z-index: -1; }

@@ -196,7 +196,8 @@ function stepCard(b, no, isRec) {
 
 /* ---------------- Ansichten ---------------- */
 const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
-const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>RED<i>LINE</i></b></div>`;
+const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>AIR<i>MASCHINE</i></b></div>`;
+const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" onerror="this.remove()">';
 const WHEEL_ART = (() => {
   const spokes = Array.from({ length: 24 }, (_, i) => {
     const a = (i * Math.PI) / 12;
@@ -239,13 +240,13 @@ function viewHome() {
   let fightInfo = '';
   if (p.status === 'ok' && p.fight) {
     const d = daysToFight();
-    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
+    fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
       <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
-    fightInfo = `<div class="banner">${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampfvorbereitung</span>
+    fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampfvorbereitung</span>
       <div class="bannerlbl" style="font-size:28px;line-height:1.1;margin:6px 0 4px;color:#fff;letter-spacing:.04em">Dein Plan bis zum Kampf</div>
       <p class="muted small">Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.</p>
       <a class="btn primary" href="#/settings">Kampftermin eintragen</a></div></div>`;
@@ -615,14 +616,14 @@ function runView(id) {
   document.body.classList.add('running');
   $app.innerHTML = `<div class="timer k-prep" id="timer">
     <div class="t-top"><span id="t-block"></span><span id="t-count"></span></div>
-    <div class="t-mid"><div class="t-label" id="t-label"></div><div class="t-time" id="t-time">0:00</div><div class="t-target" id="t-target"></div><div class="t-sub" id="t-sub"></div></div>
+    <div class="t-mid"><div class="t-blockname" id="t-blockname"></div><div class="t-round" id="t-round"></div><div class="t-label" id="t-label"></div><div class="t-time" id="t-time">0:00</div><div class="t-target" id="t-target"></div><div class="t-sub" id="t-sub"></div></div>
     <div class="t-next" id="t-next"></div>
     <div class="t-bar"><i id="t-bar"></i></div>
     <div class="t-btns"><button data-act="tprev">Zurück</button><button class="main" data-act="tpause" id="t-play">Pause</button><button data-act="tnext">Weiter</button></div>
     <button class="t-exit" data-act="texit">Abbrechen</button>
   </div>`;
   const q = (i) => document.getElementById(i);
-  const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
+  const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), blockname: q('t-blockname'), round: q('t-round'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
 
   let i = 0;
   let elapsed = 0; // ms im aktuellen Segment
@@ -649,6 +650,8 @@ function runView(id) {
     setChrome(seg.kind);
     el.block.textContent = seg.kind === 'prep' ? session.title : `${seg.block}${seg.reps > 1 ? ` · ${seg.rep}/${seg.reps}` : ''}`;
     el.count.textContent = `${i + 1} / ${segs.length}`;
+    el.blockname.textContent = seg.kind === 'prep' || seg.block.toLowerCase() === seg.label.toLowerCase() ? '' : seg.block;
+    el.round.textContent = seg.kind !== 'prep' && seg.reps > 1 ? `Runde ${seg.rep} von ${seg.reps}` : '';
     el.label.textContent = seg.label.toLowerCase() === seg.target.main.toLowerCase() || (seg.kind === 'rest' && seg.label === 'Pause') ? '' : seg.label;
     el.target.textContent = seg.target.main;
     el.sub.textContent = seg.target.sub;
@@ -802,7 +805,7 @@ function buildICS() {
   const [hh, mm] = (state.time || '18:00').split(':').map(Number);
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Redline//DE', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//AirMaschine//DE', 'CALSCALE:GREGORIAN'];
   p.weeks.forEach((w) => {
     weekOrder(w).forEach((s) => {
       const d = sessionDate(w, dayOf(s));
@@ -814,12 +817,12 @@ function buildICS() {
         `DTSTAMP:${stamp}`,
         `DTSTART:${dt}`,
         'DURATION:PT45M',
-        fold(`SUMMARY:${icsEscape(`Redline W${w.n}: ${s.title}`)}`),
+        fold(`SUMMARY:${icsEscape(`AirMaschine W${w.n}: ${s.title}`)}`),
         fold(`DESCRIPTION:${icsEscape(s.focus)}`),
         'BEGIN:VALARM',
         'TRIGGER:PT0S',
         'ACTION:DISPLAY',
-        `DESCRIPTION:${icsEscape('Redline Training')}`,
+        `DESCRIPTION:${icsEscape('AirMaschine Training')}`,
         'END:VALARM',
         'END:VEVENT',
       );
@@ -856,7 +859,7 @@ function scheduleReminder() {
   if (wait <= 0 || wait > 2147483000) return;
   reminderTimer = setTimeout(() => {
     try {
-      new Notification('Redline', { body: `Heute: ${hit.title}`, icon: 'icons/icon-192.png' });
+      new Notification('AirMaschine', { body: `Heute: ${hit.title}`, icon: 'icons/icon-192.png' });
     } catch {
       /* Hinweis nicht möglich */
     }
