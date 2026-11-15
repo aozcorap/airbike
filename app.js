@@ -197,8 +197,8 @@ function stepCard(b, no, isRec) {
 
 /* ---------------- Ansichten ---------------- */
 const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#c7122b"/></linearGradient></defs><circle cx="60" cy="64" r="44" stroke="#262c3c" stroke-width="12"/><path d="M16 64 A44 44 0 0 1 104 64" stroke="url(#bm)" stroke-width="12" stroke-linecap="round"/><path d="M60 64 L88 36" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="60" cy="64" r="10" fill="#fff"/></svg>`;
-const APP_NAME_A = 'AIR';
-const APP_NAME_B = 'MASCHINE';
+const APP_NAME_A = 'LAST ';
+const APP_NAME_B = 'ROUND';
 const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div>`;
 const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" onerror="this.remove()">';
 const WHEEL_ART = (() => {
@@ -830,7 +830,7 @@ function buildICS() {
   const [hh, mm] = (state.time || '18:00').split(':').map(Number);
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//AirMaschine//DE', 'CALSCALE:GREGORIAN'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//LastRound//DE', 'CALSCALE:GREGORIAN'];
   p.weeks.forEach((w) => {
     weekOrder(w).forEach((s) => {
       const d = sessionDate(w, dayOf(s));
@@ -842,12 +842,12 @@ function buildICS() {
         `DTSTAMP:${stamp}`,
         `DTSTART:${dt}`,
         'DURATION:PT45M',
-        fold(`SUMMARY:${icsEscape(`AirMaschine W${w.n}: ${s.title}`)}`),
+        fold(`SUMMARY:${icsEscape(`Last Round W${w.n}: ${s.title}`)}`),
         fold(`DESCRIPTION:${icsEscape(s.focus)}`),
         'BEGIN:VALARM',
         'TRIGGER:PT0S',
         'ACTION:DISPLAY',
-        `DESCRIPTION:${icsEscape('AirMaschine Training')}`,
+        `DESCRIPTION:${icsEscape('Last Round Training')}`,
         'END:VALARM',
         'END:VEVENT',
       );
@@ -884,7 +884,7 @@ function scheduleReminder() {
   if (wait <= 0 || wait > 2147483000) return;
   reminderTimer = setTimeout(() => {
     try {
-      new Notification('AirMaschine', { body: `Heute: ${hit.title}`, icon: 'icons/icon-192.png' });
+      new Notification('Last Round', { body: `Heute: ${hit.title}`, icon: 'icons/icon-192.png' });
     } catch {
       /* Hinweis nicht möglich */
     }
