@@ -911,7 +911,10 @@ function videoCard() {
 }
 function showVideo() {
   $modal.hidden = false;
-  $modal.innerHTML = `<div class="card vidbox" role="dialog" aria-modal="true"><div class="vid">${videoEmbed(HOWTO_VIDEO.url)}</div><button class="primary block" data-act="closemodal">Schließen</button></div>`;
+  $modal.className = 'vidmode';
+  $modal.innerHTML = `<div class="vidfull" role="dialog" aria-modal="true" aria-label="${esc(HOWTO_VIDEO.title)}"><div class="vid">${videoEmbed(HOWTO_VIDEO.url)}</div>
+    <button class="vidclose" data-act="closemodal" aria-label="Video schließen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+  $modal.querySelector('.vidclose')?.focus();
 }
 
 function obProfileOpts() {
@@ -1137,6 +1140,7 @@ document.addEventListener('click', (e) => {
       break;
     case 'closemodal':
       $modal.hidden = true;
+      $modal.className = '';
       $modal.innerHTML = '';
       break;
     case 'start':
