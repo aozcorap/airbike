@@ -1,4 +1,5 @@
-import { WEEKS, PHASES, PROFILES, RECOVERY_OPTIONS, weekOrder as weekOrderRaw, findSession, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { buildPlan, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
 const KEY = 'redline.v1';
@@ -6,6 +7,9 @@ const DEFAULTS = {
   maxW: 0,
   off: 0,
   startDate: '',
+  fightDate: '',
+  freq: 3,
+  maxWDate: '',
   done: {},
   days: { s1: 1, rec: 3, s2: 4, s3: 6 },
   time: '18:00',
@@ -48,7 +52,7 @@ const ctx = () => {
   const p = profile();
   return { maxW: Number(state.maxW) || 0, off: p.key === 'elite' ? Number(state.off) || 0 : 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
 };
-const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3);
+const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
 const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile());
 function profileBanner() {
   const p = profile();
@@ -67,8 +71,26 @@ const $modal = document.getElementById('modal');
 /* ---------------- Hilfsfunktionen ---------------- */
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+const effFreq = () => Math.max(1, Math.min(Number(state.freq) || 3, profile().hardPerWeek || 3));
+const wochen = (n) => `${n} ${n === 1 ? 'Woche' : 'Wochen'}`;
+let planCache = { key: '', value: null };
+function plan() {
+  const key = [state.fightDate, state.startDate, effFreq(), new Date().toDateString()].join('|');
+  if (planCache.key !== key) {
+    planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq() }) };
+  }
+  return planCache.value;
+}
+function findInPlan(id) {
+  if (id === 'test') return { session: TEST_SESSION, week: { n: 0, phase: 'Test' } };
+  for (const w of plan().weeks) {
+    const s = [...w.sessions, w.recovery].find((x) => x.id === id);
+    if (s) return { session: s, week: w };
+  }
+  return null;
+}
 function allSessions() {
-  return WEEKS.flatMap((w) => weekOrder(w).map((s) => ({ s, w })));
+  return plan().weeks.flatMap((w) => weekOrder(w).map((s) => ({ s, w })));
 }
 function sessionSecs(session) {
   const blocks = sessionBlocks(session, state.recOpt);
@@ -81,21 +103,35 @@ const dayOf = (session) => {
   const idx = ['s1', 's2', 's3'].find((_, i) => session.id.endsWith('s' + (i + 1)));
   return state.days[idx];
 };
+const fmtDate = (d) => d.toLocaleDateString('de-DE');
 
-function mondayOf(dateStr) {
-  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d;
-}
-function currentWeekNo() {
-  if (!state.startDate) return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.floor((today - mondayOf(state.startDate)) / (7 * 86400000)) + 1;
+function currentWeek() {
+  const today = startOfDay(new Date());
+  return plan().weeks.find((w) => w.monday && today >= w.monday && today < addDays(w.monday, 7)) || null;
 }
 function nextSession() {
   return allSessions().find(({ s }) => !isDone(s.id)) || null;
+}
+function daysToFight() {
+  const f = plan().fight;
+  return f ? Math.round((f - startOfDay(new Date())) / DAY) : null;
+}
+function planSummary() {
+  const p = plan();
+  const freq = effFreq();
+  if (p.status === 'invalid') return 'Das Datum ist ungültig.';
+  if (p.status === 'past') return 'Der Kampftermin liegt in der Vergangenheit. Bitte ein neues Datum eintragen.';
+  if (p.mode === 'none') return 'Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.';
+  let txt = '';
+  if (p.mode === 'fight') {
+    txt = `${p.fight ? `Noch ${daysToFight()} Tage bis zum Kampf. ` : ''}Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
+    if (p.startsIn > 0) txt += ` Er beginnt am ${fmtDate(p.weeks[0].monday)}, vorher ist noch Zeit.`;
+    if (p.compressed) txt += ' Der Plan ist gekürzt. Wie gekürzt wird, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.';
+  } else {
+    txt = `Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
+  }
+  if (freq < 3) txt += ' Bei weniger als 3 Einheiten pro Woche wählt die App die wichtigsten aus. Die Auswahl ist eine Annahme.';
+  return txt;
 }
 
 function autoDesc(block) {
@@ -129,64 +165,114 @@ function blockTargets(b) {
 }
 
 /* ---------------- Ansichten ---------------- */
+function maxWatNotice() {
+  const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
+  if (!state.maxW) {
+    return `<a class="card link" href="#/test" style="border-color:var(--accent)"><span class="kicker">Zuerst</span><h3 style="margin-top:6px">Max-Watt-Test machen</h3><p class="muted small" style="margin:4px 0 0">Aus deinem Bestwert berechnet die App alle Watt-Ziele. Dauert etwa 10 Minuten.</p></a>`;
+  }
+  if (state.maxWDate && age >= 28) {
+    return `<a class="card link"><span class="chip amber">Test wiederholen</span><p class="muted small" style="margin:8px 0 0">Dein letzter Test ist ${age} Tage alt. <a href="#/test">Max-Watt neu messen</a></p></a>`;
+  }
+  return '';
+}
+
 function viewHome() {
   if (profile().blocked) {
-    return `<span class="kicker">Redline</span><h1>10-Wochen Air-Bike-Camp</h1>${profileBanner()}`;
+    return `<span class="kicker">Redline</span><h1>Kampfvorbereitung</h1>${profileBanner()}`;
   }
+  const p = plan();
   const next = nextSession();
-  const wk = currentWeekNo();
+  const cw = currentWeek();
   let todayHtml = '';
-  if (wk >= 1 && wk <= WEEKS.length) {
+  if (cw) {
     const todayIso = ((new Date().getDay() + 6) % 7) + 1;
-    const hit = weekOrder(WEEKS[wk - 1]).find((s) => Number(dayOf(s)) === todayIso);
+    const hit = weekOrder(cw).find((s) => Number(dayOf(s)) === todayIso && !tooCloseToFight(sessionDate(cw, dayOf(s)), p.fight));
     if (hit) {
-      todayHtml = `<a class="card link" href="#/s/${hit.id}"><span class="chip ${isDone(hit.id) ? 'ok' : 'amber'}">Heute laut Plan${isDone(hit.id) ? ' · erledigt' : ''}</span><h3 style="margin-top:8px">${esc(hit.title)}</h3><span class="muted small">Woche ${wk}</span></a>`;
+      todayHtml = `<a class="card link" href="#/s/${hit.id}"><span class="chip ${isDone(hit.id) ? 'ok' : 'amber'}">Heute laut Plan${isDone(hit.id) ? ' · erledigt' : ''}</span><h3 style="margin-top:8px">${esc(hit.title)}</h3><span class="muted small">Woche ${cw.n}</span></a>`;
     }
   }
-  let startInfo = '';
-  if (state.startDate && wk < 1) {
-    startInfo = `<p class="muted">Dein Start ist am ${new Date(state.startDate + 'T00:00:00').toLocaleDateString('de-DE')}.</p>`;
+
+  let fightInfo = '';
+  if (p.status === 'ok' && p.fight) {
+    const d = daysToFight();
+    fightInfo = `<div class="card"><span class="kicker">Kampf</span><h3 style="margin-top:6px">${fmtDate(p.fight)} · ${d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen'}</h3><p class="muted small" style="margin:4px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan">Details</a>)' : ''}</p></div>`;
+  } else if (p.status === 'past' || p.status === 'invalid') {
+    fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
+  } else {
+    fightInfo = `<div class="notice">Trage in den <a href="#/settings">Einstellungen</a> deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.</div>`;
   }
-  const maxNotice = !state.maxW
-    ? `<div class="notice">Trage in den <a href="#/settings">Einstellungen</a> deinen Max-Watt ein (bester 10-s-Sprint). Dann zeigt die App dir Watt-Zahlen statt nur Prozentwerten.</div>`
-    : '';
 
   let nextHtml;
-  if (!next) {
-    nextHtml = `<div class="card hero"><span class="kicker">Geschafft</span><h2 style="margin-top:6px">Programm abgeschlossen</h2><p class="muted">Alle 10 Wochen sind erledigt.</p></div>`;
+  if (p.status !== 'ok' || !p.weeks.length) {
+    nextHtml = '';
+  } else if (!allSessions().length) {
+    nextHtml = `<div class="card hero"><span class="kicker">Kampfwoche</span><h2 style="margin-top:6px">Keine Einheit mehr vor dem Kampf</h2><p class="muted">Ruh dich aus, iss und trink gut und schlaf viel.</p></div>`;
+  } else if (!next) {
+    nextHtml = `<div class="card hero"><span class="kicker">Geschafft</span><h2 style="margin-top:6px">Plan abgeschlossen</h2><p class="muted">Alle Einheiten sind erledigt.</p></div>`;
   } else {
     const { s, w } = next;
     nextHtml = `<a class="card hero link" href="#/s/${s.id}">
-      <span class="kicker">Nächste Session · Woche ${w.n}</span>
+      <span class="kicker">Nächste Einheit · Woche ${w.n}</span>
       <h2 style="margin:6px 0 4px">${esc(s.title)}</h2>
       <p class="muted" style="margin:0 0 12px">${esc(s.focus)}</p>
       <span class="chip red">${s.type === 'recovery' ? '30–40 min' : 'ca. ' + mins(sessionSecs(s))}</span> <span class="chip">${esc(w.phase)}</span>
     </a>`;
   }
 
-  const doneCount = Object.keys(state.done).length;
+  const doneCount = allSessions().filter(({ s }) => isDone(s.id)).length;
   const total = allSessions().length;
-  const cw = Math.min(Math.max(wk, 1), WEEKS.length);
-  const week = wk >= 1 ? WEEKS[cw - 1] : next ? next.w : WEEKS[WEEKS.length - 1];
-  const list = weekOrder(week)
-    .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`)
-    .join('');
+  const week = cw || (next ? next.w : p.weeks[p.weeks.length - 1]);
+  const list = week
+    ? `<h2>Woche ${week.n} · ${esc(week.phase)}</h2>` +
+      weekOrder(week)
+        .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`)
+        .join('')
+    : '';
 
-  return `<span class="kicker">Redline</span><h1>10-Wochen Air-Bike-Camp</h1>
-  <p class="muted">${doneCount} von ${total} Sessions erledigt</p>
-  ${profileBanner()}${startInfo}${maxNotice}${todayHtml}${nextHtml}
-  <h2>Woche ${week.n} · ${esc(week.phase)}</h2>${list}`;
+  return `<span class="kicker">Redline</span><h1>Kampfvorbereitung</h1>
+  ${total ? `<p class="muted">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
+  ${profileBanner()}${fightInfo}${maxWatNotice()}${todayHtml}${nextHtml}${list}`;
+}
+
+function viewTest() {
+  const last = state.maxW
+    ? `<p>Dein aktueller Max-Watt-Wert: <b>${state.maxW} W</b>${state.maxWDate ? ` (${fmtDate(new Date(state.maxWDate))})` : ''}</p>`
+    : '';
+  return `<a href="#/" class="muted small">← Zurück</a><span class="kicker" style="display:block;margin-top:8px">Grundlage für deine Watt-Ziele</span><h1>Max-Watt-Test</h1>
+  ${last}
+  <p class="muted">Du fährst drei maximale Sprints von je 10 Sekunden. Dein höchster Wert wird zur Grundlage für alle Watt-Ziele im Plan.</p>
+  <h2>So läuft es ab</h2>
+  <ol class="plain">
+    <li>Zuerst wärmst du dich etwa 4 Minuten auf.</li>
+    <li>Dann kommen 3 Sprints von je 10 Sekunden mit voller Kraft, dazwischen ${TEST_PAUSE_SECS / 60} Minute Pause.</li>
+    <li>Merke dir nach jedem Sprint den höchsten Wert auf der Anzeige deines Bikes.</li>
+    <li>Am Ende trägst du den höchsten der drei Werte ein.</li>
+  </ol>
+  <div class="notice">Mache den Test nur ausgeruht und aufgewärmt, nicht nach einem harten Trainingstag. Bei Schwindel, Schmerz oder Atemnot sofort abbrechen. Der Wert schwankt mit der Tagesform. Wiederhole den Test alle paar Wochen.</div>
+  ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : '<a class="btn primary block" href="#/run/test" data-act="start">Test starten</a>'}
+  <h2>Oder Wert direkt eintragen</h2>
+  <div class="row"><input id="maxInline" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="z. B. 1000" aria-label="Max-Watt"><button class="primary" data-act="savemax">Speichern</button></div>`;
+}
+
+function weekRange(w) {
+  if (!w.monday) return '';
+  const end = addDays(w.monday, 6);
+  return `${w.monday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}–${end.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`;
 }
 
 function viewPlan() {
-  let html = '<h1>Trainingsplan</h1><p class="muted">10 Wochen in 4 Phasen. Mindestens 1–2 Tage Abstand zwischen den harten Sessions.</p>';
+  const p = plan();
+  let html = `<h1>Trainingsplan</h1><p class="muted">${esc(planSummary())}</p>`;
+  if (p.status !== 'ok') return html;
   PHASES.forEach((ph) => {
-    html += `<div class="phase-dot"><b>${esc(ph.name)}</b> <span class="muted small">Woche ${ph.weeks[0]}–${ph.weeks[1]}</span><div class="muted small">${esc(ph.text)}</div></div>`;
-    WEEKS.filter((w) => w.n >= ph.weeks[0] && w.n <= ph.weeks[1]).forEach((w) => {
+    const weeks = p.weeks.filter((w) => w.tpl >= ph.weeks[0] && w.tpl <= ph.weeks[1]);
+    if (!weeks.length) return;
+    html += `<div class="phase-dot"><b>${esc(ph.name)}</b><div class="muted small">${esc(ph.text)}</div></div>`;
+    weeks.forEach((w) => {
       const list = weekOrder(w);
       const done = list.filter((s) => isDone(s.id)).length;
       const level = { Niedrig: 1, Mittel: 2, 'Mittel–Hoch': 3, Hoch: 4 }[w.load];
-      html += `<a class="card link" href="#/week/${w.n}"><div class="week-head"><h3>Woche ${w.n}</h3><span class="muted small">${done}/${list.length} erledigt</span></div>
+      html += `<a class="card link" href="#/week/${w.n}"><div class="week-head"><h3>Woche ${w.n}</h3><span class="muted small">${weekRange(w)}${weekRange(w) ? ' · ' : ''}${done}/${list.length} erledigt</span></div>
         <div class="muted small">Belastung: ${esc(w.load)}</div>
         <div class="load-bar" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i class="${i <= level ? 'on' : ''}"></i>`).join('')}</div></a>`;
     });
@@ -194,19 +280,24 @@ function viewPlan() {
   return html;
 }
 
+function sessionRow(w, s) {
+  const d = sessionDate(w, dayOf(s));
+  return `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]}${d ? ' ' + d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : ''} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`;
+}
+
 function viewWeek(n) {
-  const w = WEEKS[n - 1];
+  const w = plan().weeks[n - 1];
   if (!w) return notFound();
-  const list = weekOrder(w)
-    .map((s) => `<a class="card link row" href="#/s/${s.id}"><span class="check ${isDone(s.id) ? 'done' : ''}">${isDone(s.id) ? '✓' : ''}</span><span class="grow"><b>${esc(s.title)}</b><br><span class="muted small">${DAY_NAMES[Number(dayOf(s)) - 1]} · ${s.type === 'recovery' ? '30–40 min' : mins(sessionSecs(s))}</span></span></a>`)
-    .join('');
+  const list = weekOrder(w).map((s) => sessionRow(w, s)).join('');
   return `<a href="#/plan" class="muted small">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
-  ${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
-  ${w.n === 10 ? '<p class="muted small">In Woche 10 steht nur eine Sprint-Session an, damit du frisch in den Kampf gehst.</p>' : ''}`;
+  ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
+  ${list ? '' : '<p class="muted">In dieser Woche steht keine Einheit mehr an. Ruh dich aus.</p>'}
+  ${w.tpl === 10 ? '<p class="muted small">In der Kampfwoche steht nur eine leichte Sprint-Einheit an, damit du frisch in den Kampf gehst.</p>' : ''}`;
 }
 
 function viewSession(id) {
-  const found = findSession(id);
+  if (id === 'test') return viewTest();
+  const found = findInPlan(id);
   if (!found) return notFound();
   const { session, week } = found;
   const isRec = session.type === 'recovery';
@@ -303,7 +394,7 @@ function viewSettings() {
   <h2>Training</h2>
   <label for="maxW">Max-Watt (bester 10-s-Sprint)</label>
   <input id="maxW" type="number" inputmode="numeric" min="0" max="3000" step="5" value="${state.maxW || ''}" data-set="maxW" placeholder="z. B. 1000">
-  <p class="muted small">Daraus berechnet die App Zielwerte für Sprints in Prozent. Teste ihn nach dem Warm-up mit einem maximalen 10-s-Sprint.</p>
+  <p class="muted small">Daraus berechnet die App alle Watt-Ziele. Am besten ermittelst du ihn mit dem geführten <a href="#/test">Max-Watt-Test</a>.</p>
   ${profile().key === 'elite' ? `<label for="off">Anfänger-Modus</label>
   <select id="off" data-set="off">
     <option value="0" ${!state.off ? 'selected' : ''}>Aus</option>
@@ -317,19 +408,24 @@ function viewSettings() {
   <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
   ${hf ? `<p>Geschätzter HFmax: <b>${hf} bpm</b> (208 − 0,7 × Alter)<br>Rote Zone ab 90 %: <b>${Math.round(hf * 0.9)} bpm</b><br>Aktive Erholung 70–80 %: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} bpm</b></p><p class="muted small">Das ist eine Schätzformel. Ein echter Maximalpuls-Test ist genauer.</p>` : ''}
 
-  <h2>Start und Termine</h2>
-  <label for="startDate">Startdatum (Woche 1)</label>
-  <input id="startDate" type="date" value="${esc(state.startDate)}" data-set="startDate">
+  <h2>Kampf und Termine</h2>
+  <label for="fightDate">Kampftermin (Turnier)</label>
+  <input id="fightDate" type="date" value="${esc(state.fightDate)}" data-set="fightDate">
+  <label for="freq">Training am Air Bike pro Woche</label>
+  <select id="freq" data-set="freq">${[1, 2, 3].map((n) => `<option value="${n}" ${Number(state.freq) === n ? 'selected' : ''}>${n}× pro Woche</option>`).join('')}</select>
+  <p class="muted small">${esc(planSummary())}</p>
+  ${!state.fightDate ? `<label for="startDate">Startdatum (nur ohne Kampftermin)</label>
+  <input id="startDate" type="date" value="${esc(state.startDate)}" data-set="startDate">` : ''}
   <div class="field-row">
-    <div><label>Session 1</label>${dayOpts('s1')}</div>
+    <div><label>Einheit 1</label>${dayOpts('s1')}</div>
     <div><label>Aktive Erholung</label>${dayOpts('rec')}</div>
-    <div><label>Session 2</label>${dayOpts('s2')}</div>
-    <div><label>Session 3</label>${dayOpts('s3')}</div>
+    ${effFreq() >= 2 ? `<div><label>Einheit 2</label>${dayOpts('s2')}</div>` : ''}
+    ${effFreq() >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
   </div>
   <label for="time">Uhrzeit</label>
   <input id="time" type="time" value="${esc(state.time)}" data-set="time">
   <div class="btn-row"><button class="primary" data-act="ics">Kalender-Datei (.ics) laden</button></div>
-  <p class="muted small">Der Kalender erinnert am zuverlässigsten, auch bei geschlossener App. Datei öffnen und in deinen Kalender importieren. Zuerst Startdatum setzen.</p>
+  <p class="muted small">Der Kalender erinnert am zuverlässigsten, auch bei geschlossener App. Datei öffnen und in deinen Kalender importieren. Zuerst Kampftermin setzen.</p>
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
@@ -360,7 +456,7 @@ function route() {
   const [view, arg] = parts;
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || nav === view;
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'home' && view === 'test') || nav === view;
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -375,6 +471,7 @@ function route() {
     case 's': html = viewSession(arg); break;
     case 'info': html = viewInfo(); break;
     case 'settings': html = viewSettings(); break;
+    case 'test': html = viewTest(); break;
     default: html = notFound();
   }
   $app.innerHTML = html;
@@ -454,7 +551,7 @@ function runView(id) {
     location.hash = '#/';
     return;
   }
-  const found = findSession(id);
+  const found = findInPlan(id);
   if (!found) {
     $app.innerHTML = notFound();
     return;
@@ -547,6 +644,14 @@ function runView(id) {
     vib([200, 100, 200, 100, 400]);
     el.box.className = 'timer k-done';
     setChrome('done');
+    if (session.type === 'test') {
+      el.box.innerHTML = `<div class="t-mid"><div class="t-label">Test geschafft</div><div class="t-target">Dein höchster Wert?</div>
+        <div class="t-sub">Trage den höchsten Wert der drei Sprints ein.</div>
+        <input id="testW" type="number" inputmode="numeric" min="100" max="3000" step="5" placeholder="Watt" aria-label="Höchster Wert in Watt" style="max-width:220px;text-align:center;font-size:28px;font-weight:800;margin-top:8px"></div>
+        <div class="btn-row"><button class="main" style="background:#fff;color:#111" data-act="savetest">Speichern</button></div>
+        <button class="t-exit" data-act="texit">Ohne Speichern zurück</button>`;
+      return;
+    }
     el.box.innerHTML = `<div class="t-mid"><div class="t-label">Geschafft</div><div class="t-target">${esc(session.title)}</div><div class="t-sub">Gut gemacht. Trinken, locker auslaufen lassen und kurz notieren, wie es sich angefühlt hat.</div></div>
       <div class="btn-row"><button class="main" style="background:#fff;color:#111" data-act="tdone" data-id="${esc(id)}">Als erledigt markieren</button></div>
       <button class="t-exit" data-act="texit">Ohne Markieren zurück</button>`;
@@ -653,17 +758,16 @@ function fold(line) {
   return out.join('\r\n');
 }
 function buildICS() {
-  const start = mondayOf(state.startDate);
-  const startDay = new Date(state.startDate + 'T00:00:00');
+  const p = plan();
+  const today = startOfDay(new Date());
   const [hh, mm] = (state.time || '18:00').split(':').map(Number);
   const pad = (n) => String(n).padStart(2, '0');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Redline//DE', 'CALSCALE:GREGORIAN'];
-  WEEKS.forEach((w) => {
+  p.weeks.forEach((w) => {
     weekOrder(w).forEach((s) => {
-      const d = new Date(start);
-      d.setDate(d.getDate() + (w.n - 1) * 7 + (Number(dayOf(s)) - 1));
-      if (d < startDay) return;
+      const d = sessionDate(w, dayOf(s));
+      if (!d || d < today || tooCloseToFight(d, p.fight)) return;
       const dt = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(hh)}${pad(mm)}00`;
       lines.push(
         'BEGIN:VEVENT',
@@ -701,10 +805,10 @@ let reminderTimer = null;
 function scheduleReminder() {
   clearTimeout(reminderTimer);
   if (!state.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
-  const wk = currentWeekNo();
-  if (wk < 1 || wk > WEEKS.length) return;
+  const cw = currentWeek();
+  if (!cw) return;
   const todayIso = ((new Date().getDay() + 6) % 7) + 1;
-  const hit = weekOrder(WEEKS[wk - 1]).find((s) => Number(dayOf(s)) === todayIso && !isDone(s.id));
+  const hit = weekOrder(cw).find((s) => Number(dayOf(s)) === todayIso && !isDone(s.id) && !tooCloseToFight(sessionDate(cw, dayOf(s)), plan().fight));
   if (!hit) return;
   const [hh, mm] = (state.time || '18:00').split(':').map(Number);
   const at = new Date();
@@ -750,10 +854,23 @@ document.addEventListener('click', (e) => {
       save();
       route();
       break;
+    case 'savetest': {
+      const v = Number(document.getElementById('testW')?.value);
+      if (v >= 100 && v <= 3000) {
+        state.maxW = v;
+        state.maxWDate = new Date().toISOString();
+        save();
+        location.hash = '#/';
+      } else {
+        alert('Bitte einen Wert zwischen 100 und 3000 W eingeben.');
+      }
+      break;
+    }
     case 'savemax': {
       const v = Number(document.getElementById('maxInline')?.value);
       if (v >= 100 && v <= 3000) {
         state.maxW = v;
+        state.maxWDate = new Date().toISOString();
         save();
         route();
       } else {
@@ -773,7 +890,7 @@ document.addEventListener('click', (e) => {
     case 'texit':
       if (document.querySelector('.timer.k-done') || confirm('Training wirklich abbrechen?')) {
         const id = location.hash.split('/')[2];
-        location.hash = `#/s/${id}`;
+        location.hash = id === 'test' ? '#/test' : `#/s/${id}`;
       }
       break;
     case 'tdone':
@@ -782,8 +899,8 @@ document.addEventListener('click', (e) => {
       location.hash = '#/';
       break;
     case 'ics':
-      if (!state.startDate) {
-        alert('Bitte zuerst das Startdatum setzen.');
+      if (!plan().weeks[0]?.monday) {
+        alert('Bitte zuerst den Kampftermin setzen.');
         break;
       }
       download('redline-training.ics', buildICS(), 'text/calendar');
@@ -841,7 +958,7 @@ document.addEventListener('change', (e) => {
   }
   if (t.dataset.set) {
     const k = t.dataset.set;
-    state[k] = ['maxW', 'off', 'age'].includes(k) ? Number(t.value) || 0 : t.value;
+    state[k] = ['maxW', 'off', 'age', 'freq'].includes(k) ? Number(t.value) || 0 : t.value;
     save();
     scheduleReminder();
     route();
