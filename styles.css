@@ -318,3 +318,21 @@ body.obopen { overflow: hidden; }
 .stepcard.current p { color: var(--text); }
 .stepcard.done .stepnum { background: var(--ok); border-color: var(--ok); color: #05210e; }
 .stepcard.later { opacity: .65; }
+
+/* Eigener Kalender */
+.datebtn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 52px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--text); font-size: 17px; font-weight: 600; text-align: left; }
+.datebtn.empty { color: var(--muted); font-weight: 500; }
+.datebtn svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#modal.calmode { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+#modal .calcard { max-width: 360px; }
+.calcard { box-sizing: border-box; width: 100%; max-width: 360px; padding: 14px; }
+.calhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.calhead b { font-family: var(--display); text-transform: uppercase; font-size: 20px; }
+.calnav { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2, #1b1f28); border: 1px solid var(--line); color: var(--text); font-size: 26px; line-height: 1; }
+.calgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.calweek { margin-bottom: 4px; }
+.calweek span { text-align: center; color: var(--muted); font-size: 13px; font-weight: 700; padding: 4px 0; }
+.calday { height: 42px; border-radius: 10px; background: transparent; color: var(--text); font-size: 16px; font-weight: 600; }
+.calday.today { border: 1px solid var(--accent); }
+.calday.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+.calcard .btn-row { margin-top: 12px; }

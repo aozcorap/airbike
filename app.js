@@ -519,12 +519,12 @@ function viewSettings() {
 
   <h2>Kampf und Termine</h2>
   <label for="fightDate">Kampftermin (Turnier)</label>
-  <input id="fightDate" type="date" value="${esc(state.fightDate)}" data-set="fightDate">
+  ${dateField('fightDate', state.fightDate, 'data-set="fightDate"')}
   <label for="freq">Training am Air Bike pro Woche</label>
   <select id="freq" data-set="freq">${[1, 2, 3].map((n) => `<option value="${n}" ${Number(state.freq) === n ? 'selected' : ''}>${n}× pro Woche</option>`).join('')}</select>
   <p class="muted small">${esc(planSummary())}</p>
   ${!state.fightDate ? `<label for="startDate">Startdatum (nur ohne Kampftermin)</label>
-  <input id="startDate" type="date" value="${esc(state.startDate)}" data-set="startDate">` : ''}
+  ${dateField('startDate', state.startDate, 'data-set="startDate"')}` : ''}
   <div class="field-row">
     <div><label>Einheit 1</label>${dayOpts('s1')}</div>
     <div><label>Aktive Erholung</label>${dayOpts('rec')}</div>
@@ -927,6 +927,64 @@ function scheduleReminder() {
   }, wait);
 }
 
+
+/* ---------------- Eigener Kalender (statt Browser-Kalender) ---------------- */
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+const isoOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const parseIso = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  return m ? { y: Number(m[1]), m: Number(m[2]) - 1, d: Number(m[3]) } : null;
+};
+const dateLabel = (s) => {
+  const p = parseIso(s);
+  return p ? fmtDate(new Date(p.y, p.m, p.d)) : '';
+};
+function dateField(id, value, extra = '') {
+  return `<input id="${id}" type="hidden" value="${esc(value)}" ${extra}><button type="button" class="datebtn ${value ? '' : 'empty'}" data-act="pickdate" data-for="${id}" aria-label="Datum wählen"><span id="${id}Txt">${value ? esc(dateLabel(value)) : 'Datum wählen'}</span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></button>`;
+}
+let cal = null;
+function renderCalendar() {
+  const first = new Date(cal.y, cal.m, 1);
+  const lead = (first.getDay() + 6) % 7;
+  const days = new Date(cal.y, cal.m + 1, 0).getDate();
+  const now = new Date();
+  const todayIso = isoOf(now.getFullYear(), now.getMonth(), now.getDate());
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span></span>');
+  for (let d = 1; d <= days; d++) {
+    const iso = isoOf(cal.y, cal.m, d);
+    cells.push(`<button type="button" class="calday ${iso === cal.sel ? 'sel' : ''} ${iso === todayIso ? 'today' : ''}" data-act="cal-day" data-iso="${iso}" aria-label="${d}. ${MONTHS[cal.m]} ${cal.y}">${d}</button>`);
+  }
+  $modal.hidden = false;
+  $modal.className = 'calmode';
+  $modal.innerHTML = `<div class="card calcard" role="dialog" aria-modal="true" aria-label="Datum wählen">
+    <div class="calhead"><button type="button" class="calnav" data-act="cal-prev" aria-label="Vorheriger Monat">‹</button><b>${MONTHS[cal.m]} ${cal.y}</b><button type="button" class="calnav" data-act="cal-next" aria-label="Nächster Monat">›</button></div>
+    <div class="calgrid calweek">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((w) => `<span>${w}</span>`).join('')}</div>
+    <div class="calgrid">${cells.join('')}</div>
+    <div class="btn-row"><button type="button" class="ghost" data-act="cal-today">Heute</button><button type="button" class="ghost" data-act="closemodal">Abbrechen</button></div>
+  </div>`;
+}
+function openCalendar(id) {
+  const cur = parseIso(document.getElementById(id)?.value);
+  const now = new Date();
+  cal = { id, y: cur ? cur.y : now.getFullYear(), m: cur ? cur.m : now.getMonth(), sel: cur ? isoOf(cur.y, cur.m, cur.d) : '' };
+  renderCalendar();
+}
+function pickDate(iso) {
+  const input = document.getElementById(cal.id);
+  if (input) {
+    input.value = iso;
+    const txt = document.getElementById(cal.id + 'Txt');
+    if (txt) txt.textContent = dateLabel(iso);
+    input.parentElement?.querySelector('.datebtn')?.classList.remove('empty');
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  cal = null;
+  $modal.hidden = true;
+  $modal.className = '';
+  $modal.innerHTML = '';
+}
+
 /* ---------------- Einführung (So startest du) ---------------- */
 const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'format', 'watt', 'done'];
 let ob = { step: 0 };
@@ -965,7 +1023,7 @@ function obBody(id) {
       return `<span class="kicker">Schritt 3 von 5</span><h1>Kampftermin</h1>
         <p class="muted">Der Plan wird rückwärts bis zu deinem Kampf oder Turnier gebaut.</p>
         <label for="obFight">Datum des Kampfes</label>
-        <input id="obFight" type="date" value="${esc(ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}">
+        ${dateField('obFight', ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}
         <label>Wie oft pro Woche kannst du aufs Air Bike?</label>
         <div class="seg">${[1, 2, 3].map((n) => `<button class="opt sm ${Number(state.freq) === n ? 'sel' : ''}" data-act="ob-freq" data-n="${n}"><b>${n}×</b><span>pro Woche</span></button>`).join('')}</div>
         <p class="muted small">Bei weniger als 3 Einheiten wählt die App die wichtigsten aus.</p>
@@ -1696,6 +1754,27 @@ document.addEventListener('click', (e) => {
       closeOnboarding();
       location.hash = '#/test';
       break;
+    case 'pickdate':
+      openCalendar(t.dataset.for);
+      break;
+    case 'cal-prev':
+      cal.m -= 1;
+      if (cal.m < 0) { cal.m = 11; cal.y -= 1; }
+      renderCalendar();
+      break;
+    case 'cal-next':
+      cal.m += 1;
+      if (cal.m > 11) { cal.m = 0; cal.y += 1; }
+      renderCalendar();
+      break;
+    case 'cal-day':
+      pickDate(t.dataset.iso);
+      break;
+    case 'cal-today': {
+      const n = new Date();
+      pickDate(isoOf(n.getFullYear(), n.getMonth(), n.getDate()));
+      break;
+    }
     case 'closemodal':
       $modal.hidden = true;
       $modal.className = '';
