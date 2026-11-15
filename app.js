@@ -388,6 +388,16 @@ function setChrome(kind) {
   document.getElementById('themeColor')?.setAttribute('content', col);
   document.documentElement.style.background = col;
   document.body.style.background = col;
+  // iOS 26 Safari ignoriert theme-color und färbt die obere Leiste nach einem festen Element am oberen Rand.
+  // Das Element wird bei jedem Wechsel neu erzeugt, damit Safari die Farbe neu liest.
+  document.getElementById('chromeTint')?.remove();
+  if (kind !== 'idle') {
+    const tint = document.createElement('div');
+    tint.id = 'chromeTint';
+    tint.setAttribute('aria-hidden', 'true');
+    tint.style.background = col;
+    document.body.appendChild(tint);
+  }
 }
 let actx = null;
 function ensureAudio() {

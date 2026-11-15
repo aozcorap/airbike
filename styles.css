@@ -138,3 +138,6 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (min-width: 700px) { .t-mid { gap: 12px; } }
+
+/* Färbt die obere Browserleiste (iOS 26) passend zur Timer-Phase */
+#chromeTint { position: fixed; top: 0; left: 0; right: 0; height: 24px; z-index: 30; pointer-events: none; }
