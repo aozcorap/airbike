@@ -1,4 +1,5 @@
 import { PHASES, PROFILES, RECOVERY_OPTIONS, HOWTO_VIDEO, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import * as cloud from './cloud.js';
 import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
@@ -31,11 +32,15 @@ function load() {
   }
 }
 let state = load();
-function save() {
+function save(localOnly = false) {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     /* Speicher blockiert (z. B. privater Modus) – App läuft trotzdem weiter */
+  }
+  if (!localOnly && typeof account !== 'undefined' && account) {
+    writeSync({ dirty: true });
+    schedulePush();
   }
 }
 
@@ -462,6 +467,7 @@ function viewSettings() {
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const notifSupported = 'Notification' in window;
   return `<h1>Einstellungen</h1>
+  ${accountSection()}
   <div class="btn-row"><button class="ghost" data-act="ob-replay">Einführung noch einmal ansehen</button></div>
   <h2>Profil (Altersklasse)</h2>
   <label for="profile">Profil</label>
@@ -512,7 +518,8 @@ function viewSettings() {
   <h2>Daten</h2>
   <p class="muted small">Dein Fortschritt liegt nur in diesem Browser. Wenn du Browserdaten löschst oder das Gerät wechselst, ist er weg. Sichere ihn regelmäßig.</p>
   <div class="btn-row"><button class="ghost" data-act="export">Sichern</button><label class="btn ghost" style="margin:0">Wiederherstellen<input type="file" accept="application/json" data-act="import" hidden></label></div>
-  <div class="btn-row"><button class="danger" data-act="reset">Fortschritt zurücksetzen</button></div>`;
+  <div class="btn-row"><button class="danger" data-act="reset">Fortschritt zurücksetzen</button></div>
+  ${accountDangerZone()}`;
 }
 
 function notFound() {
@@ -547,6 +554,8 @@ function route() {
     case 's': html = viewSession(arg); break;
     case 'info': html = viewInfo(); break;
     case 'settings': html = viewSettings(); break;
+    case 'datenschutz': html = viewLegal('privacy'); break;
+    case 'impressum': html = viewLegal('imprint'); break;
     case 'test': html = viewTest(); break;
     default: html = notFound();
   }
@@ -1074,12 +1083,431 @@ function obBack() {
   renderOnboarding();
 }
 
+/* ---------------- Konto, Anmeldung und Sicherung ---------------- */
+const SYNC_KEY = 'redline.sync';
+let account = null; // { id, email } sobald angemeldet
+let syncStatus = ''; // 'ok' | 'pending' | 'offline' | 'error'
+let pushTimer = null;
+let authView = 'login';
+let authMsg = '';
+let authEmail = '';
+const MIN_AGE = 14; // nach Geburtsjahr, im Zweifel streng (siehe Datenbank-Regel)
+const PARENT_AGE = 17; // darunter Einwilligung der Eltern
+
+const readSync = () => {
+  try {
+    return JSON.parse(localStorage.getItem(SYNC_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const writeSync = (patch) => {
+  try {
+    localStorage.setItem(SYNC_KEY, JSON.stringify({ ...readSync(), ...patch }));
+  } catch {
+    /* Speicher blockiert */
+  }
+};
+const freshState = () => ({ ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {} });
+const normalizeState = (raw) => ({ ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {} });
+const hasProgress = (s) => Boolean(s.onboarded || s.maxW || Object.keys(s.done || {}).length);
+
+function schedulePush(delay = 1500) {
+  clearTimeout(pushTimer);
+  if (!account) return;
+  syncStatus = 'pending';
+  pushTimer = setTimeout(pushNow, delay);
+}
+async function pushNow() {
+  clearTimeout(pushTimer);
+  if (!account) return true;
+  if (!navigator.onLine) {
+    syncStatus = 'offline';
+    return false;
+  }
+  try {
+    const at = await cloud.pushState(account.id, state);
+    writeSync({ dirty: false, syncedAt: at });
+    syncStatus = 'ok';
+    return true;
+  } catch {
+    syncStatus = 'error';
+    return false;
+  }
+}
+const syncLabel = () => {
+  const i = readSync();
+  if (syncStatus === 'ok' || (!i.dirty && i.syncedAt)) return 'Gesichert im Konto';
+  if (syncStatus === 'offline') return 'Offline, wird später gesichert';
+  if (syncStatus === 'error') return 'Sicherung fehlgeschlagen, wird erneut versucht';
+  return i.dirty ? 'Wird gesichert …' : 'Noch nicht gesichert';
+};
+
+async function syncOnLogin(user) {
+  const info = readSync();
+  if (info.owner && info.owner !== user.id) {
+    // Auf dem Gerät liegen Daten eines anderen Kontos: nicht übernehmen
+    state = freshState();
+    save(true);
+    writeSync({ owner: user.id, email: user.email, syncedAt: '', dirty: false });
+  }
+  let remote;
+  try {
+    remote = await cloud.pullState(user.id);
+  } catch {
+    writeSync({ owner: user.id, email: user.email });
+    syncStatus = navigator.onLine ? 'error' : 'offline';
+    return;
+  }
+  const info2 = readSync();
+  const remoteHas = Boolean(remote && remote.state && Object.keys(remote.state).length);
+  if (!remoteHas) {
+    writeSync({ owner: user.id, email: user.email });
+    if (hasProgress(state)) await pushNow();
+    else writeSync({ syncedAt: remote ? remote.updated_at : '', dirty: false });
+  } else if (!info2.owner && hasProgress(state)) {
+    const useDevice = confirm('Auf diesem Gerät ist schon Fortschritt gespeichert.\n\nOK = Gerätedaten ins Konto übernehmen\nAbbrechen = Daten aus dem Konto laden');
+    writeSync({ owner: user.id, email: user.email });
+    if (useDevice) await pushNow();
+    else applyRemote(remote);
+  } else if (info2.dirty) {
+    writeSync({ owner: user.id, email: user.email });
+    await pushNow();
+  } else {
+    writeSync({ owner: user.id, email: user.email });
+    if (remote.updated_at !== info2.syncedAt) applyRemote(remote);
+    else syncStatus = 'ok';
+  }
+}
+function applyRemote(remote) {
+  state = normalizeState(remote.state);
+  save(true);
+  writeSync({ syncedAt: remote.updated_at, dirty: false });
+  syncStatus = 'ok';
+}
+
+async function startSession(user) {
+  account = { id: user.id, email: user.email || readSync().email || '' };
+  await syncOnLogin(account);
+  closeAuth();
+  route();
+  if (!state.onboarded) startOnboarding();
+  scheduleReminder();
+}
+function closeAuth() {
+  document.getElementById('auth')?.remove();
+  if (!document.getElementById('onboard')) document.body.classList.remove('obopen');
+}
+async function boot() {
+  let user = null;
+  try {
+    user = await cloud.currentUser();
+  } catch {
+    user = null;
+  }
+  if (/access_token=|error_description=|type=recovery/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  if (!user && cloud.hasStoredSession() && !navigator.onLine && readSync().owner) user = { id: readSync().owner, email: readSync().email };
+  if (!user) {
+    renderAuth('login');
+    return;
+  }
+  await startSession(user);
+}
+cloud.onAuth((event) => {
+  if (event === 'PASSWORD_RECOVERY') renderAuth('newpw');
+});
+window.addEventListener('online', () => {
+  if (account && readSync().dirty) pushNow();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && account && readSync().dirty) pushNow();
+});
+
+/* ---- Anmeldeseiten ---- */
+function authMessage() {
+  return authMsg ? `<div class="notice" role="alert">${esc(authMsg)}</div>` : '';
+}
+function authError(err) {
+  const m = String((err && (err.message || err.code)) || '');
+  if (/invalid login|invalid_credentials/i.test(m)) return 'E-Mail oder Passwort stimmt nicht.';
+  if (/not confirmed|email_not_confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail. Schau auch im Spam-Ordner nach.';
+  if (/rate limit|too many|over_email_send_rate_limit|over_request_rate_limit/i.test(m)) return 'Zu viele Versuche. Bitte warte kurz und versuche es später noch einmal.';
+  if (/database error|saving new user|unexpected_failure/i.test(m)) return 'Die Registrierung ist nicht möglich. Bitte prüfe Alter und Einwilligung.';
+  if (/password/i.test(m) && /short|weak|least|characters/i.test(m)) return 'Das Passwort ist zu kurz oder zu schwach (mindestens 8 Zeichen).';
+  if (/valid email|invalid format|email address.*invalid|is invalid/i.test(m)) return 'Diese E-Mail-Adresse ist nicht gültig.';
+  if (/network|fetch|failed to/i.test(m)) return 'Keine Verbindung. Bitte prüfe dein Internet.';
+  return 'Das hat nicht geklappt. Bitte versuche es noch einmal.';
+}
+function authShell(inner) {
+  let sheet = document.getElementById('auth');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'auth';
+    sheet.className = 'sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    document.body.appendChild(sheet);
+  }
+  document.body.classList.add('obopen');
+  sheet.innerHTML = `<div class="sheet-in">${inner}</div>`;
+  sheet.scrollTop = 0;
+}
+const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="muted center" style="margin:2px 0 14px">Kondition bis zur letzten Runde</p>`;
+const authTabs = (on) => `<div class="seg2" role="tablist"><button class="${on === 'login' ? 'sel' : ''}" data-act="auth-view" data-v="login" role="tab">Anmelden</button><button class="${on === 'register' ? 'sel' : ''}" data-act="auth-view" data-v="register" role="tab">Registrieren</button></div>`;
+const legalLinks = () => `<p class="muted small center" style="margin-top:18px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
+
+function renderAuth(view = 'login') {
+  const prevEmail = document.getElementById('aEmail')?.value;
+  if (prevEmail !== undefined) authEmail = prevEmail.trim();
+  authView = view;
+  const em = esc(authEmail);
+  let body = '';
+  if (view === 'login') {
+    body = `${authBrand()}${authTabs('login')}${authMessage()}
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <label for="aPw">Passwort</label><input id="aPw" type="password" autocomplete="current-password">
+      <button class="primary block" style="margin-top:16px" data-act="auth-login">Anmelden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="forgot">Passwort vergessen?</button>${legalLinks()}`;
+  } else if (view === 'register') {
+    body = `${authBrand()}${authTabs('register')}${authMessage()}
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <label for="aPw">Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
+      <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
+      <p id="aAgeHint" class="muted small" style="margin:6px 0 0"></p>
+      <label class="chk" id="aGuardBox" hidden><input id="aGuard" type="checkbox"><span>Ein Elternteil oder Erziehungsberechtigter hat der Registrierung und der Verarbeitung der Daten zugestimmt.</span></label>
+      <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
+      <button class="primary block" style="margin-top:14px" data-act="auth-register">Konto erstellen</button>${legalLinks()}`;
+  } else if (view === 'forgot') {
+    body = `${authBrand()}<h1 style="font-size:28px">Passwort vergessen</h1><p class="muted">Wir schicken dir einen Link zum Zurücksetzen.</p>${authMessage()}
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <button class="primary block" style="margin-top:16px" data-act="auth-forgot">Link senden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="login">Zurück zur Anmeldung</button>`;
+  } else if (view === 'confirm') {
+    body = `${authBrand()}<h1 style="font-size:28px">Fast geschafft</h1><p>Wir haben eine E-Mail an <b>${em}</b> geschickt. Tippe auf den Link darin, um dein Konto zu bestätigen. Danach meldest du dich hier an.</p><p class="muted small">Keine Mail da? Schau im Spam-Ordner nach.</p>
+      <button class="primary block" style="margin-top:16px" data-act="auth-view" data-v="login">Zur Anmeldung</button>`;
+  } else if (view === 'newpw') {
+    body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1>${authMessage()}
+      <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
+      <label for="aPw2">Wiederholen</label><input id="aPw2" type="password" autocomplete="new-password">
+      <button class="primary block" style="margin-top:16px" data-act="auth-newpw">Passwort speichern</button>`;
+  } else if (view === 'privacy' || view === 'imprint') {
+    body = `<button class="ob-back" data-act="auth-view" data-v="${account ? 'login' : 'login'}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
+  }
+  authShell(body);
+  if (view === 'register') updateAgeUi();
+}
+function updateAgeUi() {
+  const y = Number(document.getElementById('aYear')?.value);
+  const hint = document.getElementById('aAgeHint');
+  const box = document.getElementById('aGuardBox');
+  if (!hint || !box) return;
+  const age = y ? new Date().getFullYear() - y : null;
+  box.hidden = !(age !== null && age >= MIN_AGE && age < PARENT_AGE);
+  if (age === null) hint.textContent = '';
+  else if (y < 1900 || y > new Date().getFullYear()) hint.textContent = 'Bitte gib ein gültiges Geburtsjahr ein.';
+  else if (age < MIN_AGE) hint.textContent = 'Für dein Alter ist die App leider nicht vorgesehen.';
+  else if (age < PARENT_AGE) hint.textContent = 'In deinem Alter brauchst du die Einwilligung eines Elternteils.';
+  else hint.textContent = '';
+}
+async function withBusy(btn, fn) {
+  if (btn) btn.disabled = true;
+  try {
+    await fn();
+  } finally {
+    if (btn && document.body.contains(btn)) btn.disabled = false;
+  }
+}
+async function doLogin(btn) {
+  const email = document.getElementById('aEmail').value.trim();
+  const pw = document.getElementById('aPw').value;
+  authEmail = email;
+  if (!email || !pw) {
+    authMsg = 'Bitte E-Mail und Passwort eingeben.';
+    return renderAuth('login');
+  }
+  await withBusy(btn, async () => {
+    const { data, error } = await cloud.signIn(email, pw);
+    if (error || !data?.user) {
+      authMsg = authError(error);
+      return renderAuth('login');
+    }
+    authMsg = '';
+    await startSession(data.user);
+  });
+}
+async function doRegister(btn) {
+  const email = document.getElementById('aEmail').value.trim();
+  const pw = document.getElementById('aPw').value;
+  const year = Number(document.getElementById('aYear').value);
+  const consent = document.getElementById('aConsent').checked;
+  const guard = document.getElementById('aGuard').checked;
+  authEmail = email;
+  const nowY = new Date().getFullYear();
+  const age = year ? nowY - year : null;
+  let problem = '';
+  if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
+  else if (pw.length < 8) problem = 'Das Passwort braucht mindestens 8 Zeichen.';
+  else if (!year || year < 1900 || year > nowY) problem = 'Bitte gib dein Geburtsjahr ein.';
+  else if (age < MIN_AGE) problem = 'Für dein Alter ist die App leider nicht vorgesehen.';
+  else if (!consent) problem = 'Bitte stimme der Datenschutzerklärung zu.';
+  else if (age < PARENT_AGE && !guard) problem = 'Ein Elternteil muss der Registrierung zustimmen.';
+  if (problem) {
+    authMsg = problem;
+    renderAuth('register');
+    const y = document.getElementById('aYear');
+    if (y) {
+      y.value = year || '';
+      updateAgeUi();
+    }
+    return;
+  }
+  await withBusy(btn, async () => {
+    const { data, error } = await cloud.signUp(email, pw, { birth_year: year, consent: true, guardian_consent: age < PARENT_AGE ? guard : false });
+    if (error) {
+      authMsg = authError(error);
+      return renderAuth('register');
+    }
+    authMsg = '';
+    if (data?.session?.user) return startSession(data.session.user);
+    renderAuth('confirm');
+  });
+}
+async function doForgot(btn) {
+  const email = document.getElementById('aEmail').value.trim();
+  authEmail = email;
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    authMsg = 'Bitte gib eine gültige E-Mail-Adresse ein.';
+    return renderAuth('forgot');
+  }
+  await withBusy(btn, async () => {
+    const { error } = await cloud.resetPassword(email);
+    authMsg = error ? authError(error) : 'Wenn es ein Konto zu dieser Adresse gibt, ist eine E-Mail mit dem Link unterwegs.';
+    renderAuth('forgot');
+  });
+}
+async function doNewPw(btn) {
+  const a = document.getElementById('aPw').value;
+  const b = document.getElementById('aPw2').value;
+  if (a.length < 8) {
+    authMsg = 'Das Passwort braucht mindestens 8 Zeichen.';
+    return renderAuth('newpw');
+  }
+  if (a !== b) {
+    authMsg = 'Die Passwörter stimmen nicht überein.';
+    return renderAuth('newpw');
+  }
+  await withBusy(btn, async () => {
+    const { data, error } = await cloud.updatePassword(a);
+    if (error) {
+      authMsg = authError(error);
+      return renderAuth('newpw');
+    }
+    authMsg = '';
+    await startSession(data.user);
+  });
+}
+async function doLogout() {
+  const ok = await pushNow();
+  if (!ok && !confirm('Die letzten Änderungen konnten nicht gesichert werden. Trotzdem abmelden? Sie gehen dann verloren.')) return;
+  try {
+    await cloud.signOut();
+  } catch {
+    /* lokal abmelden genügt */
+  }
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(SYNC_KEY);
+  } catch {
+    /* ignorieren */
+  }
+  location.hash = '';
+  location.reload();
+}
+async function doDeleteAccount() {
+  if (!confirm('Konto wirklich löschen?\n\nDein Konto und alle gesicherten Daten werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.')) return;
+  if (!confirm('Letzte Rückfrage: Konto jetzt endgültig löschen?')) return;
+  try {
+    await cloud.deleteAccount();
+  } catch {
+    alert('Das Konto konnte nicht gelöscht werden. Bitte versuche es später noch einmal.');
+    return;
+  }
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(SYNC_KEY);
+  } catch {
+    /* ignorieren */
+  }
+  location.hash = '';
+  location.reload();
+}
+
+/* ---- Konto in den Einstellungen und rechtliche Seiten (Entwurf) ---- */
+function accountSection() {
+  if (!account) return '';
+  return `<h2>Konto</h2>
+  <div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
+  <p class="muted small" style="margin:8px 0 0">${esc(syncLabel())}</p></div>
+  <div class="btn-row"><button class="ghost" data-act="logout">Abmelden</button></div>
+  <p class="muted small"><a href="#/datenschutz"><u>Datenschutz</u></a> · <a href="#/impressum"><u>Impressum</u></a></p>`;
+}
+function accountDangerZone() {
+  if (!account) return '';
+  return `<div class="btn-row"><button class="danger" data-act="delacc">Konto löschen</button></div>`;
+}
+const draftBanner = '<div class="notice"><b>Entwurf.</b> Dieser Text ist nicht rechtlich geprüft und muss vor einer Veröffentlichung von einer fachkundigen Person durchgesehen und ergänzt werden. Angaben in eckigen Klammern fehlen noch.</div>';
+function legalPrivacy() {
+  return `<h1>Datenschutz</h1>${draftBanner}
+  <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
+  <h2>Welche Daten werden verarbeitet?</h2>
+  <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
+  <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Trainingsstand, Max-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
+  <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse.</li></ul>
+  <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
+  <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
+  <h2>Kinder und Jugendliche</h2><p>Bis zu einem Alter von 16 Jahren ist die Einwilligung eines Elternteils nötig. Die App ist nicht für Kinder unter 14 Jahren vorgesehen. Das Alter wird nur anhand des Geburtsjahres geprüft, ohne Nachweis. [Prüfen lassen]</p>
+  <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
+  <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen und Fortschritt zusätzlich in deinem Browser, damit sie auch offline funktioniert. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
+  <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten endgültig gelöscht.</p>
+  <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
+}
+function legalImprint() {
+  return `<h1>Impressum</h1>${draftBanner}
+  <h2>Anbieter</h2><p>[Name, Anschrift]</p>
+  <h2>Kontakt</h2><p>[E-Mail-Adresse, ggf. Telefon]</p>
+  <h2>Hinweis</h2><p>Die Angaben müssen vor einer Veröffentlichung vollständig und richtig ergänzt werden.</p>`;
+}
+const viewLegal = (which) => `<a href="#/settings" class="back">← Einstellungen</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
+
 /* ---------------- Ereignisse ---------------- */
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-act]');
   if (!t) return;
+  if (t.tagName === 'A' && t.getAttribute('href') === '#') e.preventDefault();
   const act = t.dataset.act;
   switch (act) {
+    case 'auth-view':
+      authMsg = '';
+      renderAuth(t.dataset.v);
+      break;
+    case 'auth-login':
+      doLogin(t);
+      break;
+    case 'auth-register':
+      doRegister(t);
+      break;
+    case 'auth-forgot':
+      doForgot(t);
+      break;
+    case 'auth-newpw':
+      doNewPw(t);
+      break;
+    case 'logout':
+      doLogout();
+      break;
+    case 'delacc':
+      doDeleteAccount();
+      break;
     case 'ob-next':
       obNext();
       break;
@@ -1278,12 +1706,20 @@ document.addEventListener('change', (e) => {
   }
 });
 
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => {
+  if (account) route();
+});
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'aYear') updateAgeUi();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target && e.target.closest && e.target.closest('#auth') && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
+    document.querySelector('#auth .primary')?.click();
+  }
+});
 
 /* ---------------- Start ---------------- */
-route();
-if (!state.onboarded) startOnboarding();
-scheduleReminder();
+boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
