@@ -11,6 +11,8 @@ Hinweis: Absender ("Supabase Auth, noreply@mail.app.supabase.io") ändert sich d
 
 **Wichtig (Code statt Link):** Die Vorlagen 1 und 2 enthalten jetzt `{{ .Token }}`, den Zahlen-Code, den man in der App eintippt. Ein Link in der E-Mail öffnet immer den Browser, nie die installierte App (auf dem iPhone technisch nicht möglich). Beide Vorlagen müssen in Supabase ersetzt werden, sonst steht in der E-Mail kein Code. Länge des Codes: Supabase → Authentication → Sign In / Providers → Email → „Email OTP Length“ (Standard 6, die App akzeptiert 6 bis 10 Ziffern).
 
+**Neu: Anmeldung per Code.** Die App meldet standardmäßig mit einem Code an (kein Passwort nötig). Neue Konten bekommen dabei die Vorlage 1 (Confirm signup), bestehende Konten die Vorlage 4 (Magic link). Beide müssen `{{ .Token }}` enthalten. Vorlage 2 (Reset password) wird von der App nicht mehr ausgelöst, nur alte Links funktionieren noch.
+
 ## 1. Confirm signup (Konto bestätigen)
 
 **Subject:**
@@ -102,3 +104,33 @@ Neue E-Mail-Adresse bestätigen – Nonstop Boxing
 </div>
 ```
 
+
+## 4. Magic link (Anmeldung per Code, bestehende Konten)
+
+Supabase: Authentication → Emails → Templates → **Magic link**.
+
+**Subject:**
+
+```
+Dein Anmelde-Code für Nonstop Boxing
+```
+
+**Message body:**
+
+```html
+<div style="background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <tr><td style="background:#07080c;padding:22px 24px;text-align:center;">
+      <span style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff;">NONSTOP <span style="color:#ff2d46;">BOXING</span></span><br>
+      <span style="font-size:11px;letter-spacing:2px;color:#b8bcc8;">MEHR KONDITION BIS ZUR LETZTEN RUNDE</span>
+    </td></tr>
+    <tr><td style="padding:28px 24px 8px;color:#111827;">
+      <h1 style="margin:0 0 12px;font-size:22px;">Dein Anmelde-Code</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Gib diesen Code in der App ein, dann bist du angemeldet.</p>
+      <p style="margin:0 0 22px;text-align:center;font-size:34px;font-weight:800;letter-spacing:8px;color:#111827;">{{ .Token }}</p>
+      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Der Code gilt nur kurze Zeit. Wenn du dich nicht anmelden wolltest, ignoriere diese E-Mail.</p>
+<p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
+    </td></tr>
+  </table>
+</div>
+```
