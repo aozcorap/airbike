@@ -9,6 +9,8 @@ So übernimmst du sie (ca. 5 Minuten, kostenlos):
 
 Hinweis: Absender ("Supabase Auth, noreply@mail.app.supabase.io") ändert sich dadurch nicht. Dafür braucht es einen eigenen E-Mail-Dienst (siehe `OFFENE-PUNKTE.md`).
 
+**Wichtig (Code statt Link):** Die Vorlagen 1 und 2 enthalten jetzt `{{ .Token }}`, den Zahlen-Code, den man in der App eintippt. Ein Link in der E-Mail öffnet immer den Browser, nie die installierte App (auf dem iPhone technisch nicht möglich). Beide Vorlagen müssen in Supabase ersetzt werden, sonst steht in der E-Mail kein Code. Länge des Codes: Supabase → Authentication → Sign In / Providers → Email → „Email OTP Length“ (Standard 6, die App akzeptiert 6 bis 10 Ziffern).
+
 ## 1. Confirm signup (Konto bestätigen)
 
 **Subject:**
@@ -28,9 +30,11 @@ Bestätige dein Konto bei Nonstop Boxing
     </td></tr>
     <tr><td style="padding:28px 24px 8px;color:#111827;">
       <h1 style="margin:0 0 12px;font-size:22px;">Willkommen bei Nonstop Boxing</h1>
-      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Noch ein Schritt: Bestätige deine E-Mail-Adresse, dann kannst du dich anmelden und deinen Trainingsplan einrichten.</p>
-      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">E-Mail-Adresse bestätigen</a></p>
-      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Der Link funktioniert nur kurze Zeit. Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Noch ein Schritt: Gib diesen Code in der App ein, dann ist deine E-Mail-Adresse bestätigt.</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#374151;">Dein Code für die App:</p>
+      <p style="margin:0 0 22px;text-align:center;font-size:34px;font-weight:800;letter-spacing:8px;color:#111827;">{{ .Token }}</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Alternativ im Browser bestätigen</a></p>
+      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Der Code und der Link gelten nur kurze Zeit. Der Link öffnet den Browser, nicht die App. Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
 <p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
     </td></tr>
     <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
@@ -57,8 +61,10 @@ Passwort zurücksetzen – Nonstop Boxing
     </td></tr>
     <tr><td style="padding:28px 24px 8px;color:#111827;">
       <h1 style="margin:0 0 12px;font-size:22px;">Neues Passwort festlegen</h1>
-      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Du hast ein neues Passwort für dein Konto angefordert. Tippe auf den Knopf und wähle ein neues Passwort.</p>
-      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Neues Passwort festlegen</a></p>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Du hast ein neues Passwort für dein Konto angefordert. Gib diesen Code in der App ein und wähle ein neues Passwort.</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#374151;">Dein Code für die App:</p>
+      <p style="margin:0 0 22px;text-align:center;font-size:34px;font-weight:800;letter-spacing:8px;color:#111827;">{{ .Token }}</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Alternativ im Browser festlegen</a></p>
       <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Wenn du das nicht angefordert hast, ignoriere diese E-Mail. Dein Passwort bleibt dann unverändert.<br>Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
 <p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
     </td></tr>
