@@ -17,7 +17,7 @@ Stand: 15.11.2026. Wird bei Änderungen nachgeführt.
 
 ## Technisch
 
-8. **Konto-Dienst (Supabase):** E-Mail-Versand des Standard-Dienstes ist stark begrenzt, für echten Betrieb eigenen Mail-Dienst einrichten. Schutz gegen geleakte Passwörter ist aus, Mindestpasswort serverseitig 6 Zeichen.
+8. **Konto-Dienst (Supabase):** E-Mails laufen über den IONOS-Server (Absender Nonstop Boxing), die drei Vorlagen sind eingetragen (Vorlagen in `docs/E-MAIL-VORLAGEN.md`, getestet nur die Passwort-Mail). Offen: Bestätigungs-Mail testen, Sendegrenzen von IONOS und Supabase (30 Mails pro Stunde) bei vielen Nutzern prüfen. Schutz gegen geleakte Passwörter ist aus, Mindestpasswort serverseitig 6 Zeichen.
 9. **Der Plan ist öffentlich lesbar.** Das Login schützt nur den Fortschritt der Nutzer, nicht den Plan.
 10. **Projekt `matchmaker` in Supabase ist pausiert** (Gratis-Plan erlaubt zwei Projekte).
 11. **Nicht testbar von der KI:** iOS-Safari, Ton und Vibration des Timers, Offline-Betrieb. Auf dem Handy prüfen.
