@@ -784,7 +784,8 @@ function profileSettingsInfo() {
 }
 
 function viewSettings() {
-  const age = Number(state.age);
+  const accAge = account && account.birthYear ? new Date().getFullYear() - account.birthYear : 0; // aus dem Geburtsjahr der Registrierung
+  const age = accAge || Number(state.age);
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const notifSupported = 'Notification' in window;
@@ -816,9 +817,9 @@ function viewSettings() {
     ${effFreq() >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
     ${userFreq() > effFreq() ? `<div><label>Aktive Erholung</label>${dayOpts('rec')}</div>` : ''}
   </div>
-  <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
-  <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
-  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter.</p>` : ''}
+  ${accAge ? '' : `<label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
+  <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">`}
+  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter${accAge ? ' (aus deinem Geburtsjahr)' : ''}.</p>` : ''}
 
   <h2>Erinnerungen</h2>
   <label for="time">Uhrzeit</label>
@@ -2376,7 +2377,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 56;
+const APP_BUILD = 57;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
