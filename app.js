@@ -529,7 +529,7 @@ function viewFeedback() {
   <div class="seg">${kinds.map(([k, l]) => `<button class="opt sm ${fb.kind === k ? 'sel' : ''}" data-act="fb-kind" data-k="${k}"><b>${l}</b></button>`).join('')}</div>
   <label for="fbText">${fb.kind === 'fehler' ? 'Was ist passiert?' : fb.kind === 'idee' ? 'Was wünschst du dir?' : 'Was möchtest du wissen?'}</label>
   <textarea id="fbText" rows="6" maxlength="4000" placeholder="${fb.kind === 'fehler' ? 'Was hast du gemacht, was hast du erwartet, was ist stattdessen passiert?' : 'Schreib in eigenen Worten.'}">${esc(fb.text)}</textarea>
-  <p class="muted small">Mit der Meldung schicken wir automatisch mit: die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse). Bitte schreibe keine privaten Daten in den Text.</p>
+  <p class="muted small"><b>Deine Meldung wird öffentlich auf GitHub veröffentlicht</b>, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir schicken automatisch mit: die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse). Bitte schreibe keine privaten Daten in den Text.</p>
   <button class="primary block" data-act="fb-send" ${fb.busy ? 'disabled' : ''}>${fb.busy ? 'Wird gesendet …' : 'Absenden'}</button>`;
 }
 
@@ -544,7 +544,6 @@ async function sendFeedbackNow() {
   fb.busy = true;
   route();
   const row = {
-    user_id: account.id,
     kind: fb.kind,
     message: text,
     page: String(lastRoute).slice(0, 200),
@@ -1851,7 +1850,7 @@ function legalPrivacy() {
   <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
-  <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, speichern wir deinen Text, die Art der Meldung, die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse) zusammen mit deinem Konto. Sie werden gelöscht, wenn du dein Konto löschst. Meldungen können in anonymisierter Form (ohne E-Mail-Adresse) auf GitHub veröffentlicht werden. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
+  <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung (Text, Art, Seite, auf der du warst, App-Version, Gerätetyp und deine Einstellungen, z. B. Altersklasse) als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir speichern sie nicht zusätzlich in deinem Konto. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für Bestätigung und Zurücksetzen des Passworts wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
@@ -2170,7 +2169,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 46;
+const APP_BUILD = 47;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
