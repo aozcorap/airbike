@@ -17,7 +17,7 @@ Stand: 15.11.2026. Wird bei Änderungen nachgeführt.
 
 ## Technisch
 
-8. **Konto-Dienst (Supabase):** E-Mail-Versand des Standard-Dienstes ist stark begrenzt, für echten Betrieb eigenen Mail-Dienst einrichten. Schutz gegen geleakte Passwörter ist aus, Mindestpasswort serverseitig 6 Zeichen.
+8. **Konto-Dienst (Supabase):** E-Mail-Versand des Standard-Dienstes ist stark begrenzt und der Absender heißt „Supabase Auth". Für echten Betrieb eigenen Mail-Dienst mit eigener Absenderadresse einrichten. Texte der Mails: Vorlagen in `docs/E-MAIL-VORLAGEN.md` (noch nicht in Supabase eingetragen). Schutz gegen geleakte Passwörter ist aus, Mindestpasswort serverseitig 6 Zeichen.
 9. **Der Plan ist öffentlich lesbar.** Das Login schützt nur den Fortschritt der Nutzer, nicht den Plan.
 10. **Projekt `matchmaker` in Supabase ist pausiert** (Gratis-Plan erlaubt zwei Projekte).
 11. **Nicht testbar von der KI:** iOS-Safari, Ton und Vibration des Timers, Offline-Betrieb. Auf dem Handy prüfen.

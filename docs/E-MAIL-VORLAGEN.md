@@ -1,0 +1,98 @@
+# E-Mail-Vorlagen für Nonstop Boxing (Supabase)
+
+So übernimmst du sie (ca. 5 Minuten, kostenlos):
+
+1. Supabase öffnen, Projekt **last-round** wählen.
+2. Links **Authentication** → **Emails** → Reiter **Templates**.
+3. Je Vorlage unten: Betreff in das Feld **Subject** einfügen, den HTML-Block in das Feld **Message body** (alten Inhalt vorher löschen), dann **Save**.
+4. Nicht ändern: die Platzhalter in doppelten geschweiften Klammern (`{{ .ConfirmationURL }}`, `{{ .NewEmail }}`). Sie ersetzt Supabase selbst.
+
+Hinweis: Absender ("Supabase Auth, noreply@mail.app.supabase.io") ändert sich dadurch nicht. Dafür braucht es einen eigenen E-Mail-Dienst (siehe `OFFENE-PUNKTE.md`).
+
+## 1. Confirm signup (Konto bestätigen)
+
+**Subject:**
+
+```
+Bestätige dein Konto bei Nonstop Boxing
+```
+
+**Message body:**
+
+```html
+<div style="background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <tr><td style="background:#07080c;padding:22px 24px;text-align:center;">
+      <span style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff;">NONSTOP <span style="color:#ff2d46;">BOXING</span></span><br>
+      <span style="font-size:11px;letter-spacing:2px;color:#b8bcc8;">MEHR KONDITION BIS ZUR LETZTEN RUNDE</span>
+    </td></tr>
+    <tr><td style="padding:28px 24px 8px;color:#111827;">
+      <h1 style="margin:0 0 12px;font-size:22px;">Willkommen bei Nonstop Boxing</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Noch ein Schritt: Bestätige deine E-Mail-Adresse, dann kannst du dich anmelden und deinen Trainingsplan einrichten.</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">E-Mail-Adresse bestätigen</a></p>
+      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Der Link funktioniert nur kurze Zeit. Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
+      
+    </td></tr>
+    <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
+  </table>
+</div>
+```
+
+## 2. Reset password (Passwort zurücksetzen)
+
+**Subject:**
+
+```
+Passwort zurücksetzen – Nonstop Boxing
+```
+
+**Message body:**
+
+```html
+<div style="background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <tr><td style="background:#07080c;padding:22px 24px;text-align:center;">
+      <span style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff;">NONSTOP <span style="color:#ff2d46;">BOXING</span></span><br>
+      <span style="font-size:11px;letter-spacing:2px;color:#b8bcc8;">MEHR KONDITION BIS ZUR LETZTEN RUNDE</span>
+    </td></tr>
+    <tr><td style="padding:28px 24px 8px;color:#111827;">
+      <h1 style="margin:0 0 12px;font-size:22px;">Neues Passwort festlegen</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Du hast ein neues Passwort für dein Konto angefordert. Tippe auf den Knopf und wähle ein neues Passwort.</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Neues Passwort festlegen</a></p>
+      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Wenn du das nicht angefordert hast, ignoriere diese E-Mail. Dein Passwort bleibt dann unverändert.<br>Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
+      
+    </td></tr>
+    <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
+  </table>
+</div>
+```
+
+## 3. Change email address (E-Mail-Adresse ändern)
+
+**Subject:**
+
+```
+Neue E-Mail-Adresse bestätigen – Nonstop Boxing
+```
+
+**Message body:**
+
+```html
+<div style="background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <tr><td style="background:#07080c;padding:22px 24px;text-align:center;">
+      <span style="font-size:22px;font-weight:800;letter-spacing:3px;color:#ffffff;">NONSTOP <span style="color:#ff2d46;">BOXING</span></span><br>
+      <span style="font-size:11px;letter-spacing:2px;color:#b8bcc8;">MEHR KONDITION BIS ZUR LETZTEN RUNDE</span>
+    </td></tr>
+    <tr><td style="padding:28px 24px 8px;color:#111827;">
+      <h1 style="margin:0 0 12px;font-size:22px;">Neue E-Mail-Adresse bestätigen</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Bitte bestätige, dass dein Konto künftig diese E-Mail-Adresse nutzen soll: <b>{{ .NewEmail }}</b>.</p>
+      <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Neue Adresse bestätigen</a></p>
+      <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
+      
+    </td></tr>
+    <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
+  </table>
+</div>
+```
+
