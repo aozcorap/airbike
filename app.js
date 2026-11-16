@@ -488,7 +488,7 @@ function viewSession(id) {
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''}</p>
-  ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Kennst du ihn schon? Trage ihn hier ein, oder <a href="#/test"><u>mache den Fitness-Test</u></a>:${wattInput('mi')}<button class="primary block" style="margin-top:10px" data-act="savemax">Speichern</button></div>` : ''}
+  ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. <a href="#/test"><u>Mache den Fitness-Test</u></a> oder trage deinen Test-Watt in den <a href="#/settings"><u>Einstellungen</u></a> ein.</div>` : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
@@ -1597,17 +1597,28 @@ const syncLabel = () => {
   return i.dirty ? 'Wird gesichert …' : 'Noch nicht gesichert';
 };
 
+let loginAborted = false; // Anmeldung wurde abgebrochen, weil Änderungen eines anderen Kontos ungesichert auf dem Gerät liegen
+const pushQuick = () => withTimeout(pushNow(), 6000).catch(() => {}); // läuft bei Zeitüberschreitung im Hintergrund weiter
 async function syncOnLogin(user) {
   const info = readSync();
   if (info.owner && info.owner !== user.id) {
-    // Auf dem Gerät liegen Daten eines anderen Kontos: nicht übernehmen
+    // Auf dem Gerät liegen Daten eines anderen Kontos: nicht übernehmen. Sind sie noch nicht gesichert, vorher fragen.
+    if (info.dirty && hasProgress(state) && !confirm(`Auf diesem Gerät liegen noch nicht gesicherte Änderungen von ${info.email || 'einem anderen Konto'}. Sie gehen verloren, wenn du dich mit diesem Konto anmeldest.\n\nOK = trotzdem anmelden\nAbbrechen = abmelden, damit du dich mit dem anderen Konto anmelden kannst`)) {
+      loginAborted = true;
+      try {
+        await cloud.signOut();
+      } catch {
+        /* lokal abgemeldet genügt */
+      }
+      return;
+    }
     state = freshState();
     save(true);
     writeSync({ owner: user.id, email: user.email, syncedAt: '', dirty: false });
   }
   let remote;
   try {
-    remote = await cloud.pullState(user.id);
+    remote = await withTimeout(cloud.pullState(user.id), 6000);
   } catch {
     writeSync({ owner: user.id, email: user.email });
     syncStatus = navigator.onLine ? 'error' : 'offline';
@@ -1619,14 +1630,14 @@ async function syncOnLogin(user) {
     writeSync({ owner: user.id, email: user.email, syncedAt: remote ? remote.updated_at : '' });
     if (hasProgress(state)) {
       writeSync({ dirty: true });
-      await pushNow();
+      await pushQuick();
     } else writeSync({ dirty: false });
   } else if (!info2.owner && hasProgress(state)) {
     const useDevice = confirm('Auf diesem Gerät ist schon Fortschritt gespeichert.\n\nOK = Gerätedaten ins Konto übernehmen\nAbbrechen = Daten aus dem Konto laden');
     writeSync({ owner: user.id, email: user.email });
     if (useDevice) {
       writeSync({ syncedAt: remote.updated_at, dirty: true });
-      await pushNow();
+      await pushQuick();
     } else applyRemote(remote);
   } else if (info2.dirty) {
     writeSync({ owner: user.id, email: user.email });
@@ -1635,7 +1646,7 @@ async function syncOnLogin(user) {
       save(true);
       writeSync({ syncedAt: remote.updated_at });
     }
-    await pushNow();
+    await pushQuick();
   } else {
     writeSync({ owner: user.id, email: user.email });
     if (remote.updated_at !== info2.syncedAt) applyRemote(remote);
@@ -1659,6 +1670,12 @@ async function startSession(user, quick = false) {
     syncStatus = 'offline';
     withTimeout(syncOnLogin(account), 60000)
       .then(() => {
+        if (loginAborted) {
+          loginAborted = false;
+          account = null;
+          renderAuth('login');
+          return;
+        }
         if (!document.querySelector('.timer') && !document.getElementById('onboard')) route();
       })
       .catch(() => {
@@ -1666,9 +1683,16 @@ async function startSession(user, quick = false) {
       });
   } else {
     try {
-      await withTimeout(syncOnLogin(account), 8000);
+      // Kein äußeres Zeitlimit: Rückfragen an den Nutzer dürfen beliebig lange dauern, die Netzwerkaufrufe darin haben eigene Zeitlimits
+      await syncOnLogin(account);
     } catch {
       syncStatus = navigator.onLine ? 'error' : 'offline'; // mit lokalen Daten weiterarbeiten, später erneut versuchen
+    }
+    if (loginAborted) {
+      loginAborted = false;
+      account = null;
+      renderAuth('login');
+      return;
     }
   }
   if (!state.onboarded && ageClassKey()) state.profile = ageClassKey();
@@ -2358,7 +2382,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 74;
+const APP_BUILD = 75;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

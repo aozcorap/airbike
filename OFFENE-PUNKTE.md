@@ -29,7 +29,7 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 3. **Kalender-Export (.ics):** Einheiten, die aus dem Plan fallen, bleiben im Kalender stehen, weil sich Termine aus einer Datei nicht zuverlässig löschen lassen. Die App weist darauf hin. Dauer und Zeilenumbruch sind behoben.
 4. **Konto löschen** hat zwei Rückfragen, aber keine erneute Prüfung per Code.
 5. **Barrierefreiheit** (Screenreader liest bei jedem Seitenwechsel alles vor, Tabs ohne Auswahlstatus, kein Fokus in Dialogen): **bewusst nicht gemacht** (Entscheidung des Betreibers). Weitere Kleinigkeiten (`noscript`, Manifest-`id`, Link-Vorschau-Tags, toter Code `peakW`/`ack`, Erinnerung nach dem Abhaken) sind erledigt. Ein vollständiger Scan nach weiterem ungenutztem Code war nicht möglich, ein Sicherheits-Hook blockiert das Einlesen von `app.js`. Offen bleibt `color-scheme` (nicht auf dem iPhone prüfbar) und kein `og:image` (das Foto hat ein Wasserzeichen).
-6. **Weitere kleine Funde:** Ein Kontowechsel mit ungesicherten Daten verwirft sie still. Die Rückfrage beim Anmelden läuft in ein 8-Sekunden-Zeitlimit. Der Timer-Stand geht beim Neuladen verloren (die App warnt jetzt davor). Der Ton auf dem iPhone nach einer Sperre ist nicht auf dem Gerät geprüft.
+6. **Weitere kleine Funde:** Der Timer-Stand geht beim Neuladen verloren (die App warnt jetzt davor). Der Ton auf dem iPhone nach einer Sperre ist nicht auf dem Gerät geprüft.
 7. **Altnamen „redline"** stehen noch in Speicher-Schlüsseln (`redline.v1`, `redline.sync`, `redline.base`), im Cache (`redline-vNN`), in der Kalender-ID und in `rl-…`. Absichtlich nicht umbenannt, das würde lokale Daten und den Cache entwerten.
 
 ### Konto-Dienst und Betrieb (Supabase)
@@ -40,9 +40,8 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 
 ### Bedienung und Geräte
 12. **Eingabefeld „Uhrzeit"** in den Einstellungen ragte auf dem iPhone über den rechten Rand (Screenshot vom 16.11.). Korrigiert mit der üblichen iOS-Korrektur für Zeitfelder, **auf dem iPhone noch nicht bestätigt**.
-13. **Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`, Stand unklar, prüfen):** Einstellungen gruppieren und Gefahrenzone (A8, B5, B6), Uhrzeit-Format „06:00 PM" (C2), vier Eingabewege für den Test-Watt (B8).
-14. **Fitness-Test wiederholen:** Nach 28 Tagen erscheint ein Hinweis auf der Startseite, ein fester Ort in der App fehlt.
-15. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
+13. **Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`):** Erledigt sind: Kampftermin und Kampfformat stehen zusammen (A8), Alter kommt aus dem Geburtsjahr (B5), eigene „Gefahrenzone“ (B6), „Woche 10: 0/0“ (B7), nur noch drei Eingabewege für den Test-Watt (B8: auf der Einheit steht jetzt ein Link statt Eingabefeldern), fester Ort für „Fitness-Test wiederholen“ (Fortschritt, dazu der Hinweis nach 28 Tagen). Offen: Uhrzeit-Format „06:00 PM" (C2) ist auf deinem iPhone nicht aufgetreten (dort „18:00“), die Anzeige hängt von der Region des Geräts ab.
+14. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
 
 ## 4. Betrieb
 
@@ -71,4 +70,4 @@ Punkt 1.1 (Rechte am Plan) und 1.2 (Datenschutz) zuerst klären, danach 1.3 mit 
 
 ## Zuletzt erledigt (16.11.2026)
 
-Anmeldung per Code statt Passwort, Impressum und Datenschutz-Verantwortlicher eingetragen, Datenschutz-Text an das Verhalten angepasst, Sicherung ohne Datenverlust bei gleichzeitigen Änderungen, Import von Sicherungsdateien geprüft, Jugend-Sperre und Trainer-Freigabe entfernt, eigene Klasse für Kinder bis 14, Altersklasse mit Rückfall, Eingaben geprüft, Plan-Randfälle (Kampf in unter einer Woche, Kampftermin entfernen, Trainingstage), Timer-Rückfrage, Update-Hinweis über Intro und Timer.
+Anmeldung per Code statt Passwort, Impressum und Datenschutz-Verantwortlicher eingetragen, Datenschutz-Text an das Verhalten angepasst, Sicherung ohne Datenverlust bei gleichzeitigen Änderungen, Import von Sicherungsdateien geprüft, Jugend-Sperre und Trainer-Freigabe entfernt, eigene Klasse für Kinder bis 14, Altersklasse mit Rückfall, Eingaben geprüft, Plan-Randfälle (Kampf in unter einer Woche, Kampftermin entfernen, Trainingstage), Timer-Rückfrage, Update-Hinweis über Intro und Timer, Kontowechsel mit ungesicherten Daten fragt nach, Rückfragen beim Anmelden ohne Zeitlimit, Test-Watt auf der Einheit nur noch als Link.
