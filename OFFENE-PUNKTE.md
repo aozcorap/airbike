@@ -14,7 +14,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
 
 ## Fachlich
 
-5. **Jugendwerte (U15–U18)** sind Platzhalter und brauchen die Freigabe eines Trainers.
+5. **Jugendwerte (U17–U18, U16 und jünger)** sind Annahmen und nicht von einem Trainer geprüft. In der App gibt es keine Sperre und keine Freigabe mehr, Kinder unter 15 bekommen das Profil „U16 und jünger“ (schonendste Werte). Entscheidung des Betreibers.
 6. **Regeln für Rundenzahl und Alter** sind Annahmen (+1 Kampfrunde je 2 Runden ab 3, +2,5 % Umfang je Runde, höchstens +20 %). Nicht fachlich geprüft.
 7. **„Sportwissenschaftlich"** ist für Werbung nicht belegt. Das PDF nennt keine Studien mit Quelle. Nur „nach Prinzipien" formulieren, nie „bewiesen". Ein Trainer sollte das bestätigen.
 
