@@ -421,3 +421,5 @@ textarea:focus { outline: 2px solid var(--data, #5ac8fa); outline-offset: 2px; }
 #intro video { width: var(--vw); aspect-ratio: 9 / 16; object-fit: cover; background: #000; border-radius: 16px; display: block; }
 .intro-btn { min-height: 44px; padding: 0 16px; border-radius: 22px; background: rgba(255, 255, 255, .1); color: #fff; border: 1px solid rgba(255, 255, 255, .35); font-weight: 700; font-size: 16px; }
 .intro-btn.skip { background: linear-gradient(180deg, #ff4a5f, var(--accent-dark)); border-color: transparent; }
+
+.logout { color: #fff; background: rgba(255, 45, 70, .16); border: 1.5px solid var(--accent); font-weight: 700; }
