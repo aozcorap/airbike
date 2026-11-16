@@ -1,5 +1,5 @@
 // Service Worker: App-Dateien offline verfügbar machen (Cache zuerst, bei neuer Version aktualisieren).
-const CACHE = 'redline-v40';
+const CACHE = 'redline-v41'; // gleiche Zahl wie APP_BUILD in app.js
 const FILES = [
   './',
   'index.html',
@@ -32,9 +32,11 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (new URL(e.request.url).origin !== location.origin) return; // Konto-Server direkt ansprechen, nie zwischenspeichern
   if (e.request.url.endsWith('.mp4') || e.request.headers.has('range')) return; // Video direkt vom Server (Teil-Anfragen)
+  if (new URL(e.request.url).searchParams.has('check')) return; // Versionsprüfung der App: immer direkt vom Server
   e.respondWith(
     caches.match(e.request).then((hit) => {
-      const net = fetch(e.request)
+      // Dateien werden beim Nachladen immer beim Server geprüft (nicht aus dem 10-Minuten-Zwischenspeicher des Browsers)
+      const net = fetch(e.request.mode === 'navigate' ? e.request : new Request(e.request, { cache: 'no-cache' }))
         .then((res) => {
           if (res.ok && new URL(e.request.url).origin === location.origin) {
             const copy = res.clone();

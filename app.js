@@ -1861,7 +1861,7 @@ document.addEventListener('click', (e) => {
       break;
     case 'update-reload':
       if (document.body.classList.contains('running') && !confirm('Dein Training läuft noch. Trotzdem neu laden?')) break;
-      location.reload();
+      hardReload();
       break;
     case 'pickdate':
       openCalendar(t.dataset.for);
@@ -2031,6 +2031,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   navigator.serviceWorker
     .register('sw.js')
     .then((reg) => {
+      if (!reg) return;
       const check = () => reg.update().catch(() => {});
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') check();
@@ -2041,6 +2042,41 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (hadController) showUpdateBanner();
   });
+}
+// Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
+// Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
+const APP_BUILD = 41;
+async function checkForUpdate() {
+  try {
+    const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
+    const m = /redline-v(\d+)/.exec(await r.text());
+    if (m && Number(m[1]) > APP_BUILD) showUpdateBanner();
+  } catch {
+    /* offline: später erneut */
+  }
+}
+setTimeout(checkForUpdate, 4000);
+setInterval(checkForUpdate, 10 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForUpdate();
+});
+window.addEventListener('pageshow', checkForUpdate);
+window.addEventListener('online', checkForUpdate);
+async function hardReload() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    await Promise.all(['./', 'index.html', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'styles.css'].map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
+  } catch {
+    /* im Zweifel trotzdem neu laden */
+  }
+  location.reload();
 }
 function showUpdateBanner() {
   if (document.getElementById('update')) return;
