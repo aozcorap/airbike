@@ -347,10 +347,12 @@ export const WEEKS = SESSIONS.map((sessions, idx) => {
 });
 
 // Reihenfolge innerhalb einer Woche: Session 1, Erholung, Session 2, Session 3
-export function weekOrder(week, hardPerWeek = 3) {
-  const [s1, s2, s3] = week.sessions;
-  const hard = [s1, s2, s3].filter(Boolean).slice(0, hardPerWeek);
-  return [hard[0], week.recovery, ...hard.slice(1)].filter(Boolean);
+// Genau so viele Einheiten pro Woche, wie der Nutzer wählt (freq): harte Einheiten zuerst (höchstens hardPerWeek je Altersklasse),
+// reicht das nicht, kommt eine Aktive Erholung dazu. Die Aktive Erholung zählt mit und kommt nie zusätzlich.
+export function weekOrder(week, hardPerWeek = 3, freq = 3) {
+  const hard = week.sessions.filter(Boolean).slice(0, hardPerWeek);
+  const withRec = week.recovery && freq > hard.length;
+  return withRec ? [hard[0], week.recovery, ...hard.slice(1)].filter(Boolean) : hard;
 }
 
 export function findSession(id) {
