@@ -1820,8 +1820,7 @@ function renderAuth(view = 'login') {
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
       <p id="aAgeHint" class="muted small" style="margin:6px 0 0"></p>
-      <label for="aPw">Passwort (freiwillig, mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
-      <p class="muted small" style="margin:6px 0 0">Ohne Passwort meldest du dich immer mit einem Code per E-Mail an.</p>
+      <p class="muted small" style="margin:10px 0 0">Ein Passwort brauchst du nicht: Du meldest dich immer mit einem Code per E-Mail an. Ein Passwort kannst du später unter „Mehr“ festlegen.</p>
       <label class="chk" id="aGuardBox" hidden><input id="aGuard" type="checkbox"><span>Ein Elternteil oder Erziehungsberechtigter hat der Registrierung und der Verarbeitung der Daten zugestimmt.</span></label>
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
       <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
@@ -1884,7 +1883,6 @@ async function doLogin(btn) {
 }
 async function doRegister(btn) {
   const email = document.getElementById('aEmail').value.trim();
-  const pw = document.getElementById('aPw').value;
   const year = Number(document.getElementById('aYear').value);
   const consent = document.getElementById('aConsent').checked;
   const guard = document.getElementById('aGuard').checked;
@@ -1893,7 +1891,6 @@ async function doRegister(btn) {
   const age = year ? nowY - year : null;
   let problem = '';
   if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
-  else if (pw.length < 8) problem = 'Das Passwort braucht mindestens 8 Zeichen.';
   else if (!year || year < 1900 || year > nowY) problem = 'Bitte gib dein Geburtsjahr ein.';
   else if (age < MIN_AGE) problem = 'Für dein Alter ist die App leider nicht vorgesehen.';
   else if (!consent) problem = 'Bitte stimme der Datenschutzerklärung zu.';
@@ -1915,7 +1912,7 @@ async function doRegister(btn) {
       return renderAuth('register');
     }
     authMsg = '';
-    authPendingPw = pw;
+    authPendingPw = '';
     authPrev = 'register';
     renderAuth('confirm');
   });
@@ -2379,7 +2376,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 55;
+const APP_BUILD = 56;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
