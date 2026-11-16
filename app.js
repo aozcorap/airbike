@@ -1955,10 +1955,9 @@ function legalPrivacy() {
   <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
 }
 function legalImprint() {
-  return `<h1>Impressum</h1>${draftBanner}
-  <h2>Anbieter</h2><p>[Name, Anschrift]</p>
-  <h2>Kontakt</h2><p>[E-Mail-Adresse, ggf. Telefon]</p>
-  <h2>Hinweis</h2><p>Die Angaben müssen vor einer Veröffentlichung vollständig und richtig ergänzt werden.</p>`;
+  return `<h1>Impressum</h1>
+  <h2>Anbieter</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg</p>
+  <h2>Kontakt</h2><p>E-Mail: <a href="mailto:ahmet@ozcorapci.de">ahmet@ozcorapci.de</a></p>`;
 }
 const viewLegal = (which) => `<a href="#/more" class="back">← Mehr</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
 
@@ -2273,7 +2272,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 60;
+const APP_BUILD = 61;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
