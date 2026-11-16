@@ -664,12 +664,33 @@ async function sendFeedbackNow() {
   route();
 }
 
+function viewPassword() {
+  return `<a href="#/more" class="back">← Mehr</a><h1>Passwort ändern</h1>
+  <p class="muted">Wähle ein neues Passwort für dein Konto. Du bleibst angemeldet.</p>
+  <label for="pw1">Neues Passwort (mindestens 8 Zeichen)</label><input id="pw1" type="password" autocomplete="new-password">
+  <label for="pw2">Wiederholen</label><input id="pw2" type="password" autocomplete="new-password">
+  <button class="primary block" style="margin-top:16px" data-act="pw-change">Passwort speichern</button>`;
+}
+async function doChangePw(btn) {
+  const a = document.getElementById('pw1').value;
+  const b = document.getElementById('pw2').value;
+  if (a.length < 8) return toast('Das Passwort braucht mindestens 8 Zeichen.');
+  if (a !== b) return toast('Die Passwörter stimmen nicht überein.');
+  await withBusy(btn, async () => {
+    const { error } = await cloud.updatePassword(a);
+    if (error) return toast(authError(error));
+    toast('Passwort geändert');
+    location.hash = '#/more';
+  });
+}
+
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
   ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block" data-act="logout">Abmelden</button></div>` : ''}
+  ${account ? row('#/password', 'Passwort ändern', 'Neues Passwort für dein Konto festlegen') : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
@@ -844,7 +865,7 @@ function route() {
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'datenschutz', 'impressum'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'password', 'datenschutz', 'impressum'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -863,6 +884,7 @@ function route() {
     case 'feedback': html = viewFeedback(); break;
     case 'reports': html = viewReports(); loadReports(); break;
     case 'settings': html = viewSettings(); break;
+    case 'password': html = viewPassword(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
     case 'test': html = viewTest(); break;
@@ -1679,7 +1701,7 @@ async function boot() {
   await startSession(user, quickStart);
 }
 cloud.onAuth((event) => {
-  if (event === 'PASSWORD_RECOVERY') {
+  if (event === 'PASSWORD_RECOVERY' && !codeReset) {
     recovering = true;
     renderAuth('newpw');
   }
@@ -1744,6 +1766,7 @@ function authMessage() {
 function authError(err) {
   const m = String((err && (err.message || err.code)) || '');
   if (/invalid login|invalid_credentials/i.test(m)) return 'E-Mail oder Passwort stimmt nicht.';
+  if (/otp|token has expired|token.*invalid|expired/i.test(m)) return 'Der Code stimmt nicht oder ist abgelaufen. Prüfe die Zahl oder fordere einen neuen Code an.';
   if (/not confirmed|email_not_confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail. Schau auch im Spam-Ordner nach.';
   if (/rate limit|too many|over_email_send_rate_limit|over_request_rate_limit/i.test(m)) return 'Zu viele Versuche. Bitte warte kurz und versuche es später noch einmal.';
   if (/database error|saving new user|unexpected_failure/i.test(m)) return 'Die Registrierung ist nicht möglich. Bitte prüfe Alter und Einwilligung.';
@@ -1795,13 +1818,25 @@ function renderAuth(view = 'login') {
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
       <button class="primary block" style="margin-top:14px" data-act="auth-register">Konto erstellen</button>${legalLinks()}`;
   } else if (view === 'forgot') {
-    body = `${authBrand()}<h1 style="font-size:28px">Passwort vergessen</h1><p class="muted">Wir schicken dir einen Link zum Zurücksetzen.</p>${authMessage()}
+    body = `${authBrand()}<h1 style="font-size:28px">Passwort vergessen</h1><p class="muted">Wir schicken dir einen Code per E-Mail. Den gibst du hier in der App ein.</p>${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <button class="primary block" style="margin-top:16px" data-act="auth-forgot">Link senden</button>
+      <button class="primary block" style="margin-top:16px" data-act="auth-forgot">Code senden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="reset">Ich habe schon einen Code</button>
       <button class="linkbtn" data-act="auth-view" data-v="login">Zurück zur Anmeldung</button>`;
   } else if (view === 'confirm') {
-    body = `${authBrand()}<h1 style="font-size:28px">Fast geschafft</h1><p>Wir haben eine E-Mail an <b>${em}</b> geschickt. Tippe auf den Link darin, um dein Konto zu bestätigen. Danach meldest du dich hier an.</p><p class="muted small">Keine Mail da? Schau im Spam-Ordner nach.</p>
-      <button class="primary block" style="margin-top:16px" data-act="auth-view" data-v="login">Zur Anmeldung</button>`;
+    body = `${authBrand()}<h1 style="font-size:28px">Fast geschafft</h1><p>Wir haben einen Code an <b>${em}</b> geschickt. Gib ihn hier ein, dann ist dein Konto bestätigt und du bist angemeldet.</p>${authMessage()}
+      <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
+      <button class="primary block" style="margin-top:16px" data-act="auth-verify">Bestätigen</button>
+      <p class="muted small">Keine Mail da? Schau im Spam-Ordner nach. Der Link in der E-Mail geht auch, öffnet aber den Browser statt der App.</p>
+      <button class="linkbtn" data-act="auth-view" data-v="login">Zur Anmeldung</button>`;
+  } else if (view === 'reset') {
+    body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1><p class="muted">Gib den Code aus der E-Mail ein und wähle ein neues Passwort.</p>${authMessage()}
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
+      <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
+      <label for="aPw2">Wiederholen</label><input id="aPw2" type="password" autocomplete="new-password">
+      <button class="primary block" style="margin-top:16px" data-act="auth-reset">Passwort speichern</button>
+      <button class="linkbtn" data-act="auth-view" data-v="forgot">Neuen Code anfordern</button>`;
   } else if (view === 'newpw') {
     body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1>${authMessage()}
       <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
@@ -1898,8 +1933,12 @@ async function doForgot(btn) {
   }
   await withBusy(btn, async () => {
     const { error } = await cloud.resetPassword(email);
-    authMsg = error ? authError(error) : 'Wenn es ein Konto zu dieser Adresse gibt, ist eine E-Mail mit dem Link unterwegs.';
-    renderAuth('forgot');
+    if (error) {
+      authMsg = authError(error);
+      return renderAuth('forgot');
+    }
+    authMsg = 'Wenn es ein Konto zu dieser Adresse gibt, ist eine E-Mail mit dem Code unterwegs.';
+    renderAuth('reset');
   });
 }
 async function doNewPw(btn) {
@@ -1922,6 +1961,59 @@ async function doNewPw(btn) {
     authMsg = '';
     recovering = false;
     await startSession(data.user);
+  });
+}
+async function doVerify(btn) {
+  const code = document.getElementById('aCode').value.replace(/\s/g, '');
+  if (!/^\d{6,10}$/.test(code)) {
+    authMsg = 'Bitte gib den Code aus der E-Mail ein (nur Ziffern).';
+    return renderAuth('confirm');
+  }
+  await withBusy(btn, async () => {
+    const { data, error } = await cloud.verifyCode(authEmail, code, 'signup');
+    if (error || !data?.session?.user) {
+      authMsg = authError(error);
+      return renderAuth('confirm');
+    }
+    authMsg = '';
+    await startSession(data.session.user);
+  });
+}
+let codeReset = false; // verhindert, dass das Ereignis PASSWORD_RECOVERY die Code-Eingabe überschreibt
+async function doReset(btn) {
+  const email = document.getElementById('aEmail').value.trim();
+  const code = document.getElementById('aCode').value.replace(/\s/g, '');
+  const a = document.getElementById('aPw').value;
+  const b = document.getElementById('aPw2').value;
+  authEmail = email;
+  let problem = '';
+  if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
+  else if (!/^\d{6,10}$/.test(code)) problem = 'Bitte gib den Code aus der E-Mail ein (nur Ziffern).';
+  else if (a.length < 8) problem = 'Das Passwort braucht mindestens 8 Zeichen.';
+  else if (a !== b) problem = 'Die Passwörter stimmen nicht überein.';
+  if (problem) {
+    authMsg = problem;
+    return renderAuth('reset');
+  }
+  await withBusy(btn, async () => {
+    codeReset = true;
+    try {
+      const v = await cloud.verifyCode(email, code, 'recovery');
+      if (v.error || !v.data?.session) {
+        authMsg = authError(v.error);
+        return renderAuth('reset');
+      }
+      const { data, error } = await cloud.updatePassword(a);
+      if (error) {
+        authMsg = authError(error);
+        return renderAuth('reset');
+      }
+      authMsg = '';
+      recovering = false;
+      await startSession(data.user);
+    } finally {
+      codeReset = false;
+    }
   });
 }
 async function doLogout() {
@@ -2019,6 +2111,15 @@ document.addEventListener('click', (e) => {
       break;
     case 'auth-register':
       doRegister(t);
+      break;
+    case 'auth-verify':
+      doVerify(t);
+      break;
+    case 'auth-reset':
+      doReset(t);
+      break;
+    case 'pw-change':
+      doChangePw(t);
       break;
     case 'auth-forgot':
       doForgot(t);
@@ -2302,7 +2403,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 51;
+const APP_BUILD = 52;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
