@@ -1939,7 +1939,7 @@ function accountDangerZone() {
 const draftBanner = '<div class="notice"><b>Entwurf.</b> Dieser Text ist nicht rechtlich geprüft und muss vor einer Veröffentlichung von einer fachkundigen Person durchgesehen und ergänzt werden. Angaben in eckigen Klammern fehlen noch.</div>';
 function legalPrivacy() {
   return `<h1>Datenschutz</h1>${draftBanner}
-  <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
+  <h2>Wer ist verantwortlich?</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg<br>Kontakt für Datenschutzfragen: siehe Impressum.</p>
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse, Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
   <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung (Text, Art, Seite, auf der du warst, App-Version, Gerätetyp und deine Einstellungen, z. B. Altersklasse) als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir speichern sie nicht zusätzlich in deinem Konto. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
@@ -2272,7 +2272,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 61;
+const APP_BUILD = 62;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
