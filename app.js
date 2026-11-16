@@ -1441,8 +1441,6 @@ let authView = 'login';
 let authPrev = 'login';
 let authMsg = '';
 let authEmail = '';
-const MIN_AGE = 14; // nach Geburtsjahr, im Zweifel streng (siehe Datenbank-Regel)
-const PARENT_AGE = 17; // darunter Einwilligung der Eltern
 
 const readSync = () => {
   try {
@@ -1821,9 +1819,7 @@ ${legalLinks()}`;
     body = `${authBrand()}${authTabs('register')}${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
-      <p id="aAgeHint" class="muted small" style="margin:6px 0 0"></p>
       <p class="muted small" style="margin:10px 0 0">Du meldest dich immer mit einem Code per E-Mail an, ein Passwort gibt es nicht.</p>
-      <label class="chk" id="aGuardBox" hidden><input id="aGuard" type="checkbox"><span>Ein Elternteil oder Erziehungsberechtigter hat der Registrierung und der Verarbeitung der Daten zugestimmt.</span></label>
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
       <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
   } else if (view === 'confirm') {
@@ -1837,20 +1833,6 @@ ${legalLinks()}`;
     body = `<button class="ob-back" data-act="auth-view" data-v="${authPrev}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
   }
   authShell(body);
-  if (view === 'register') updateAgeUi();
-}
-function updateAgeUi() {
-  const y = Number(document.getElementById('aYear')?.value);
-  const hint = document.getElementById('aAgeHint');
-  const box = document.getElementById('aGuardBox');
-  if (!hint || !box) return;
-  const age = y ? new Date().getFullYear() - y : null;
-  box.hidden = !(age !== null && age >= MIN_AGE && age < PARENT_AGE);
-  if (age === null) hint.textContent = '';
-  else if (y < 1900 || y > new Date().getFullYear()) hint.textContent = 'Bitte gib ein gültiges Geburtsjahr ein.';
-  else if (age < MIN_AGE) hint.textContent = 'Für dein Alter ist die App leider nicht vorgesehen.';
-  else if (age < PARENT_AGE) hint.textContent = 'In deinem Alter brauchst du die Einwilligung eines Elternteils.';
-  else hint.textContent = '';
 }
 async function withBusy(btn, fn) {
   if (btn) btn.disabled = true;
@@ -1864,28 +1846,21 @@ async function doRegister(btn) {
   const email = document.getElementById('aEmail').value.trim();
   const year = Number(document.getElementById('aYear').value);
   const consent = document.getElementById('aConsent').checked;
-  const guard = document.getElementById('aGuard').checked;
   authEmail = email;
   const nowY = new Date().getFullYear();
-  const age = year ? nowY - year : null;
   let problem = '';
   if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
   else if (!year || year < 1900 || year > nowY) problem = 'Bitte gib dein Geburtsjahr ein.';
-  else if (age < MIN_AGE) problem = 'Für dein Alter ist die App leider nicht vorgesehen.';
   else if (!consent) problem = 'Bitte stimme der Datenschutzerklärung zu.';
-  else if (age < PARENT_AGE && !guard) problem = 'Ein Elternteil muss der Registrierung zustimmen.';
   if (problem) {
     authMsg = problem;
     renderAuth('register');
     const y = document.getElementById('aYear');
-    if (y) {
-      y.value = year || '';
-      updateAgeUi();
-    }
+    if (y) y.value = year || '';
     return;
   }
   await withBusy(btn, async () => {
-    const { error } = await cloud.sendCode(email, true, { birth_year: year, consent: true, guardian_consent: age < PARENT_AGE ? guard : false });
+    const { error } = await cloud.sendCode(email, true, { birth_year: year, consent: true });
     if (error) {
       authMsg = authError(error);
       return renderAuth('register');
@@ -1982,14 +1957,14 @@ function legalPrivacy() {
   return `<h1>Datenschutz</h1>${draftBanner}
   <h2>Wer ist verantwortlich?</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg<br>Kontakt für Datenschutzfragen: siehe Impressum.</p>
   <h2>Welche Daten werden verarbeitet?</h2>
-  <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse, Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
+  <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse, Geburtsjahr und der Zeitpunkt deiner Einwilligung.</li>
   <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Sie enthält deinen Text, die Art, die Seite, auf der du warst, die App-Version, die vollständige Kennung deines Browsers und Geräts, die Bildschirmgröße, ob du online warst, die letzte Fehlermeldung der App und deine Einstellungen (Altersklasse, Trainingshäufigkeit, Runden, ob ein Test-Watt vorliegt). Damit du den Stand sehen kannst, speichert die App in deinem Konto außerdem die Nummer deiner Meldung und ihre erste Zeile (bis 60 Zeichen). Das wird mit dem Konto gelöscht. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
-  <h2>Kinder und Jugendliche</h2><p>Bis zu einem Alter von 16 Jahren ist die Einwilligung eines Elternteils nötig. Die App ist nicht für Kinder unter 14 Jahren vorgesehen. Das Alter wird nur anhand des Geburtsjahres geprüft, ohne Nachweis. [Prüfen lassen]</p>
+  <h2>Alter</h2><p>Dein Geburtsjahr bestimmt deine Altersklasse und damit den Umfang deines Plans. Es gibt kein Mindestalter und keine Einwilligung der Eltern, das Alter wird nicht nachgewiesen. [Rechtlich prüfen lassen: Einwilligung Minderjähriger]</p>
   <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Meldungen laufen über Supabase zu GitHub. Wenn du unter „Meine Meldungen“ den Stand abrufst, verbindet sich dein Gerät direkt mit GitHub, das dabei deine IP-Adresse verarbeitet. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
   <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen, Fortschritt und dein Anmelde-Token zusätzlich in deinem Browser (lokaler Speicher), damit sie auch offline funktioniert und du angemeldet bleibst. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
   <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten in der Datenbank gelöscht. Sicherungskopien und Protokolle des Anbieters können noch eine begrenzte Zeit weiter bestehen. [Fristen prüfen und ergänzen]</p>
@@ -2290,9 +2265,6 @@ document.addEventListener('change', (e) => {
 window.addEventListener('hashchange', () => {
   if (account) route();
 });
-document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'aYear') updateAgeUi();
-});
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target && e.target.closest && e.target.closest('#auth') && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
     document.querySelector('#auth .primary')?.click();
@@ -2321,7 +2293,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 66;
+const APP_BUILD = 67;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
