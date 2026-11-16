@@ -697,7 +697,7 @@ function viewMore() {
   ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
   ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
   ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
-  <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde</p>`;
+  <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_BUILD}</p>`;
 }
 
 function viewProgress() {
@@ -2377,17 +2377,34 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 57;
+const APP_BUILD = 58;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
     const m = /redline-v(\d+)/.exec(await r.text());
-    if (m && Number(m[1]) > APP_BUILD) showUpdateBanner();
+    if (m && Number(m[1]) > APP_BUILD) {
+      // Direkt nach dem Start ohne Rückfrage neu laden (einmal je Version), sonst Hinweis mit Knopf
+      let tried = '';
+      try {
+        tried = sessionStorage.getItem('rl-auto') || '';
+      } catch {
+        /* egal */
+      }
+      if (performance.now() < 20000 && !document.body.classList.contains('running') && tried !== m[1]) {
+        try {
+          sessionStorage.setItem('rl-auto', m[1]);
+        } catch {
+          /* egal */
+        }
+        return void hardReload();
+      }
+      showUpdateBanner();
+    }
   } catch {
     /* offline: später erneut */
   }
 }
-setTimeout(checkForUpdate, 4000);
+setTimeout(checkForUpdate, 1500);
 setInterval(checkForUpdate, 10 * 60 * 1000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
