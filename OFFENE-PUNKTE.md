@@ -12,7 +12,7 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 6. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
 7. **Musik im Tester-Video** (CC BY 4.0, ende.app) verlangt Namensnennung des Urhebers. Prüfen, ob sie im Video und in der Beschreibung steht.
 8. **Test-Konten in Supabase löschen** vor dem Start: `lr-test-a@example.com` und ein unbestätigtes Konto, das bei einem Test der Registrierung entstanden ist (Authentication → Users).
-9. **GitHub-Token neu erzeugen.** Der Token wurde im Chat eingefügt. Neu erzeugen und im Vault ersetzen (SQL). Ablaufdatum prüfen, sonst gehen Meldungen still verloren.
+9. **GitHub-Token** (Vault `github_token`, nur Issues in `airbike`): **bewusst nicht erneuert** (Entscheidung des Betreibers). Er wurde früher einmal in einem Chat eingefügt, das Risiko gilt als klein. Laut Betreiber ein Jahr gültig, also bis ca. **November 2027**; dann neues Token erzeugen und im Vault ersetzen (sonst scheitern Meldungen mit „GitHub-Fehler 401"). Die Funktion nimmt zuerst das Secret `GITHUB_TOKEN`, falls es existiert, sonst den Vault.
 10. **Anmeldung per Code testen:** Registrieren, Code eingeben, abmelden, per Code wieder anmelden, auf iPhone und Android. Vorlagen 1 (Confirm signup) und 4 (Magic link) sind in Supabase eingetragen (`docs/E-MAIL-VORLAGEN.md`), die Mails sind aber nicht mit echtem Versand geprüft.
 
 ## 2. Fachlich
