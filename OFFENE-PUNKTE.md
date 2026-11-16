@@ -41,7 +41,7 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 ### Bedienung und Geräte
 12. **Eingabefeld „Uhrzeit"** in den Einstellungen ragte auf dem iPhone über den rechten Rand (Screenshot vom 16.11.). Korrigiert mit der üblichen iOS-Korrektur für Zeitfelder, **auf dem iPhone noch nicht bestätigt**.
 13. **Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`):** Erledigt sind: Kampftermin und Kampfformat stehen zusammen (A8), Alter kommt aus dem Geburtsjahr (B5), eigene „Gefahrenzone“ (B6), „Woche 10: 0/0“ (B7), nur noch drei Eingabewege für den Test-Watt (B8: auf der Einheit steht jetzt ein Link statt Eingabefeldern), fester Ort für „Fitness-Test wiederholen“ (Fortschritt, dazu der Hinweis nach 28 Tagen). Offen: Uhrzeit-Format „06:00 PM" (C2) ist auf deinem iPhone nicht aufgetreten (dort „18:00“), die Anzeige hängt von der Region des Geräts ab.
-14. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
+14. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, die Zurück-Geste im Timer auf dem iPhone (Rückfrage „Training wirklich verlassen?“ und Rückkehr zur laufenden Einheit), Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
 
 ## 4. Betrieb
 
