@@ -406,3 +406,10 @@ body { min-height: 100vh; min-height: 100dvh; }
 
 textarea { font: inherit; width: 100%; min-height: 140px; padding: 14px; border-radius: 14px; background: var(--surface-2, #1b1f28); color: var(--text); border: 1px solid var(--line); resize: vertical; line-height: 1.4; }
 textarea:focus { outline: 2px solid var(--data, #5ac8fa); outline-offset: 2px; }
+
+/* Meine Meldungen */
+#nav a { position: relative; }
+.navdot { position: absolute; top: 6px; right: calc(50% - 22px); width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 2px solid #0a0c12; }
+.newchip { display: inline-block; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; margin-left: 6px; }
+.reply { margin-top: 12px; padding: 10px 12px; border-left: 3px solid var(--ok); background: rgba(48, 209, 88, .08); border-radius: 0 10px 10px 0; }
+.reply p { margin: 4px 0 0; white-space: pre-wrap; }
