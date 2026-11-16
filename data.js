@@ -210,7 +210,8 @@ export const RECOVERY_OPTIONS = {
 export const PROFILES = {
   elite: { name: 'Elite / Erwachsene', roundSecs: 180, volume: 1, maxSprintSecs: 30, hardPerWeek: 3, wattCapPct: 0 },
   u18: { name: 'U17–U18', roundSecs: 180, volume: 0.8, maxSprintSecs: 20, hardPerWeek: 3, wattCapPct: 100 },
-  u16: { name: 'U16 und jünger', roundSecs: 120, volume: 0.6, maxSprintSecs: 15, hardPerWeek: 2, wattCapPct: 90 },
+  u16: { name: 'U15–U16', roundSecs: 120, volume: 0.6, maxSprintSecs: 15, hardPerWeek: 2, wattCapPct: 90 },
+  u14: { name: 'U13–U14 und jünger', roundSecs: 120, volume: 0.5, maxSprintSecs: 10, hardPerWeek: 2, wattCapPct: 80 },
 };
 
 // ---------- Phasen ----------
