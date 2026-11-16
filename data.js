@@ -406,9 +406,15 @@ export function resolveTarget(step, ctx) {
     if (maxW) {
       let top = r5((maxW * arr[1]) / 100);
       let low = r5((maxW * arr[0]) / 100);
+      let floored = '';
       if (step.kind === 'easy') {
+        const rawLow = low;
+        const rawTop = top;
         low = Math.max(low, 80);
         top = Math.max(top, low + 40);
+        if (low !== rawLow || top !== rawTop) {
+          floored = `${lbl} von deinem Test-Watt wären ${rawLow === rawTop ? rawLow : `${rawLow}–${rawTop}`} W. Hier gelten mindestens 80 W und eine Spanne von 40 W, weil sich sehr niedrige Werte auf dem Air Bike schwer halten lassen.`;
+        }
       }
       if (step.hold) {
         const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
@@ -420,7 +426,7 @@ export function resolveTarget(step, ctx) {
         );
       } else {
         main = low === top ? `${low} W` : `${low}–${top} W`;
-        sub.push(`${lbl} von deinem Test-Watt`);
+        sub.push(floored || `${lbl} von deinem Test-Watt`);
       }
     } else {
       main = `${lbl} Test-Watt`;
