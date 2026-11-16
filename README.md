@@ -7,7 +7,7 @@ Web-App (installierbar auf dem Handy) für ein 10-Wochen-Air-Bike-Training für 
 - Geführter Fitness-Test (3 × 10 s), aus dem Durchschnitt (Test-Watt) werden alle Watt-Ziele berechnet
 - Intervall-Timer mit Ton, Vibration und aktivem Bildschirm
 - Kampfformat (3–12 Runden, 2 oder 3 Minuten) und Altersklasse steuern Umfang und Wattgrenzen
-- Altersklassen-Profile (Rundenlänge, Umfang, Sprintdauer, harte Sessions pro Woche, Watt-Obergrenze). Die Werte stehen in `data.js` unter `PROFILES`. **Die Jugendwerte sind Platzhalter und müssen von einem Fachtrainer freigegeben werden.** U13–U14 ist gesperrt.
+- Altersklassen-Profile (Rundenlänge, Umfang, Sprintdauer, harte Sessions pro Woche, Watt-Obergrenze). Die Werte stehen in `data.js` unter `PROFILES`. **Die Jugendwerte sind Annahmen und nicht von einem Fachtrainer geprüft.** Jüngere als U15 nutzen das Profil „U16 und jünger“. Es gibt weder eine Sperre noch eine Trainer-Freigabe in der App.
 - Aktive Erholung
 - Wochenplan, Kalender-Datei (.ics) mit Erinnerungen, Sicherung/Wiederherstellung
 - Pflicht-Login mit Konto (Supabase). Der Fortschritt wird je Konto gesichert und auch offline lokal zwischengespeichert; Datenschutz und Impressum sind nur Entwürfe

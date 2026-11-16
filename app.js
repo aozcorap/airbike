@@ -22,7 +22,6 @@ const DEFAULTS = {
   notify: false,
   recOpt: 'opt1',
   profile: 'elite',
-  approved: {},
   reports: {},
   onboarded: false,
 };
@@ -30,9 +29,9 @@ const DEFAULTS = {
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
-    return { ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {} };
+    return { ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {} };
   } catch {
-    return { ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {} };
+    return { ...DEFAULTS, days: { ...DEFAULTS.days }, done: {} };
   }
 }
 let state = load();
@@ -55,10 +54,6 @@ const profile = () => {
   const key = PROFILES[state.profile] ? state.profile : 'elite';
   return { key, ...PROFILES[key] };
 };
-const profileOk = () => {
-  const p = profile();
-  return p.approved || Boolean(state.approved[p.key]);
-};
 const ctx = () => {
   const p = profile();
   return { maxW: Number(state.maxW) || 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
@@ -76,17 +71,6 @@ const fmtRounds = () => Math.max(3, Math.min(12, Number(state.rounds) || 3));
 const fmtRoundSecs = () => (state.roundMin ? (Number(state.roundMin) === 2 ? 120 : 180) : (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) || 180);
 const formatLabel = () => `${fmtRounds()} Runden à ${fmtRoundSecs() / 60} Minuten`;
 const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile(), { rounds: fmtRounds(), roundSecs: fmtRoundSecs() });
-function profileBanner() {
-  const p = profile();
-  if (p.blocked) {
-    return `<div class="notice" style="background:#3a1311;border-color:#7a2622;color:#ff8a82"><b>Profil ${esc(p.name)}: Plan gesperrt.</b> Dieser Plan ist für diese Altersklasse nicht vorgesehen. Sprich mit einem Elternteil oder deinem Trainer.</div>`;
-  }
-  if (!profileOk()) {
-    return `<div class="notice"><b>Profil ${esc(p.name)}:</b> Die Werte sind Platzhalter und noch nicht von einem Fachtrainer freigegeben. Bestätige die Freigabe in den <a href="#/settings">Einstellungen</a>.</div>`;
-  }
-  return '';
-}
-
 // Letzten Fehler der App merken, damit er einer Meldung beigelegt werden kann
 let lastError = '';
 window.addEventListener('error', (e) => {
@@ -295,12 +279,12 @@ const ageClassKey = () => {
   const y = account && account.birthYear;
   if (!y) return null;
   const age = new Date().getFullYear() - y;
-  return age <= 14 ? 'u14' : age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
+  return age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
 };
 function allowedProfiles() {
   const own = ageClassKey();
   if (!own) return PROFILE_ORDER;
-  return PROFILE_ORDER.filter((k) => PROFILE_ORDER.indexOf(k) >= PROFILE_ORDER.indexOf(own) && (!PROFILES[k].blocked || k === own));
+  return PROFILE_ORDER.filter((k) => PROFILE_ORDER.indexOf(k) >= PROFILE_ORDER.indexOf(own));
 }
 function enforceProfile() {
   const own = typeof account !== 'undefined' ? ageClassKey() : null;
@@ -344,9 +328,6 @@ function maxWatNotice() {
 }
 
 function viewHome() {
-  if (profile().blocked) {
-    return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>${profileBanner()}`;
-  }
   const p = plan();
   const next = nextSession();
   const cw = currentWeek();
@@ -402,7 +383,7 @@ function viewHome() {
     : '';
 
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
-  ${profileBanner()}${fightInfo}
+  ${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
   ${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
@@ -419,7 +400,7 @@ function viewTest() {
     <li>Am Ende trägst du die drei Werte ein. Die App rechnet den Durchschnitt.</li>
   </ol>
   <div class="notice">Mache den Test nur ausgeruht und aufgewärmt, nicht nach einem harten Trainingstag. Bei Schwindel, Schmerz oder Atemnot sofort abbrechen. Der Wert schwankt mit der Tagesform. Wiederhole den Test alle paar Wochen.</div>
-  ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : '<a class="btn primary block" href="#/run/test" data-act="start">Test starten</a>'}
+  <a class="btn primary block" href="#/run/test" data-act="start">Test starten</a>
   <h2>Test-Watt schon bekannt?</h2>
   <p class="muted small">Dann trage hier nur den Durchschnitt deiner drei Sprints ein.</p>
   ${wattInput('mi')}
@@ -469,7 +450,7 @@ function viewWeek(n) {
   return `<a href="#/plan" class="back">← Plan</a>
   <div class="phase-dot" style="margin-top:8px"><span class="kicker">Phase ${pi + 1}</span><b>${esc(w.phase)}</b><div class="muted small">${esc(w.phaseText)}</div></div>
   <h1>Woche ${w.n}</h1>
-  ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}
+  ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}
   <div class="card"><div class="row between"><span class="muted">Belastung</span><b>${esc(w.load)}</b></div>
     <div class="load-bar" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i class="${i <= level ? 'on' : ''}"></i>`).join('')}</div></div>
   <h2>Einheiten</h2>
@@ -504,12 +485,11 @@ function viewSession(id) {
   <h1>${esc(session.title)}</h1>
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''}</p>
-  ${profileBanner()}
   ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Kennst du ihn schon? Trage ihn hier ein, oder <a href="#/test"><u>mache den Fitness-Test</u></a>:${wattInput('mi')}<button class="primary block" style="margin-top:10px" data-act="savemax">Speichern</button></div>` : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
-    ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : `<a class="btn primary" href="#/run/${id}" data-act="start">Starten</a>`}
+    <a class="btn primary" href="#/run/${id}" data-act="start">Starten</a>
   </div>
   <div class="btn-row">
     ${done ? `<button class="ghost" data-act="unmark" data-id="${id}">Als offen markieren</button>` : `<button class="ghost" data-act="markdone" data-id="${id}">Als erledigt markieren</button>`}
@@ -748,18 +728,13 @@ function viewInfo() {
 
 function profileSettingsInfo() {
   const p = profile();
-  if (p.blocked) return '<p class="muted small">Dieser Plan ist für U13–U14 gesperrt (Platzhalter-Entscheidung, bitte mit Fachtrainer klären).</p>';
   const rows = [
     ['Umfang', `${Math.round(p.volume * 100)} %`],
     ['Max-Sprint bis', `${p.maxSprintSecs} s`],
     ['Harte Sessions pro Woche', `${p.hardPerWeek}`],
     ['Watt-Obergrenze', p.wattCapPct && p.wattCapPct < 100 ? `${p.wattCapPct} % vom Test-Watt` : 'keine'],
   ];
-  const table = `<table class="targets"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</tbody></table>`;
-  const approve = p.approved
-    ? ''
-    : `${state.approved[p.key] ? '' : '<div class="notice">Platzhalterwerte, nicht freigegeben.</div>'}<label style="font-weight:400;display:flex;gap:10px;align-items:center"><input type="checkbox" style="width:auto" data-approve="${p.key}" ${state.approved[p.key] ? 'checked' : ''}> Ein Fachtrainer hat diese Werte freigegeben</label>`;
-  return table + approve;
+  return `<table class="targets"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</tbody></table>`;
 }
 
 function viewSettings() {
@@ -942,10 +917,6 @@ function unlockScreen() {
 }
 
 function runView(id) {
-  if (profile().blocked) {
-    location.hash = '#/';
-    return;
-  }
   const found = findInPlan(id);
   if (!found) {
     $app.innerHTML = notFound();
@@ -1283,7 +1254,7 @@ const OB_STEPS = ['welcome', 'fight', 'watt', 'done'];
 let ob = { step: 0 };
 
 function obProfileOpts() {
-  const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche', u14: 'Für diese Altersklasse ist der Plan nicht geeignet' };
+  const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche' };
   const ok = allowedProfiles();
   return Object.entries(PROFILES)
     .filter(([k]) => ok.includes(k))
@@ -1312,8 +1283,6 @@ function obBody(id) {
         : `<label>Altersklasse</label>${obProfileOpts()}`;
       return `<span class="kicker">Schritt 1 von 2</span><h1>Dein Kampf</h1>
         ${ageRow}
-        ${p.blocked ? '<div class="notice" style="background:rgba(255,45,70,.12);border-color:rgba(255,45,70,.5);color:#ff9aa6">Der Plan ist für diese Altersklasse gesperrt. Du kannst die App trotzdem einrichten, Einheiten starten geht aber nicht.</div>' : ''}
-        ${!p.approved && !p.blocked ? '<div class="notice">Die Werte für diese Altersklasse sind Platzhalter und müssen von einem verantwortlichen Trainer freigegeben werden.</div>' : ''}
         <label for="obFight">Kampftermin</label>
         ${dateField('obFight', ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}
         <button class="linkbtn inline" data-act="ob-nodate">Ich habe noch keinen Termin</button>
@@ -1368,14 +1337,14 @@ function renderOnboarding() {
   const id = OB_STEPS[ob.step];
   const last = ob.step === OB_STEPS.length - 1;
   const first = ob.step === 0;
-  const nextLabel = id === 'welcome' ? 'Verstanden, los geht’s' : last ? (state.maxW || profile().blocked ? 'Zur Übersicht' : 'Fitness-Test starten') : 'Weiter';
+  const nextLabel = id === 'welcome' ? 'Verstanden, los geht’s' : last ? (state.maxW ? 'Zur Übersicht' : 'Fitness-Test starten') : 'Weiter';
   const showNext = id !== 'watt';
   sheet.innerHTML = `<div class="sheet-in">
     <div class="ob-top">${first ? '<span></span>' : '<button class="ob-back" data-act="ob-back" aria-label="Zurück">← Zurück</button>'}
       <div class="dots" aria-hidden="true">${first ? '' : [1, 2].map((i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
       ${first ? '<button class="ob-skip" data-act="ob-skip">Überspringen</button>' : '<span></span>'}</div>
     <div class="ob-body">${obBody(id)}</div>
-    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? (state.maxW || profile().blocked ? 'ob-finish' : 'ob-test') : 'ob-next'}">${nextLabel}</button>${last && !state.maxW && !profile().blocked ? '<button class="linkbtn" data-act="ob-finish">Später, zur Übersicht</button>' : ''}</div>` : ''}
+    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? (state.maxW ? 'ob-finish' : 'ob-test') : 'ob-next'}">${nextLabel}</button>${last && !state.maxW ?'<button class="linkbtn" data-act="ob-finish">Später, zur Übersicht</button>' : ''}</div>` : ''}
   </div>`;
   sheet.scrollTop = 0;
 }
@@ -1495,8 +1464,8 @@ function mergeStates(base, local, remote) {
   return out;
 }
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
-const freshState = () => ({ ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {}, reports: {} });
-const normalizeState = (raw) => ({ ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {}, reports: raw.reports || {} });
+const freshState = () => ({ ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, reports: {} });
+const normalizeState = (raw) => ({ ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, reports: raw.reports || {} });
 // Sicherungsdatei prüfen: nur bekannte Felder mit gültigen Werten übernehmen, alles andere wird verworfen
 const isDayStr = (v) => v === '' || Boolean(parseDay(v));
 const isIso = (v) => typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v));
@@ -1525,7 +1494,6 @@ function sanitizeImport(obj) {
   c.recOpt = Object.hasOwn(RECOVERY_OPTIONS, obj.recOpt) ? obj.recOpt : DEFAULTS.recOpt;
   c.profile = Object.hasOwn(PROFILES, obj.profile) ? obj.profile : DEFAULTS.profile;
   for (const [id, at] of Object.entries(obj.done).slice(0, 500)) if (id.length <= 40 && isIso(at)) c.done[id] = at;
-  if (isObj(obj.approved)) for (const k of Object.keys(PROFILES)) if (obj.approved[k] === true) c.approved[k] = true;
   if (isObj(obj.reports)) {
     for (const [n, r] of Object.entries(obj.reports).slice(0, 100)) {
       if (!/^\d{1,9}$/.test(n) || !isObj(r)) continue;
@@ -2234,12 +2202,6 @@ document.addEventListener('change', (e) => {
     });
     return;
   }
-  if (t.dataset.approve) {
-    state.approved[t.dataset.approve] = t.checked;
-    save();
-    route();
-    return;
-  }
   if (t.dataset.set) {
     const k = t.dataset.set;
     if (k === 'profile' && !allowedProfiles().includes(t.value)) {
@@ -2293,7 +2255,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 67;
+const APP_BUILD = 68;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

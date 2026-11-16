@@ -206,12 +206,11 @@ export const RECOVERY_OPTIONS = {
 };
 
 // ---------- Profile (Altersklassen) ----------
-// ACHTUNG: Die Werte der Jugendprofile sind PLATZHALTER und nicht von einem Fachtrainer freigegeben.
+// Hinweis: Die Werte der Jugendprofile sind Annahmen und nicht von einem Fachtrainer geprüft.
 export const PROFILES = {
-  elite: { name: 'Elite / Erwachsene', roundSecs: 180, volume: 1, maxSprintSecs: 30, hardPerWeek: 3, wattCapPct: 0, approved: true },
-  u18: { name: 'U17–U18', roundSecs: 180, volume: 0.8, maxSprintSecs: 20, hardPerWeek: 3, wattCapPct: 100, approved: false },
-  u16: { name: 'U15–U16', roundSecs: 120, volume: 0.6, maxSprintSecs: 15, hardPerWeek: 2, wattCapPct: 90, approved: false },
-  u14: { name: 'U13–U14', blocked: true, approved: false },
+  elite: { name: 'Elite / Erwachsene', roundSecs: 180, volume: 1, maxSprintSecs: 30, hardPerWeek: 3, wattCapPct: 0 },
+  u18: { name: 'U17–U18', roundSecs: 180, volume: 0.8, maxSprintSecs: 20, hardPerWeek: 3, wattCapPct: 100 },
+  u16: { name: 'U16 und jünger', roundSecs: 120, volume: 0.6, maxSprintSecs: 15, hardPerWeek: 2, wattCapPct: 90 },
 };
 
 // ---------- Phasen ----------
@@ -493,7 +492,7 @@ function scaleBlock(b, p) {
 
 export function sessionBlocks(session, recoveryKey, profile, format) {
   if (session.type === 'recovery') return RECOVERY_OPTIONS[recoveryKey || 'opt1'].blocks;
-  if (!profile || profile.blocked) return session.blocks;
+  if (!profile) return session.blocks;
   const p = { ...profile, rounds: (format && format.rounds) || 3, roundSecs: (format && format.roundSecs) || profile.roundSecs || 180 };
   return session.blocks.map((b) => scaleBlock(b, p));
 }
