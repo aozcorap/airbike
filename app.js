@@ -279,7 +279,7 @@ const ageClassKey = () => {
   const y = account && account.birthYear;
   if (!y) return null;
   const age = new Date().getFullYear() - y;
-  return age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
+  return age <= 14 ? 'u14' : age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
 };
 function allowedProfiles() {
   const own = ageClassKey();
@@ -1254,7 +1254,7 @@ const OB_STEPS = ['welcome', 'fight', 'watt', 'done'];
 let ob = { step: 0 };
 
 function obProfileOpts() {
-  const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche' };
+  const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche', u14: 'Am stärksten reduziert, Sprints bis 10 Sekunden, 2 harte Einheiten pro Woche' };
   const ok = allowedProfiles();
   return Object.entries(PROFILES)
     .filter(([k]) => ok.includes(k))
@@ -2255,7 +2255,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 68;
+const APP_BUILD = 69;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
