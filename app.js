@@ -1719,8 +1719,8 @@ function showIntro() {
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-label', 'Intro-Video');
-  box.innerHTML = `<video src="video/start.mp4" autoplay muted playsinline preload="auto"></video>
-    <div class="intro-bar"><button class="intro-btn" data-act="intro-sound" aria-pressed="false">Ton an</button><button class="intro-btn skip" data-act="intro-skip">Überspringen</button></div>`;
+  box.innerHTML = `<div class="intro-bar"><button class="intro-btn" data-act="intro-sound" aria-pressed="false">Ton an</button><button class="intro-btn skip" data-act="intro-skip">Überspringen</button></div>
+    <video src="video/start.mp4" autoplay muted playsinline preload="auto"></video>`;
   document.body.appendChild(box);
   const v = box.querySelector('video');
   v.addEventListener('ended', closeIntro);
@@ -2302,7 +2302,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 50;
+const APP_BUILD = 51;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

@@ -51,7 +51,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
 
 ## Video
 
-12. **Video in der App (`video/start.mp4`)** zeigt noch den alten Ablauf (Max-Watt, Trainingsstand). Anpassen, wenn die App fertig ist.
+12. **Video in der App (`video/start.mp4`)** zeigt noch den alten Ablauf (Max-Watt, Trainingsstand). Der Name „Last Round“ ist per Überblendung durch „Nonstop Boxing“ ersetzt (Logo-Szene, App-Kopfzeile, Endkarte); sauberer wäre ein Neurender aus der Quelle. Anpassen, wenn die App fertig ist.
 13. **Trailer** (`video/trailer/`): Webadresse für Szene 9 fehlt. Siehe dort auch die offenen Punkte.
 
 ## Empfehlung
