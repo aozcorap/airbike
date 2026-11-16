@@ -113,7 +113,7 @@ const ladder = (counts) => {
   ];
   return loads.map(([n, on, off, reps, w]) => ({
     title: `${fmtSecs(on)} an${off ? ' · ' + fmtSecs(off) + ' aus' : ''}`,
-    desc: `${reps} × ${on} s Arbeit${off ? ' · ' + off + ' s Pause' : ''} · ${w ? w[0] + '–' + w[1] + ' W' : 'maximale Anstrengung'}`,
+    desc: `${reps} × ${on} s Arbeit${off ? ' · ' + off + ' s Pause' : ''} · ${w ? w[0] / 10 + '–' + w[1] / 10 + ' % Test-Watt' : 'maximale Anstrengung'}`,
     repeat: reps,
     steps: [
       work(`${on} s Arbeit`, on, w ? { w } : { maxEffort: true }),
@@ -483,7 +483,10 @@ function scaleBlock(b, p) {
       : capSteps(orig);
   const first = typeof steps === 'function' ? steps(1) : steps;
   const title = capped ? b.title.replace(/(\d+)(-s| s)\b/g, (m, n, u) => (Number(n) > p.maxSprintSecs ? `${p.maxSprintSecs}${u}` : m)) : b.title;
-  return { ...b, title, repeat, steps, desc: `${repeat}× (${describeSteps(first)})` };
+  // Originaltext behalten und nur die Wiederholungszahl austauschen; bei gekürzten Sprints wird der Text aus den Schritten gebaut
+  const keep = !capped && /^\d+\s*×/.test(b.desc || '');
+  const desc = keep ? b.desc.replace(/^\d+\s*×/, `${repeat} ×`) : `${repeat}× (${describeSteps(first)})`;
+  return { ...b, title, repeat, steps, desc };
 }
 
 export function sessionBlocks(session, recoveryKey, profile, format) {
