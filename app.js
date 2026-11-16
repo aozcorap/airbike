@@ -226,6 +226,22 @@ function saveSprints(pre) {
   save();
   return true;
 }
+// Wer seinen Test-Watt schon kennt, trägt nur den Durchschnitt ein
+const wattInput = (pre) =>
+  `<label for="${pre}W" class="small" style="margin:0 0 4px">Dein Test-Watt (Durchschnitt aus drei Sprints)</label><input id="${pre}W" type="number" inputmode="numeric" min="100" max="3000" step="1" placeholder="Watt" aria-label="Dein Test-Watt in Watt">`;
+function saveTestWatt(pre) {
+  const v = Number(document.getElementById(pre + 'W')?.value);
+  if (!(v >= 100 && v <= 3000)) {
+    alert('Bitte gib einen Wert zwischen 100 und 3000 Watt ein.');
+    return false;
+  }
+  state.maxW = Math.round(v);
+  state.sprints = [];
+  state.peakW = 0;
+  state.maxWDate = new Date().toISOString();
+  save();
+  return true;
+}
 const testWattLine = () =>
   state.maxW
     ? `<p>Dein Test-Watt: <b>${state.maxW} W</b>${state.sprints && state.sprints.length === 3 ? ` (Durchschnitt aus ${state.sprints.join(', ')} W)` : ''}${state.maxWDate ? ` · ${fmtDate(new Date(state.maxWDate))}` : ''}</p>`
@@ -381,8 +397,9 @@ function viewTest() {
   </ol>
   <div class="notice">Mache den Test nur ausgeruht und aufgewärmt, nicht nach einem harten Trainingstag. Bei Schwindel, Schmerz oder Atemnot sofort abbrechen. Der Wert schwankt mit der Tagesform. Wiederhole den Test alle paar Wochen.</div>
   ${profile().blocked ? '<span class="btn ghost" aria-disabled="true">Für dieses Profil gesperrt</span>' : '<a class="btn primary block" href="#/run/test" data-act="start">Test starten</a>'}
-  <h2>Oder Werte direkt eintragen</h2>
-  ${sprintInputs('mi')}
+  <h2>Test-Watt schon bekannt?</h2>
+  <p class="muted small">Dann trage hier nur den Durchschnitt deiner drei Sprints ein.</p>
+  ${wattInput('mi')}
   <button class="primary block" style="margin-top:12px" data-act="savemax">Speichern</button>`;
 }
 
@@ -454,7 +471,7 @@ function viewSession(id) {
   <p class="muted">${esc(session.focus)}</p>
   <p><span class="chip red">${isRec ? 'ca. ' + mins(secs) : 'ca. ' + mins(secs) + ' inkl. Warm-up'}</span> ${done ? '<span class="chip ok">erledigt</span>' : ''}</p>
   ${profileBanner()}
-  ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Trage die drei Sprints deines Fitness-Tests ein (<a href="#/test"><u>Test starten</u></a>):${sprintInputs('mi')}<button class="primary block" style="margin-top:10px" data-act="savemax">Speichern</button></div>` : ''}
+  ${needMax ? `<div class="notice"><b>Test-Watt fehlt.</b> Ohne ihn siehst du nur Prozentwerte. Kennst du ihn schon? Trage ihn hier ein, oder <a href="#/test"><u>mache den Fitness-Test</u></a>:${wattInput('mi')}<button class="primary block" style="margin-top:10px" data-act="savemax">Speichern</button></div>` : ''}
   ${optBtns}
   <h2>Ablauf</h2>${blockHtml}
   <div class="btn-row" style="position:sticky;bottom:calc(76px + env(safe-area-inset-bottom))">
@@ -1122,9 +1139,9 @@ function obBody(id) {
         <p class="muted">Du fährst drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte ist dein Test-Watt. Daraus berechnet die App jedes Watt-Ziel.</p>
         <button class="primary block" data-act="ob-test">Fitness-Test starten</button>
         <p class="muted small center" style="margin:8px 0 0">Geführt, mit Aufwärmen, etwa 10 Minuten.</p>
-        <details class="manual"><summary>Ich kenne meine drei Werte schon</summary>
-          <div style="margin-top:8px">${sprintInputs('ob')}</div>
-          <button class="ghost block" style="margin-top:12px" data-act="ob-savemax">Werte speichern</button></details>
+        <details class="manual"><summary>Ich kenne meinen Test-Watt schon</summary>
+          <div style="margin-top:8px">${wattInput('ob')}</div>
+          <button class="ghost block" style="margin-top:12px" data-act="ob-savemax">Test-Watt speichern</button></details>
         <button class="later" data-act="ob-next">Später machen (dann siehst du nur Prozentwerte)</button>`;
     case 'done': {
       const pl = plan();
@@ -1833,7 +1850,7 @@ document.addEventListener('click', (e) => {
       obNext(true);
       break;
     case 'ob-savemax':
-      if (saveSprints('ob')) {
+      if (saveTestWatt('ob')) {
         ob.step += 1;
         renderOnboarding();
       }
@@ -1894,7 +1911,7 @@ document.addEventListener('click', (e) => {
       if (saveSprints('tw')) location.hash = '#/';
       break;
     case 'savemax':
-      if (saveSprints('mi')) route();
+      if (saveTestWatt('mi')) route();
       break;
     case 'tpause':
       runCtl?.toggle();

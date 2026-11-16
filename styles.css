@@ -392,3 +392,5 @@ body.obopen { overflow: hidden; }
 #nav a[data-nav=more] circle { stroke: none; fill: currentColor; }
 .center { text-align: center; }
 #nav a.active[data-nav=more] circle { fill: var(--accent); }
+.sprint-grid > div { margin-bottom: 10px; }
+.manual input { margin-top: 2px; }
