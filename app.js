@@ -465,6 +465,47 @@ function viewSession(id) {
   </div>`;
 }
 
+function viewMore() {
+  const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
+  return `<h1>Mehr</h1>
+  ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
+  <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
+  <button class="ghost block" data-act="logout">Abmelden</button></div>` : ''}
+  ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
+  ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
+  ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
+  ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
+  <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde</p>`;
+}
+
+function viewProgress() {
+  const all = allSessions();
+  const total = all.length;
+  const done = all.filter(({ s }) => isDone(s.id)).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const d = daysToFight();
+  const cw = currentWeek();
+  const wk = cw ? weekOrder(cw) : [];
+  const wkDone = wk.filter((s) => isDone(s.id)).length;
+  const age = state.maxWDate ? Math.round((startOfDay(new Date()) - startOfDay(new Date(state.maxWDate))) / DAY) : 0;
+  const sp = state.sprints && state.sprints.length === 3 ? state.sprints : null;
+  return `<h1>Fortschritt</h1>
+  <div class="card hero"><span class="kicker">Einheiten</span>
+    <div class="bignum">${done}<span class="of"> / ${total}</span></div>
+    <div class="meter" role="img" aria-label="${pct} Prozent erledigt"><i style="width:${pct}%"></i></div>
+    <p class="muted small" style="margin:10px 0 0">${pct} % deines Plans erledigt${d !== null && d >= 0 ? ` · noch ${d} ${d === 1 ? 'Tag' : 'Tage'} bis zum Kampf` : ''}</p></div>
+  ${cw && wk.length ? `<div class="card"><div class="row between"><span class="muted">Diese Woche (Woche ${cw.n})</span><b>${wkDone} von ${wk.length}</b></div></div>` : ''}
+  <h2>Fitness-Test</h2>
+  <div class="card">
+    ${state.maxW ? `<div class="row between"><span class="muted">Test-Watt</span><b class="bignum-s">${state.maxW} W</b></div>
+      ${sp ? `<p class="muted small" style="margin:8px 0 0">Durchschnitt aus ${sp.join(', ')} W</p>` : ''}
+      ${state.maxWDate ? `<p class="muted small" style="margin:4px 0 0">Gemessen am ${fmtDate(new Date(state.maxWDate))}${age ? ` (vor ${age} Tagen)` : ''}</p>` : ''}
+      ${state.maxWDate && age >= 28 ? '<p class="amber-note">Zeit für einen neuen Test: Wiederhole ihn alle paar Wochen, damit die Watt-Ziele zu deiner Form passen.</p>' : ''}`
+      : '<p style="margin:0 0 4px"><b>Noch kein Test.</b> Ohne Test-Watt siehst du nur Prozentwerte.</p>'}
+    <a class="btn primary block" style="margin-top:12px" href="#/test">${state.maxW ? 'Test wiederholen' : 'Fitness-Test machen'}</a>
+  </div>`;
+}
+
 function viewInfo() {
   const p = profile();
   const pl = plan();
@@ -480,7 +521,7 @@ function viewInfo() {
       return `<li class="stepcard ${cls}"><span class="stepnum">${x.done ? '✓' : i + 1}</span><div class="stepbody"><h3>${x.title}${i === cur ? '<span class="steptag">Jetzt</span>' : ''}</h3><p>${x.text}</p>${x.value ? `<p class="stepval">${esc(x.value)}</p>` : ''}${i === cur ? `<div class="stepact">${x.btn}</div>` : x.done ? `<div class="stepact">${x.again}</div>` : ''}</div></li>`;
     })
     .join('');
-  return `<span class="kicker">Neu hier?</span><h1>So startest du</h1>
+  return `<a href="#/more" class="back">← Mehr</a><span class="kicker">Neu hier?</span><h1>So startest du</h1>
   <p class="muted">Drei Schritte, dann trainierst du nach deinem Plan.</p>
   <ol class="steps">${stepHtml}</ol>
   ${cur === -1 ? '<div class="notice">Alles eingerichtet. Deine nächste Einheit findest du unter <a href="#/"><u>Heute</u></a>.</div>' : ''}
@@ -525,44 +566,39 @@ function viewSettings() {
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const notifSupported = 'Notification' in window;
-  return `<h1>Einstellungen</h1>
-  ${accountSection()}
-  <div class="btn-row"><button class="ghost" data-act="ob-replay">Einführung noch einmal ansehen</button></div>
-  <h2>Profil (Altersklasse)</h2>
-  <label for="profile">Profil</label>
-  <select id="profile" data-set="profile">${Object.entries(PROFILES).filter(([k]) => allowedProfiles().includes(k) || state.profile === k).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
-  ${profileSettingsInfo()}
-  <h2>Training</h2>
-  <label for="maxW">Test-Watt (Durchschnitt deiner 3 Sprints)</label>
-  <input id="maxW" type="number" inputmode="numeric" min="0" max="3000" step="5" value="${state.maxW || ''}" data-set="maxW" placeholder="z. B. 1000">
-  <p class="muted small">Daraus berechnet die App alle Watt-Ziele. Am besten ermittelst du ihn mit dem geführten <a href="#/test">Fitness-Test</a>.</p>
+  return `<a href="#/more" class="back">← Mehr</a><h1>Einstellungen</h1>
 
-  <h2>Kampfformat</h2>
+  <h2>Dein Kampf</h2>
+  <label for="fightDate">Kampftermin (Turnier)</label>
+  ${dateField('fightDate', state.fightDate, 'data-set="fightDate"')}
+  ${!state.fightDate ? `<label for="startDate">Startdatum (nur ohne Kampftermin)</label>
+  ${dateField('startDate', state.startDate, 'data-set="startDate"')}` : ''}
   <label for="rounds">Anzahl der Runden im nächsten Kampf</label>
   <select id="rounds" data-set="rounds">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<option value="${n}" ${fmtRounds() === n ? 'selected' : ''}>${n} Runden</option>`).join('')}</select>
   <label for="roundMin">Länge einer Runde</label>
   <select id="roundMin" data-set="roundMin">${[2, 3].map((m) => `<option value="${m}" ${fmtRoundSecs() === m * 60 ? 'selected' : ''}>${m} Minuten</option>`).join('')}</select>
-  <p class="muted small">Daran richten sich die Kampfrunden und der Umfang im Plan aus. Die Zuordnung ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>
+  <p class="muted small">${esc(planSummary())} Daran richten sich auch die Kampfrunden und der Umfang aus. Die Zuordnung ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>
 
-  <h2>Aktive Erholung</h2>
-  <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
-  <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
-  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter.</p>` : ''}
-
-  <h2>Kampf und Termine</h2>
-  <label for="fightDate">Kampftermin (Turnier)</label>
-  ${dateField('fightDate', state.fightDate, 'data-set="fightDate"')}
+  <h2>Dein Training</h2>
+  <label for="profile">Altersklasse</label>
+  <select id="profile" data-set="profile">${Object.entries(PROFILES).filter(([k]) => allowedProfiles().includes(k) || state.profile === k).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+  ${profileSettingsInfo()}
+  <label for="maxW">Test-Watt (Durchschnitt deiner 3 Sprints)</label>
+  <input id="maxW" type="number" inputmode="numeric" min="0" max="3000" step="5" value="${state.maxW || ''}" data-set="maxW" placeholder="z. B. 1000">
+  <p class="muted small">Daraus berechnet die App alle Watt-Ziele. Am besten ermittelst du ihn mit dem geführten <a href="#/test"><u>Fitness-Test</u></a>.</p>
   <label for="freq">Training am Air Bike pro Woche</label>
   <select id="freq" data-set="freq">${[1, 2, 3].map((n) => `<option value="${n}" ${Number(state.freq) === n ? 'selected' : ''}>${n}× pro Woche</option>`).join('')}</select>
-  <p class="muted small">${esc(planSummary())}</p>
-  ${!state.fightDate ? `<label for="startDate">Startdatum (nur ohne Kampftermin)</label>
-  ${dateField('startDate', state.startDate, 'data-set="startDate"')}` : ''}
   <div class="field-row">
     <div><label>Einheit 1</label>${dayOpts('s1')}</div>
     <div><label>Aktive Erholung</label>${dayOpts('rec')}</div>
     ${effFreq() >= 2 ? `<div><label>Einheit 2</label>${dayOpts('s2')}</div>` : ''}
     ${effFreq() >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
   </div>
+  <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
+  <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
+  ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter.</p>` : ''}
+
+  <h2>Erinnerungen</h2>
   <label for="time">Uhrzeit</label>
   <input id="time" type="time" value="${esc(state.time)}" data-set="time">
   <div class="btn-row"><button class="primary" data-act="ics">Kalender-Datei (.ics) laden</button></div>
@@ -577,6 +613,9 @@ function viewSettings() {
   <h2>Daten</h2>
   <p class="muted small">${account ? 'Dein Fortschritt wird in deinem Konto gesichert. Zusätzlich kannst du ihn hier als Datei speichern.' : 'Dein Fortschritt liegt nur in diesem Browser. Wenn du Browserdaten löschst oder das Gerät wechselst, ist er weg. Sichere ihn regelmäßig.'}</p>
   <div class="btn-row"><button class="ghost" data-act="export">Sichern</button><label class="btn ghost" style="margin:0">Wiederherstellen<input type="file" accept="application/json" data-act="import" hidden></label></div>
+
+  <h2 class="danger-h">Gefahrenzone</h2>
+  <p class="muted small">Diese Aktionen lassen sich nicht rückgängig machen.</p>
   <div class="btn-row"><button class="danger" data-act="reset">Fortschritt zurücksetzen</button></div>
   ${accountDangerZone()}`;
 }
@@ -600,7 +639,7 @@ function route() {
   const [view, arg] = parts;
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'home' && view === 'test') || nav === view;
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'datenschutz', 'impressum'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -614,6 +653,8 @@ function route() {
     case 'week': html = viewWeek(Number(arg)); break;
     case 's': html = viewSession(arg); break;
     case 'info': html = viewInfo(); break;
+    case 'progress': html = viewProgress(); break;
+    case 'more': html = viewMore(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -1680,14 +1721,6 @@ async function doDeleteAccount() {
 }
 
 /* ---- Konto in den Einstellungen und rechtliche Seiten (Entwurf) ---- */
-function accountSection() {
-  if (!account) return '';
-  return `<h2>Konto</h2>
-  <div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
-  <p class="muted small" style="margin:8px 0 0">${esc(syncLabel())}</p></div>
-  <div class="btn-row"><button class="ghost" data-act="logout">Abmelden</button></div>
-  <p class="muted small"><a href="#/datenschutz"><u>Datenschutz</u></a> · <a href="#/impressum"><u>Impressum</u></a></p>`;
-}
 function accountDangerZone() {
   if (!account) return '';
   return `<div class="btn-row"><button class="danger" data-act="delacc">Konto löschen</button></div>`;
@@ -1715,7 +1748,7 @@ function legalImprint() {
   <h2>Kontakt</h2><p>[E-Mail-Adresse, ggf. Telefon]</p>
   <h2>Hinweis</h2><p>Die Angaben müssen vor einer Veröffentlichung vollständig und richtig ergänzt werden.</p>`;
 }
-const viewLegal = (which) => `<a href="#/settings" class="back">← Einstellungen</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
+const viewLegal = (which) => `<a href="#/more" class="back">← Mehr</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
 
 /* ---------------- Ereignisse ---------------- */
 document.addEventListener('click', (e) => {
