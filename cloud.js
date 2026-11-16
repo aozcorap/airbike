@@ -28,7 +28,7 @@ export async function currentUser() {
 export const signUp = (email, password, meta) => client.auth.signUp({ email, password, options: { data: meta, emailRedirectTo: redirectUrl() } });
 export const signIn = (email, password) => client.auth.signInWithPassword({ email, password });
 export const signOut = () => client.auth.signOut();
-export const resetPassword = (email) => client.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl() });
+export const sendCode = (email, create, data) => client.auth.signInWithOtp({ email, options: { shouldCreateUser: create, ...(data ? { data } : {}) } });
 export const verifyCode = (email, token, type) => client.auth.verifyOtp({ email, token, type });
 export const updatePassword = (password) => client.auth.updateUser({ password });
 export const onAuth = (cb) => client.auth.onAuthStateChange(cb);

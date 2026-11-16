@@ -665,8 +665,8 @@ async function sendFeedbackNow() {
 }
 
 function viewPassword() {
-  return `<a href="#/more" class="back">← Mehr</a><h1>Passwort ändern</h1>
-  <p class="muted">Wähle ein neues Passwort für dein Konto. Du bleibst angemeldet.</p>
+  return `<a href="#/more" class="back">← Mehr</a><h1>Passwort</h1>
+  <p class="muted">Freiwillig: Mit Passwort kannst du dich auch ohne Code anmelden. Du bleibst angemeldet.</p>
   <label for="pw1">Neues Passwort (mindestens 8 Zeichen)</label><input id="pw1" type="password" autocomplete="new-password">
   <label for="pw2">Wiederholen</label><input id="pw2" type="password" autocomplete="new-password">
   <button class="primary block" style="margin-top:16px" data-act="pw-change">Passwort speichern</button>`;
@@ -679,7 +679,7 @@ async function doChangePw(btn) {
   await withBusy(btn, async () => {
     const { error } = await cloud.updatePassword(a);
     if (error) return toast(authError(error));
-    toast('Passwort geändert');
+    toast('Passwort gespeichert');
     location.hash = '#/more';
   });
 }
@@ -690,7 +690,7 @@ function viewMore() {
   ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block" data-act="logout">Abmelden</button></div>` : ''}
-  ${account ? row('#/password', 'Passwort ändern', 'Neues Passwort für dein Konto festlegen') : ''}
+  ${account ? row('#/password', 'Passwort festlegen oder ändern', 'Freiwillig. Ohne Passwort meldest du dich mit Code an.') : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
@@ -1460,6 +1460,7 @@ let syncStatus = ''; // 'ok' | 'pending' | 'offline' | 'error'
 let pushTimer = null;
 let authView = 'login';
 let authPrev = 'login';
+let authPendingPw = '';
 let authMsg = '';
 let authEmail = '';
 const MIN_AGE = 14; // nach Geburtsjahr, im Zweifel streng (siehe Datenbank-Regel)
@@ -1701,7 +1702,7 @@ async function boot() {
   await startSession(user, quickStart);
 }
 cloud.onAuth((event) => {
-  if (event === 'PASSWORD_RECOVERY' && !codeReset) {
+  if (event === 'PASSWORD_RECOVERY') {
     recovering = true;
     renderAuth('newpw');
   }
@@ -1804,39 +1805,33 @@ function renderAuth(view = 'login') {
   let body = '';
   if (view === 'login') {
     body = `${authBrand()}${authTabs('login')}${authMessage()}
+      <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Ein Passwort brauchst du nicht.</p>
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <button class="primary block" style="margin-top:16px" data-act="auth-code">Code senden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="pwlogin">Lieber mit Passwort anmelden</button>${legalLinks()}`;
+  } else if (view === 'pwlogin') {
+    body = `${authBrand()}${authTabs('login')}${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <label for="aPw">Passwort</label><input id="aPw" type="password" autocomplete="current-password">
       <button class="primary block" style="margin-top:16px" data-act="auth-login">Anmelden</button>
-      <button class="linkbtn" data-act="auth-view" data-v="forgot">Passwort vergessen?</button>${legalLinks()}`;
+      <button class="linkbtn" data-act="auth-view" data-v="login">Passwort vergessen oder keins? Code per E-Mail</button>${legalLinks()}`;
   } else if (view === 'register') {
     body = `${authBrand()}${authTabs('register')}${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <label for="aPw">Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
       <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
       <p id="aAgeHint" class="muted small" style="margin:6px 0 0"></p>
+      <label for="aPw">Passwort (freiwillig, mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
+      <p class="muted small" style="margin:6px 0 0">Ohne Passwort meldest du dich immer mit einem Code per E-Mail an.</p>
       <label class="chk" id="aGuardBox" hidden><input id="aGuard" type="checkbox"><span>Ein Elternteil oder Erziehungsberechtigter hat der Registrierung und der Verarbeitung der Daten zugestimmt.</span></label>
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
-      <button class="primary block" style="margin-top:14px" data-act="auth-register">Konto erstellen</button>${legalLinks()}`;
-  } else if (view === 'forgot') {
-    body = `${authBrand()}<h1 style="font-size:28px">Passwort vergessen</h1><p class="muted">Wir schicken dir einen Code per E-Mail. Den gibst du hier in der App ein.</p>${authMessage()}
-      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <button class="primary block" style="margin-top:16px" data-act="auth-forgot">Code senden</button>
-      <button class="linkbtn" data-act="auth-view" data-v="reset">Ich habe schon einen Code</button>
-      <button class="linkbtn" data-act="auth-view" data-v="login">Zurück zur Anmeldung</button>`;
+      <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
   } else if (view === 'confirm') {
-    body = `${authBrand()}<h1 style="font-size:28px">Fast geschafft</h1><p>Wir haben einen Code an <b>${em}</b> geschickt. Gib ihn hier ein, dann ist dein Konto bestätigt und du bist angemeldet.</p>${authMessage()}
+    body = `${authBrand()}<h1 style="font-size:28px">Code eingeben</h1><p>Wir haben einen Code an <b>${em}</b> geschickt. Gib ihn hier ein, dann bist du angemeldet.</p>${authMessage()}
       <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
-      <button class="primary block" style="margin-top:16px" data-act="auth-verify">Bestätigen</button>
-      <p class="muted small">Keine Mail da? Schau im Spam-Ordner nach. Der Link in der E-Mail geht auch, öffnet aber den Browser statt der App.</p>
-      <button class="linkbtn" data-act="auth-view" data-v="login">Zur Anmeldung</button>`;
-  } else if (view === 'reset') {
-    body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1><p class="muted">Gib den Code aus der E-Mail ein und wähle ein neues Passwort.</p>${authMessage()}
-      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
-      <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
-      <label for="aPw2">Wiederholen</label><input id="aPw2" type="password" autocomplete="new-password">
-      <button class="primary block" style="margin-top:16px" data-act="auth-reset">Passwort speichern</button>
-      <button class="linkbtn" data-act="auth-view" data-v="forgot">Neuen Code anfordern</button>`;
+      <button class="primary block" style="margin-top:16px" data-act="auth-verify">Anmelden</button>
+      <p class="muted small">Keine Mail da? Schau im Spam-Ordner nach oder fordere einen neuen Code an.</p>
+      <button class="linkbtn" data-act="auth-resend">Neuen Code senden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="${authPrev === 'register' ? 'register' : 'login'}">Zurück</button>`;
   } else if (view === 'newpw') {
     body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1>${authMessage()}
       <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
@@ -1875,13 +1870,13 @@ async function doLogin(btn) {
   authEmail = email;
   if (!email || !pw) {
     authMsg = 'Bitte E-Mail und Passwort eingeben.';
-    return renderAuth('login');
+    return renderAuth('pwlogin');
   }
   await withBusy(btn, async () => {
     const { data, error } = await cloud.signIn(email, pw);
     if (error || !data?.user) {
       authMsg = authError(error);
-      return renderAuth('login');
+      return renderAuth('pwlogin');
     }
     authMsg = '';
     await startSession(data.user);
@@ -1914,31 +1909,41 @@ async function doRegister(btn) {
     return;
   }
   await withBusy(btn, async () => {
-    const { data, error } = await cloud.signUp(email, pw, { birth_year: year, consent: true, guardian_consent: age < PARENT_AGE ? guard : false });
+    const { error } = await cloud.sendCode(email, true, { birth_year: year, consent: true, guardian_consent: age < PARENT_AGE ? guard : false });
     if (error) {
       authMsg = authError(error);
       return renderAuth('register');
     }
     authMsg = '';
-    if (data?.session?.user) return startSession(data.session.user);
+    authPendingPw = pw;
+    authPrev = 'register';
     renderAuth('confirm');
   });
 }
-async function doForgot(btn) {
+async function doCode(btn) {
   const email = document.getElementById('aEmail').value.trim();
   authEmail = email;
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     authMsg = 'Bitte gib eine gültige E-Mail-Adresse ein.';
-    return renderAuth('forgot');
+    return renderAuth('login');
   }
   await withBusy(btn, async () => {
-    const { error } = await cloud.resetPassword(email);
+    const { error } = await cloud.sendCode(email, false);
     if (error) {
-      authMsg = authError(error);
-      return renderAuth('forgot');
+      authMsg = /signups? not allowed/i.test(String(error.message || error.code)) ? 'Zu dieser Adresse gibt es kein Konto. Bitte registriere dich.' : authError(error);
+      return renderAuth('login');
     }
-    authMsg = 'Wenn es ein Konto zu dieser Adresse gibt, ist eine E-Mail mit dem Code unterwegs.';
-    renderAuth('reset');
+    authMsg = '';
+    authPendingPw = '';
+    authPrev = 'login';
+    renderAuth('confirm');
+  });
+}
+async function doResend(btn) {
+  await withBusy(btn, async () => {
+    const { error } = await cloud.sendCode(authEmail, authPrev === 'register', undefined);
+    authMsg = error ? authError(error) : 'Ein neuer Code ist unterwegs.';
+    renderAuth('confirm');
   });
 }
 async function doNewPw(btn) {
@@ -1970,50 +1975,21 @@ async function doVerify(btn) {
     return renderAuth('confirm');
   }
   await withBusy(btn, async () => {
-    const { data, error } = await cloud.verifyCode(authEmail, code, 'signup');
+    const { data, error } = await cloud.verifyCode(authEmail, code, 'email');
     if (error || !data?.session?.user) {
       authMsg = authError(error);
       return renderAuth('confirm');
     }
     authMsg = '';
-    await startSession(data.session.user);
-  });
-}
-let codeReset = false; // verhindert, dass das Ereignis PASSWORD_RECOVERY die Code-Eingabe überschreibt
-async function doReset(btn) {
-  const email = document.getElementById('aEmail').value.trim();
-  const code = document.getElementById('aCode').value.replace(/\s/g, '');
-  const a = document.getElementById('aPw').value;
-  const b = document.getElementById('aPw2').value;
-  authEmail = email;
-  let problem = '';
-  if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
-  else if (!/^\d{6,10}$/.test(code)) problem = 'Bitte gib den Code aus der E-Mail ein (nur Ziffern).';
-  else if (a.length < 8) problem = 'Das Passwort braucht mindestens 8 Zeichen.';
-  else if (a !== b) problem = 'Die Passwörter stimmen nicht überein.';
-  if (problem) {
-    authMsg = problem;
-    return renderAuth('reset');
-  }
-  await withBusy(btn, async () => {
-    codeReset = true;
-    try {
-      const v = await cloud.verifyCode(email, code, 'recovery');
-      if (v.error || !v.data?.session) {
-        authMsg = authError(v.error);
-        return renderAuth('reset');
+    if (authPendingPw) {
+      try {
+        await cloud.updatePassword(authPendingPw);
+      } catch {
+        /* Passwort ist freiwillig, Anmeldung per Code geht trotzdem */
       }
-      const { data, error } = await cloud.updatePassword(a);
-      if (error) {
-        authMsg = authError(error);
-        return renderAuth('reset');
-      }
-      authMsg = '';
-      recovering = false;
-      await startSession(data.user);
-    } finally {
-      codeReset = false;
+      authPendingPw = '';
     }
+    await startSession(data.session.user);
   });
 }
 async function doLogout() {
@@ -2115,14 +2091,14 @@ document.addEventListener('click', (e) => {
     case 'auth-verify':
       doVerify(t);
       break;
-    case 'auth-reset':
-      doReset(t);
+    case 'auth-code':
+      doCode(t);
+      break;
+    case 'auth-resend':
+      doResend(t);
       break;
     case 'pw-change':
       doChangePw(t);
-      break;
-    case 'auth-forgot':
-      doForgot(t);
       break;
     case 'auth-newpw':
       doNewPw(t);
@@ -2403,7 +2379,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 53;
+const APP_BUILD = 54;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

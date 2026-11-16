@@ -29,7 +29,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
 18. **Test-Konto `lr-test-a@example.com`** in Supabase vor dem Start löschen.
 19. **Sendegrenze für Meldungen** (10 pro Stunde je Nutzer) liegt im Speicher der Funktion und setzt sich bei einem Neustart zurück. Für den Tester-Kreis ausreichend (Vermutung).
 20. **Supabase-Gratis-Plan:** Projekte mit wenig Aktivität werden pausiert. Beim Tester-Betrieb im Blick behalten (prüfen).
-27. **E-Mail-Vorlagen mit Code in Supabase einfügen** (`docs/E-MAIL-VORLAGEN.md`, Vorlage 1 und 2). Bestätigung und Passwort-Reset laufen in der App über einen Zahlen-Code, nicht mehr über den Link. Ohne neue Vorlagen steht in der Mail kein Code. Nicht getestet (braucht echte Mail).
+27. **E-Mail-Vorlagen mit Code in Supabase einfügen** (`docs/E-MAIL-VORLAGEN.md`, Vorlage 1 und 4 Magic link; Anmeldung läuft jetzt standardmäßig per Code, Passwort ist freiwillig). Bestätigung und Passwort-Reset laufen in der App über einen Zahlen-Code, nicht mehr über den Link. Ohne neue Vorlagen steht in der Mail kein Code. Nicht getestet (braucht echte Mail).
 21. **Bedienung (UX-Auswertung, Stand unklar, prüfen):** Einstellungen gruppieren und Gefahrenzone (A8, B5, B6), Uhrzeit-Format „06:00 PM" (C2), „Woche 10: 0/0" (B7), doppelte Eingabewege für Test-Watt (B8). Siehe `docs/UX-AUSWERTUNG.md`.
 22. **Nicht geprüft:** Barrierefreiheit (Vorlesefunktion), Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone.
 23. **Fitness-Test wiederholen** nach 4 bis 6 Wochen: Hinweis und fester Ort fehlen.
