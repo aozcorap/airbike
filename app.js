@@ -609,7 +609,7 @@ function viewFeedback() {
   <div class="seg">${kinds.map(([k, l]) => `<button class="opt sm ${fb.kind === k ? 'sel' : ''}" data-act="fb-kind" data-k="${k}"><b>${l}</b></button>`).join('')}</div>
   <label for="fbText">${fb.kind === 'fehler' ? 'Was ist passiert?' : fb.kind === 'idee' ? 'Was wünschst du dir?' : 'Was möchtest du wissen?'}</label>
   <textarea id="fbText" rows="6" maxlength="4000" placeholder="${fb.kind === 'fehler' ? 'Was hast du gemacht, was hast du erwartet, was ist stattdessen passiert?' : 'Schreib in eigenen Worten.'}">${esc(fb.text)}</textarea>
-  <p class="muted small"><b>Deine Meldung wird öffentlich auf GitHub veröffentlicht</b>, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir schicken automatisch mit: die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse). Bitte schreibe keine privaten Daten in den Text.</p>
+  <p class="muted small"><b>Deine Meldung wird öffentlich auf GitHub veröffentlicht</b>, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir schicken automatisch mit: die Seite, auf der du warst, die App-Version, die Kennung deines Browsers und Geräts, die Bildschirmgröße, die letzte Fehlermeldung der App und deine Einstellungen (z. B. Altersklasse, Trainingshäufigkeit). Bitte schreibe keine privaten Daten in den Text.</p>
   <button class="primary block" data-act="fb-send" ${fb.busy ? 'disabled' : ''}>${fb.busy ? 'Wird gesendet …' : 'Absenden'}</button>`;
 }
 
@@ -1499,6 +1499,43 @@ function mergeStates(base, local, remote) {
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 const freshState = () => ({ ...DEFAULTS, days: { ...DEFAULTS.days }, done: {}, approved: {}, reports: {} });
 const normalizeState = (raw) => ({ ...DEFAULTS, ...raw, days: { ...DEFAULTS.days, ...(raw.days || {}) }, done: raw.done || {}, approved: raw.approved || {}, reports: raw.reports || {} });
+// Sicherungsdatei prüfen: nur bekannte Felder mit gültigen Werten übernehmen, alles andere wird verworfen
+const isDayStr = (v) => v === '' || Boolean(parseDay(v));
+const isIso = (v) => typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v));
+function sanitizeImport(obj) {
+  if (!isObj(obj) || !isObj(obj.done)) throw new Error('Format');
+  const num = (v, lo, hi, fallback) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= lo && n <= hi ? Math.round(n) : fallback;
+  };
+  const c = freshState();
+  c.maxW = obj.maxW ? num(obj.maxW, 100, 3000, 0) : 0;
+  c.peakW = obj.peakW ? num(obj.peakW, 100, 3000, 0) : 0;
+  c.maxWDate = isIso(obj.maxWDate) ? obj.maxWDate : '';
+  c.sprints = Array.isArray(obj.sprints) ? obj.sprints.slice(0, 3).map((v) => num(v, 100, 3000, 0)).filter(Boolean) : [];
+  c.startDate = isDayStr(obj.startDate) ? obj.startDate : '';
+  c.fightDate = isDayStr(obj.fightDate) ? obj.fightDate : '';
+  c.freq = num(obj.freq, 1, 3, DEFAULTS.freq);
+  c.rounds = num(obj.rounds, 3, 12, DEFAULTS.rounds);
+  c.roundMin = [0, 2, 3].includes(Number(obj.roundMin)) ? Number(obj.roundMin) : 0;
+  c.age = obj.age ? num(obj.age, 10, 90, 0) : 0;
+  c.time = typeof obj.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(obj.time) ? obj.time : DEFAULTS.time;
+  for (const k of Object.keys(DEFAULTS.days)) c.days[k] = num(isObj(obj.days) ? obj.days[k] : undefined, 1, 7, DEFAULTS.days[k]);
+  c.ack = obj.ack === true;
+  c.notify = obj.notify === true;
+  c.onboarded = obj.onboarded === true;
+  c.recOpt = Object.hasOwn(RECOVERY_OPTIONS, obj.recOpt) ? obj.recOpt : DEFAULTS.recOpt;
+  c.profile = Object.hasOwn(PROFILES, obj.profile) ? obj.profile : DEFAULTS.profile;
+  for (const [id, at] of Object.entries(obj.done).slice(0, 500)) if (id.length <= 40 && isIso(at)) c.done[id] = at;
+  if (isObj(obj.approved)) for (const k of Object.keys(PROFILES)) if (obj.approved[k] === true) c.approved[k] = true;
+  if (isObj(obj.reports)) {
+    for (const [n, r] of Object.entries(obj.reports).slice(0, 100)) {
+      if (!/^\d{1,9}$/.test(n) || !isObj(r)) continue;
+      c.reports[n] = { k: ['fehler', 'idee', 'frage'].includes(r.k) ? r.k : 'fehler', t: String(r.t || '').slice(0, 60), at: isIso(r.at) ? r.at : new Date().toISOString(), st: r.st === 'closed' ? 'closed' : 'open', c: num(r.c, 0, 1000, 0) };
+    }
+  }
+  return c;
+}
 const hasProgress = (s) => Boolean(s.onboarded || s.maxW || Object.keys(s.done || {}).length);
 
 function schedulePush(delay = 1500) {
@@ -1530,11 +1567,15 @@ async function pushNow() {
             save(true);
           }
         }
-        const r = await withTimeout(cloud.pushStateIf(account.id, state, version), 8000);
+        // Stand zum Sendezeitpunkt festhalten: Änderungen während der Anfrage dürfen nicht als gesichert gelten
+        const sent = JSON.stringify(state);
+        const r = await withTimeout(cloud.pushStateIf(account.id, JSON.parse(sent), version), 8000);
         if (r.ok) {
-          writeSync({ dirty: false, syncedAt: r.updated_at });
-          writeBase(state);
-          syncStatus = 'ok';
+          const changedMeanwhile = JSON.stringify(state) !== sent;
+          writeSync({ dirty: changedMeanwhile, syncedAt: r.updated_at });
+          writeBase(JSON.parse(sent));
+          syncStatus = changedMeanwhile ? 'pending' : 'ok';
+          if (changedMeanwhile) setTimeout(pushNow, 300);
           return true;
         }
         // Konflikt: Stand vom Konto holen, zusammenführen, erneut versuchen
@@ -1942,14 +1983,14 @@ function legalPrivacy() {
   <h2>Wer ist verantwortlich?</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg<br>Kontakt für Datenschutzfragen: siehe Impressum.</p>
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse, Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
-  <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung (Text, Art, Seite, auf der du warst, App-Version, Gerätetyp und deine Einstellungen, z. B. Altersklasse) als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir speichern sie nicht zusätzlich in deinem Konto. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
+  <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Sie enthält deinen Text, die Art, die Seite, auf der du warst, die App-Version, die vollständige Kennung deines Browsers und Geräts, die Bildschirmgröße, ob du online warst, die letzte Fehlermeldung der App und deine Einstellungen (Altersklasse, Trainingshäufigkeit, Runden, ob ein Test-Watt vorliegt). Damit du den Stand sehen kannst, speichert die App in deinem Konto außerdem die Nummer deiner Meldung und ihre erste Zeile (bis 60 Zeichen). Das wird mit dem Konto gelöscht. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
   <h2>Kinder und Jugendliche</h2><p>Bis zu einem Alter von 16 Jahren ist die Einwilligung eines Elternteils nötig. Die App ist nicht für Kinder unter 14 Jahren vorgesehen. Das Alter wird nur anhand des Geburtsjahres geprüft, ohne Nachweis. [Prüfen lassen]</p>
-  <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
+  <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Meldungen laufen über Supabase zu GitHub. Wenn du unter „Meine Meldungen“ den Stand abrufst, verbindet sich dein Gerät direkt mit GitHub, das dabei deine IP-Adresse verarbeitet. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
   <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen, Fortschritt und dein Anmelde-Token zusätzlich in deinem Browser (lokaler Speicher), damit sie auch offline funktioniert und du angemeldet bleibst. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
   <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten in der Datenbank gelöscht. Sicherungskopien und Protokolle des Anbieters können noch eine begrenzte Zeit weiter bestehen. [Fristen prüfen und ergänzen]</p>
   <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
@@ -2196,17 +2237,25 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => {
   const t = e.target;
   if (t.dataset.act === 'import' && t.files?.[0]) {
-    t.files[0].text().then((txt) => {
+    const file = t.files[0];
+    t.value = ''; // dieselbe Datei lässt sich danach erneut wählen
+    if (file.size > 500000) {
+      alert('Die Datei ist zu groß für eine Sicherung.');
+      return;
+    }
+    file.text().then((txt) => {
+      let next;
       try {
-        const obj = JSON.parse(txt);
-        if (typeof obj !== 'object' || obj === null || typeof obj.done !== 'object') throw new Error('Format');
-        state = { ...DEFAULTS, ...obj, days: { ...DEFAULTS.days, ...(obj.days || {}) }, approved: obj.approved || {} };
-        save();
-        route();
-        alert('Sicherung wiederhergestellt.');
+        next = sanitizeImport(JSON.parse(txt));
       } catch {
-        alert('Datei konnte nicht gelesen werden.');
+        alert('Datei konnte nicht gelesen werden. Es ist keine gültige Sicherung.');
+        return;
       }
+      if (!confirm(`Sicherung einspielen? Dein aktueller Stand wird ersetzt. In der Datei: ${Object.keys(next.done).length} erledigte Einheiten.`)) return;
+      state = next;
+      save();
+      route();
+      alert('Sicherung wiederhergestellt.');
     });
     return;
   }
@@ -2272,7 +2321,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 65;
+const APP_BUILD = 66;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
