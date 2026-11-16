@@ -31,7 +31,7 @@ Bestätige dein Konto bei Nonstop Boxing
       <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Noch ein Schritt: Bestätige deine E-Mail-Adresse, dann kannst du dich anmelden und deinen Trainingsplan einrichten.</p>
       <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">E-Mail-Adresse bestätigen</a></p>
       <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Der Link funktioniert nur kurze Zeit. Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
-      
+<p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
     </td></tr>
     <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
   </table>
@@ -60,7 +60,7 @@ Passwort zurücksetzen – Nonstop Boxing
       <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Du hast ein neues Passwort für dein Konto angefordert. Tippe auf den Knopf und wähle ein neues Passwort.</p>
       <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Neues Passwort festlegen</a></p>
       <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Wenn du das nicht angefordert hast, ignoriere diese E-Mail. Dein Passwort bleibt dann unverändert.<br>Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
-      
+<p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
     </td></tr>
     <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
   </table>
@@ -89,7 +89,7 @@ Neue E-Mail-Adresse bestätigen – Nonstop Boxing
       <p style="margin:0 0 22px;font-size:16px;line-height:1.5;">Bitte bestätige, dass dein Konto künftig diese E-Mail-Adresse nutzen soll: <b>{{ .NewEmail }}</b>.</p>
       <p style="margin:0 0 22px;text-align:center;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff2d46;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:10px;">Neue Adresse bestätigen</a></p>
       <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#6b7280;">Funktioniert der Knopf nicht, kopiere diesen Link in deinen Browser:<br><span style="word-break:break-all;">{{ .ConfirmationURL }}</span></p>
-      
+<p style="margin:22px 0 4px;font-size:16px;line-height:1.5;color:#111827;">Sportliche Grüße<br><b>Dein Nonstop-Boxing-Team</b></p>
     </td></tr>
     <tr><td style="padding:12px 24px 24px;font-size:12px;line-height:1.5;color:#9ca3af;">Du erhältst diese E-Mail, weil sich jemand mit dieser Adresse bei Nonstop Boxing angemeldet hat. Wenn du das nicht warst, ignoriere diese Nachricht.</td></tr>
   </table>
