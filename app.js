@@ -86,6 +86,17 @@ function profileBanner() {
   return '';
 }
 
+// Letzten Fehler der App merken, damit er einer Meldung beigelegt werden kann
+let lastError = '';
+window.addEventListener('error', (e) => {
+  lastError = `${e.message} (${String(e.filename || '').split('/').pop()}:${e.lineno})`.slice(0, 300);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  lastError = String((e.reason && e.reason.message) || e.reason).slice(0, 300);
+});
+let lastRoute = '#/';
+let fb = { kind: 'fehler', text: '', sent: false, busy: false };
+
 const $app = document.getElementById('app');
 const $modal = document.getElementById('modal');
 
@@ -504,6 +515,70 @@ function viewSession(id) {
   </div>`;
 }
 
+function viewFeedback() {
+  if (!account) return `<a href="#/more" class="back">← Mehr</a><h1>Fehler melden</h1><p>Zum Melden musst du angemeldet sein.</p>`;
+  if (fb.sent) {
+    return `<a href="#/more" class="back">← Mehr</a><div class="card hero" style="margin-top:16px"><span class="kicker">Angekommen</span><h2 style="margin:6px 0 8px">Danke für deine Meldung</h2>
+    <p class="muted">Wir schauen sie uns an. Du musst nichts weiter tun.</p>
+    <button class="primary block" data-act="fb-again">Noch etwas melden</button></div>`;
+  }
+  const kinds = [['fehler', 'Fehler'], ['idee', 'Idee'], ['frage', 'Frage']];
+  return `<a href="#/more" class="back">← Mehr</a><h1>Fehler melden</h1>
+  <p class="muted">Etwas funktioniert nicht, ist unklar oder du hast eine Idee? Schreib es hier. Das hilft uns, die App besser zu machen.</p>
+  <label>Worum geht es?</label>
+  <div class="seg">${kinds.map(([k, l]) => `<button class="opt sm ${fb.kind === k ? 'sel' : ''}" data-act="fb-kind" data-k="${k}"><b>${l}</b></button>`).join('')}</div>
+  <label for="fbText">${fb.kind === 'fehler' ? 'Was ist passiert?' : fb.kind === 'idee' ? 'Was wünschst du dir?' : 'Was möchtest du wissen?'}</label>
+  <textarea id="fbText" rows="6" maxlength="4000" placeholder="${fb.kind === 'fehler' ? 'Was hast du gemacht, was hast du erwartet, was ist stattdessen passiert?' : 'Schreib in eigenen Worten.'}">${esc(fb.text)}</textarea>
+  <p class="muted small">Mit der Meldung schicken wir automatisch mit: die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse). Bitte schreibe keine privaten Daten in den Text.</p>
+  <button class="primary block" data-act="fb-send" ${fb.busy ? 'disabled' : ''}>${fb.busy ? 'Wird gesendet …' : 'Absenden'}</button>`;
+}
+
+async function sendFeedbackNow() {
+  const text = (document.getElementById('fbText')?.value || '').trim();
+  fb.text = text;
+  if (text.length < 10) {
+    alert('Bitte beschreibe es in mindestens 10 Zeichen.');
+    return;
+  }
+  if (!account) return;
+  fb.busy = true;
+  route();
+  const row = {
+    user_id: account.id,
+    kind: fb.kind,
+    message: text,
+    page: String(lastRoute).slice(0, 200),
+    app_build: APP_BUILD,
+    device: String(navigator.userAgent).slice(0, 400),
+    context: {
+      profile: state.profile,
+      freq: state.freq,
+      rounds: state.rounds,
+      roundMin: state.roundMin,
+      hasTest: Boolean(state.maxW),
+      screen: `${window.innerWidth}x${window.innerHeight}`,
+      standalone: Boolean(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)),
+      online: navigator.onLine,
+      lastError,
+    },
+  };
+  let error = null;
+  try {
+    ({ error } = await withTimeout(cloud.sendFeedback(row), 15000));
+  } catch (e) {
+    error = e || new Error('Zeitüberschreitung');
+  }
+  fb.busy = false;
+  if (error) {
+    alert(/Zu viele/.test(String(error.message)) ? 'Du hast gerade schon mehrere Meldungen gesendet. Bitte versuche es später noch einmal.' : 'Das Senden hat nicht geklappt. Prüfe dein Netz und versuche es noch einmal. Dein Text bleibt erhalten.');
+    route();
+    return;
+  }
+  fb.sent = true;
+  toast('Danke, deine Meldung ist angekommen');
+  route();
+}
+
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
@@ -512,6 +587,7 @@ function viewMore() {
   <button class="ghost block" data-act="logout">Abmelden</button></div>` : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
+  ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
   ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
   ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
   <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde</p>`;
@@ -676,9 +752,13 @@ function route() {
   setChrome('idle');
   const parts = location.hash.replace(/^#\/?/, '').split('/');
   const [view, arg] = parts;
+  if (view !== 'feedback') {
+    if (view !== 'more') lastRoute = location.hash || '#/'; // zuletzt besuchte Seite vor „Mehr“, dort ist meist der Fehler passiert
+    fb = { kind: 'fehler', text: '', sent: false, busy: false };
+  }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'datenschutz', 'impressum'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'datenschutz', 'impressum'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -694,6 +774,7 @@ function route() {
     case 'info': html = viewInfo(); break;
     case 'progress': html = viewProgress(); break;
     case 'more': html = viewMore(); break;
+    case 'feedback': html = viewFeedback(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -1770,6 +1851,7 @@ function legalPrivacy() {
   <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
   <h2>Welche Daten werden verarbeitet?</h2>
   <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
+  <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, speichern wir deinen Text, die Art der Meldung, die Seite, auf der du warst, die App-Version, deinen Gerätetyp und deine Einstellungen (z. B. Altersklasse) zusammen mit deinem Konto. Sie werden gelöscht, wenn du dein Konto löschst. Meldungen können in anonymisierter Form (ohne E-Mail-Adresse) auf GitHub veröffentlicht werden. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für Bestätigung und Zurücksetzen des Passworts wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
@@ -1880,6 +1962,18 @@ document.addEventListener('click', (e) => {
     case 'ob-test':
       closeOnboarding();
       location.hash = '#/test';
+      break;
+    case 'fb-kind':
+      fb.text = document.getElementById('fbText')?.value || '';
+      fb.kind = t.dataset.k;
+      route();
+      break;
+    case 'fb-send':
+      sendFeedbackNow();
+      break;
+    case 'fb-again':
+      fb = { kind: 'fehler', text: '', sent: false, busy: false };
+      route();
       break;
     case 'update-reload':
       if (document.body.classList.contains('running') && !confirm('Dein Training läuft noch. Trotzdem neu laden?')) break;
@@ -2076,7 +2170,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 45;
+const APP_BUILD = 46;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
