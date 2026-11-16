@@ -12,6 +12,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur inn
 - Tester-Nachricht an den neuen Ablauf angepasst
 - Auf dem iPhone geprüft (Zeitfeld, Ton, Zurück-Geste im Timer), keine Beanstandung gemeldet
 - Supabase-Projekt `last-round` läuft
+- Admin-Überblick über Testuser und Nutzung: `docs/ADMIN-UEBERSICHT.sql` (im SQL Editor von Supabase ausführen, nur lesend). Zeigt Konten, letzte Änderung, erledigte Einheiten, Test-Watt. Reines Öffnen der App wird nicht erfasst.
 - Meldungen aus der App kommen an, die tägliche Mail-Routine „Nonstop-Boxing: Issues, Features und Fragen“ (9:54 Uhr) läuft mit richtigem Auftragstext
 
 **Bewusst akzeptiert für den Prototyp (Entscheidung des Betreibers):**
@@ -27,7 +28,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur inn
 
 ### Rechtlich
 1. **Programm aus gekauftem PDF.** Das Recht zur Nutzung und Vermarktung ist ungeklärt. Der Plan steckt öffentlich im Repo und ist im Login-freien Teil lesbar (das Login schützt nur den Fortschritt der Nutzer). Für Werbung und Verkauf zwingend klären.
-2. **Datenschutz rechtlich prüfen lassen.** Der Entwurf nennt den Verantwortlichen und passt zum Verhalten der App, hat aber Lücken (Mail-Anbieter, Fristen, Stellen mit „Prüfen lassen“). Das **Impressum** ist eingetragen (Name, Anschrift, E-Mail), ohne USt-ID, nicht rechtlich geprüft, die Anschrift ist öffentlich sichtbar.
+2. **Datenschutz rechtlich prüfen lassen.** Der Entwurf nennt den Verantwortlichen und passt zum Verhalten der App, hat aber Lücken (Mail-Anbieter, Fristen, Stellen mit „Prüfen lassen“). Das **Impressum** ist eingetragen (Name, Anschrift, E-Mail), ohne USt-ID, nicht rechtlich geprüft, die Anschrift ist öffentlich sichtbar. Im Datenschutz nennen, dass der Betreiber Konten und Trainingsdaten der Nutzer einsehen kann (Admin-Überblick).
 3. **Kein Mindestalter und keine Einwilligung der Eltern (Entscheidung des Betreibers).** Der Plan passt sich per Altersklasse an das Geburtsjahr an. Risiko: Die Einwilligung Minderjähriger (DSGVO Art. 8, in Deutschland unter 16 Jahren Zustimmung der Eltern) ist nicht abgedeckt. Rechtlich prüfen lassen. **Die Datenbank-Regel muss von Hand geändert werden** (`docs/DB-REGISTRIERUNG.sql` im SQL Editor von Supabase), sonst lehnt sie Registrierungen unter 14 Jahren ab und verlangt unter 17 Jahren eine Elternzustimmung.
 4. **Tester-Meldungen sind öffentlich** und können Namen oder Gesundheitsangaben enthalten. Für live eine datenschutzfreundlichere Lösung oder saubere rechtliche Abdeckung.
 5. **Name „Nonstop Boxing“** ist nicht auf Marke, App-Store und Domain geprüft.
