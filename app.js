@@ -787,7 +787,7 @@ function viewSettings() {
   <label for="time">Uhrzeit</label>
   <input id="time" type="time" value="${esc(state.time)}" data-set="time">
   <div class="btn-row"><button class="primary" data-act="ics">Kalender-Datei (.ics) laden</button></div>
-  <p class="muted small">Der Kalender erinnert am zuverlässigsten, auch bei geschlossener App. Datei öffnen und in deinen Kalender importieren. Zuerst Kampftermin setzen.</p>
+  <p class="muted small">Der Kalender erinnert am zuverlässigsten, auch bei geschlossener App. Datei öffnen und in deinen Kalender importieren. Zuerst Kampftermin setzen. Ändert sich dein Plan, lade die Datei neu. Termine aus einer früheren Datei bleiben im Kalender stehen und müssen dort von Hand gelöscht werden.</p>
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
@@ -1156,12 +1156,13 @@ function buildICS() {
       const d = sessionDate(w, dayOf(s));
       if (!d || d < today || tooCloseToFight(d, p.fight)) return;
       const dt = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(hh)}${pad(mm)}00`;
+      const durMin = Math.max(15, Math.ceil(sessionSecs(s) / 300) * 5); // echte Länge der Einheit, auf 5 Minuten aufgerundet
       lines.push(
         'BEGIN:VEVENT',
         `UID:redline-${s.id}@local`,
         `DTSTAMP:${stamp}`,
         `DTSTART:${dt}`,
-        'DURATION:PT45M',
+        `DURATION:PT${durMin}M`,
         fold(`SUMMARY:${icsEscape(`Nonstop Boxing W${w.n}: ${s.title}`)}`),
         fold(`DESCRIPTION:${icsEscape(s.focus)}`),
         'BEGIN:VALARM',
@@ -1174,7 +1175,7 @@ function buildICS() {
     });
   });
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
+  return lines.join('\r\n') + '\r\n'; // die Datei muss mit einem Zeilenumbruch enden
 }
 function download(name, text, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -2363,7 +2364,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 72;
+const APP_BUILD = 73;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

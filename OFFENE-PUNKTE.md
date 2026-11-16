@@ -24,9 +24,9 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 ## 3. Technisch
 
 ### Aus der Prüfung offen
-1. **Unbestätigte Registrierungen** bleiben samt Geburtsjahr und „Einwilligung" in der Datenbank, ohne Aufräumen. Plan: SQL von Hand, löscht sie nach 7 Tagen.
+1. **Unbestätigte Registrierungen** bleiben samt Geburtsjahr und „Einwilligung" in der Datenbank. **Du musst `docs/DB-AUFRAEUMEN.sql` in Supabase ausführen:** erst prüfen, dann einmalig löschen, optional nachts automatisch per `pg_cron` (verfügbar, noch nicht aktiv).
 2. **Content-Security-Policy fehlt.** Kein Angriffsweg bekannt. Eine Regel kann die App brechen, Inline-Skripte müssten umgebaut werden. Eher später.
-3. **Kalender-Export (.ics):** Dauer fest 45 Minuten, am Dateiende fehlt ein Zeilenumbruch, Einheiten, die aus dem Plan fallen, bleiben im Kalender stehen.
+3. **Kalender-Export (.ics):** Einheiten, die aus dem Plan fallen, bleiben im Kalender stehen, weil sich Termine aus einer Datei nicht zuverlässig löschen lassen. Die App weist darauf hin. Dauer und Zeilenumbruch sind behoben.
 4. **Konto löschen** hat zwei Rückfragen, aber keine erneute Prüfung per Code.
 5. **Kleinigkeiten:** Barrierefreiheit (Screenreader liest bei jedem Seitenwechsel alles vor, Tabs ohne Auswahlstatus, kein Fokus in Dialogen), fehlendes `noscript`, `manifest` ohne `id`, toter Code (`peakW`, `ack` werden nur geschrieben), die In-App-Erinnerung kann nach dem Abhaken noch feuern.
 6. **Weitere kleine Funde:** Ein Kontowechsel mit ungesicherten Daten verwirft sie still. Die Rückfrage beim Anmelden läuft in ein 8-Sekunden-Zeitlimit. Der Timer-Stand geht beim Neuladen verloren (die App warnt jetzt davor). Der Ton auf dem iPhone nach einer Sperre ist nicht auf dem Gerät geprüft.
@@ -39,7 +39,7 @@ Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern 
 11. **Supabase-Gratis-Plan:** Projekte mit wenig Aktivität werden pausiert. Beim Tester-Betrieb im Blick behalten (prüfen). Das Projekt `matchmaker` ist pausiert (Gratis-Plan erlaubt zwei Projekte).
 
 ### Bedienung und Geräte
-12. **Eingabefeld „Uhrzeit"** in den Einstellungen ragte auf dem iPhone über den rechten Rand (Screenshot vom 16.11.). Noch nicht behoben.
+12. **Eingabefeld „Uhrzeit"** in den Einstellungen ragte auf dem iPhone über den rechten Rand (Screenshot vom 16.11.). Korrigiert mit der üblichen iOS-Korrektur für Zeitfelder, **auf dem iPhone noch nicht bestätigt**.
 13. **Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`, Stand unklar, prüfen):** Einstellungen gruppieren und Gefahrenzone (A8, B5, B6), Uhrzeit-Format „06:00 PM" (C2), vier Eingabewege für den Test-Watt (B8).
 14. **Fitness-Test wiederholen:** Nach 28 Tagen erscheint ein Hinweis auf der Startseite, ein fester Ort in der App fehlt.
 15. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
