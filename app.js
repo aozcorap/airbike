@@ -248,17 +248,34 @@ const WHEEL_ART = (() => {
   return `<svg class="art" viewBox="0 0 320 320" fill="none" aria-hidden="true"><defs><radialGradient id="wg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff2d46" stop-opacity=".38"/><stop offset="1" stop-color="#ff2d46" stop-opacity="0"/></radialGradient></defs><circle cx="160" cy="160" r="156" fill="url(#wg)"/><g stroke="#fff" stroke-opacity=".13" stroke-width="1.5">${spokes}</g><circle cx="160" cy="160" r="118" stroke="#ff2d46" stroke-opacity=".7" stroke-width="3"/><circle cx="160" cy="160" r="104" stroke="#fff" stroke-opacity=".1" stroke-width="2"/><circle cx="160" cy="160" r="16" fill="#ff2d46" fill-opacity=".85"/></svg>`;
 })();
 
+
+// Altersklasse aus dem Geburtsjahr der Registrierung (Jugendschutz: nur die eigene oder eine mildere Klasse wählbar)
+const PROFILE_ORDER = Object.keys(PROFILES);
+const ageClassKey = () => {
+  const y = account && account.birthYear;
+  if (!y) return null;
+  const age = new Date().getFullYear() - y;
+  return age <= 14 ? 'u14' : age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
+};
+function allowedProfiles() {
+  const own = ageClassKey();
+  if (!own) return PROFILE_ORDER;
+  return PROFILE_ORDER.filter((k) => PROFILE_ORDER.indexOf(k) >= PROFILE_ORDER.indexOf(own) && (!PROFILES[k].blocked || k === own));
+}
+function enforceProfile() {
+  const own = ageClassKey();
+  if (!own) return;
+  if (!state.onboarded) state.profile = own;
+  if (!allowedProfiles().includes(state.profile)) {
+    state.profile = own;
+    save();
+  }
+}
+
 function setupCard() {
-  const hasDate = Boolean(state.fightDate);
-  const rows = [
-    [state.onboarded, 'Altersklasse und Hinweis', '#/settings'],
-    [hasDate, 'Kampftermin eintragen', '#/settings'],
-    [Boolean(state.maxW), 'Test-Watt ermitteln', '#/test'],
-  ];
-  if (rows.every((r) => r[0])) return '';
-  return `<div class="card setup"><span class="kicker">So kommst du in Gang</span>
-    ${rows.map(([ok, label, href]) => `<a class="setup-row" href="${href}"><span class="check ${ok ? 'done' : ''}">${ok ? '✓' : ''}</span><span class="grow">${label}</span><span class="muted small">${ok ? 'Erledigt' : 'Offen'}</span></a>`).join('')}
-    <button class="linkbtn" data-act="ob-replay">Einführung noch einmal ansehen</button></div>`;
+  if (!state.onboarded || state.maxW) return '';
+  return `<a class="card hero link setupcta" href="#/test"><span class="kicker">Nächster Schritt</span><h2 style="margin:6px 0 4px">Fitness-Test machen</h2>
+    <p class="muted" style="margin:0 0 14px">Drei Sprints à 10 Sekunden, etwa 10 Minuten. Danach zeigt dir die App deine Watt-Ziele.</p><div class="btn primary">Test starten</div></a>`;
 }
 
 function maxWatNotice() {
@@ -498,7 +515,7 @@ function viewSettings() {
   <div class="btn-row"><button class="ghost" data-act="ob-replay">Einführung noch einmal ansehen</button></div>
   <h2>Profil (Altersklasse)</h2>
   <label for="profile">Profil</label>
-  <select id="profile" data-set="profile">${Object.entries(PROFILES).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+  <select id="profile" data-set="profile">${Object.entries(PROFILES).filter(([k]) => allowedProfiles().includes(k) || state.profile === k).map(([k, p]) => `<option value="${k}" ${state.profile === k ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
   ${profileSettingsInfo()}
   <h2>Training</h2>
   <label for="maxW">Test-Watt (Durchschnitt deiner 3 Sprints)</label>
@@ -986,12 +1003,14 @@ function pickDate(iso) {
 }
 
 /* ---------------- Einführung (So startest du) ---------------- */
-const OB_STEPS = ['welcome', 'health', 'profile', 'fight', 'format', 'watt', 'done'];
+const OB_STEPS = ['welcome', 'fight', 'watt', 'done'];
 let ob = { step: 0 };
 
 function obProfileOpts() {
   const sub = { elite: 'Erwachsene und Elite, Plan wie im Grundaufbau', u18: 'Reduzierter Umfang, kürzere Sprints', u16: 'Stark reduziert, 2 harte Einheiten pro Woche', u14: 'Für diese Altersklasse ist der Plan nicht geeignet' };
+  const ok = allowedProfiles();
   return Object.entries(PROFILES)
+    .filter(([k]) => ok.includes(k))
     .map(([k, p]) => `<button class="opt ${state.profile === k ? 'sel' : ''}" data-act="ob-profile" data-key="${k}"><b>${esc(p.name)}</b><span>${esc(sub[k] || '')}</span></button>`)
     .join('');
 }
@@ -1002,49 +1021,43 @@ function obBody(id) {
     case 'welcome':
       return `<div class="ob-hero"><img src="img/hero.jpg" alt="" onerror="this.remove()"><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
         <h1>So startest du</h1>
-        <p class="muted">In wenigen Minuten ist dein Plan bereit. Du brauchst dein Alter, deinen Kampftermin und deine Leistung in Watt auf dem Air Bike.</p>
+        <p class="muted">In wenigen Minuten ist dein Plan bereit.</p>
         <ol class="ob-list">
-          <li><b>Gesundheit</b><span>Kurzer Hinweis vor dem Start</span></li>
-          <li><b>Für wen</b><span>Altersklasse wählen</span></li>
-          <li><b>Kampftermin</b><span>Plan richtet sich danach</span></li>
-          <li><b>Kampfformat</b><span>Wie viele Runden, wie lang?</span></li>
-          <li><b>Fitness-Test</b><span>3 Sprints, der Durchschnitt ist die Grundlage aller Ziele</span></li>
-        </ol>`;
-    case 'health':
-      return `<span class="kicker">Schritt 1 von 5</span><h1>Gesundheit</h1>
-        <p>Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen oder Unsicherheit vorher ärztlich untersuchen.</p>
-        <ul class="plain"><li>Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen.</li><li>Immer zuerst aufwärmen.</li><li>Du trainierst auf eigene Verantwortung.</li></ul>`;
-    case 'profile':
-      return `<span class="kicker">Schritt 2 von 5</span><h1>Für wen?</h1><p class="muted">Die Altersklasse bestimmt Umfang und Sprintdauer.</p>
+          <li><b>Dein Kampf</b><span>Termin, Runden und Rundenlänge</span></li>
+          <li><b>Fitness-Test</b><span>3 Sprints, daraus berechnet die App deine Watt-Ziele</span></li>
+          <li><b>Training</b><span>Dein Plan bis zum Kampf, Einheit für Einheit</span></li>
+        </ol>
+        <div class="notice"><b>Gesundheit:</b> Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen vorher ärztlich untersuchen. Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen. Du trainierst auf eigene Verantwortung.</div>`;
+    case 'fight': {
+      const own = ageClassKey();
+      const ok = allowedProfiles();
+      const ageRow = own
+        ? `<div class="agerow"><span>Altersklasse</span><b>${esc(p.name)}</b>${ok.length > 1 ? '<button class="linkbtn inline" data-act="ob-profile-toggle">ändern</button>' : ''}</div>${ob.profileOpen ? obProfileOpts() : ''}`
+        : `<label>Altersklasse</label>${obProfileOpts()}`;
+      return `<span class="kicker">Schritt 1 von 2</span><h1>Dein Kampf</h1>
+        ${ageRow}
         ${p.blocked ? '<div class="notice" style="background:rgba(255,45,70,.12);border-color:rgba(255,45,70,.5);color:#ff9aa6">Der Plan ist für diese Altersklasse gesperrt. Du kannst die App trotzdem einrichten, Einheiten starten geht aber nicht.</div>' : ''}
         ${!p.approved && !p.blocked ? '<div class="notice">Die Werte für diese Altersklasse sind Platzhalter und müssen von einem verantwortlichen Trainer freigegeben werden.</div>' : ''}
-        ${obProfileOpts()}`;
-    case 'fight':
-      return `<span class="kicker">Schritt 3 von 5</span><h1>Kampftermin</h1>
-        <p class="muted">Der Plan wird rückwärts bis zu deinem Kampf oder Turnier gebaut.</p>
-        <label for="obFight">Datum des Kampfes</label>
+        <label for="obFight">Kampftermin</label>
         ${dateField('obFight', ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}
-        <label>Wie oft pro Woche kannst du aufs Air Bike?</label>
-        <div class="seg">${[1, 2, 3].map((n) => `<button class="opt sm ${Number(state.freq) === n ? 'sel' : ''}" data-act="ob-freq" data-n="${n}"><b>${n}×</b><span>pro Woche</span></button>`).join('')}</div>
-        <p class="muted small">Bei weniger als 3 Einheiten wählt die App die wichtigsten aus.</p>
-        <button class="linkbtn" data-act="ob-nodate">Ich habe noch keinen Termin</button>`;
-    case 'format':
-      return `<span class="kicker">Schritt 4 von 5</span><h1>Kampfformat</h1>
-        <p class="muted">Über wie viele Runden geht dein nächster Kampf, und wie lang ist eine Runde? Daran richtet sich der Plan aus.</p>
+        <button class="linkbtn inline" data-act="ob-nodate">Ich habe noch keinen Termin</button>
         <label>Anzahl der Runden</label>
         <div class="rounds-grid">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<button class="opt sm ${fmtRounds() === n ? 'sel' : ''}" data-act="ob-rounds" data-n="${n}"><b>${n}</b></button>`).join('')}</div>
         <label>Länge einer Runde</label>
         <div class="seg2x">${[2, 3].map((m) => `<button class="opt sm ${fmtRoundSecs() === m * 60 ? 'sel' : ''}" data-act="ob-rlen" data-n="${m}"><b>${m} Minuten</b></button>`).join('')}</div>
-        <p class="muted small">Mehr Runden bedeuten mehr Kampfrunden im Training. Wie viel mehr, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>`;
+        <label>Training pro Woche</label>
+        <div class="seg">${[1, 2, 3].map((n) => `<button class="opt sm ${Number(state.freq) === n ? 'sel' : ''}" data-act="ob-freq" data-n="${n}"><b>${n}×</b><span>pro Woche</span></button>`).join('')}</div>
+        <p class="muted small">Bei weniger als 3 Einheiten wählt die App die wichtigsten aus. Mehr Runden bedeuten mehr Kampfrunden im Training. Wie viel mehr, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.</p>`;
+    }
     case 'watt':
-      return `<span class="kicker">Schritt 5 von 5</span><h1>Dein Fitness-Test</h1>
-        <p class="muted">Du fährst drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte (Watt) ist dein Test-Watt. Daraus berechnet die App jedes Watt-Ziel.</p>
-        <div class="card"><h3>Ich kenne meine drei Werte</h3>
+      return `<span class="kicker">Schritt 2 von 2</span><h1>Dein Fitness-Test</h1>
+        <p class="muted">Du fährst drei maximale 10-Sekunden-Sprints. Der Durchschnitt deiner drei Höchstwerte ist dein Test-Watt. Daraus berechnet die App jedes Watt-Ziel.</p>
+        <button class="primary block" data-act="ob-test">Fitness-Test starten</button>
+        <p class="muted small center" style="margin:8px 0 0">Geführt, mit Aufwärmen, etwa 10 Minuten.</p>
+        <details class="manual"><summary>Ich kenne meine drei Werte schon</summary>
           <div style="margin-top:8px">${sprintInputs('ob')}</div>
-          <button class="primary block" style="margin-top:12px" data-act="ob-savemax">Speichern</button></div>
-        <div class="card"><h3>Ich messe sie jetzt</h3><p class="muted small" style="margin:4px 0 10px">Geführter Test mit Aufwärmen und drei Sprints, etwa 10 Minuten.</p>
-          <button class="primary block" data-act="ob-test">Fitness-Test starten</button></div>
-        <button class="linkbtn" data-act="ob-next">Später machen (dann siehst du nur Prozentwerte)</button>`;
+          <button class="ghost block" style="margin-top:12px" data-act="ob-savemax">Werte speichern</button></details>
+        <button class="later" data-act="ob-next">Später machen (dann siehst du nur Prozentwerte)</button>`;
     case 'done': {
       const pl = plan();
       const d = daysToFight();
@@ -1058,7 +1071,7 @@ function obBody(id) {
         </ul>
         ${pl.mode === 'start' ? '<p class="muted small">Ohne Kampftermin gilt der volle Plan über 10 Wochen ab heute. Den Termin kannst du später in den Einstellungen eintragen.</p>' : ''}
         <h2>Als Nächstes</h2>
-        ${state.maxW ? `<p>Deine erste Einheit findest du auf der Startseite unter „Nächste Einheit“. Tippe darauf und starte den Timer.</p>` : '<p><b>Mache zuerst den Fitness-Test.</b> Er steht oben auf der Startseite. Ohne ihn siehst du nur Prozentwerte statt Watt-Zahlen.</p>'}`;
+        ${state.maxW ? `<p>Deine erste Einheit findest du auf der Startseite unter „Nächste Einheit“. Tippe darauf und starte den Timer.</p>` : '<p><b>Mache zuerst den Fitness-Test.</b> Ohne ihn siehst du nur Prozentwerte statt Watt-Zahlen.</p>'}`;
     }
     default:
       return '';
@@ -1079,14 +1092,14 @@ function renderOnboarding() {
   const id = OB_STEPS[ob.step];
   const last = ob.step === OB_STEPS.length - 1;
   const first = ob.step === 0;
-  const nextLabel = id === 'welcome' ? 'Los geht’s' : id === 'health' ? 'Verstanden, weiter' : last ? 'Zur Übersicht' : 'Weiter';
+  const nextLabel = id === 'welcome' ? 'Verstanden, los geht’s' : last ? (state.maxW ? 'Zur Übersicht' : 'Fitness-Test starten') : 'Weiter';
   const showNext = id !== 'watt';
   sheet.innerHTML = `<div class="sheet-in">
     <div class="ob-top">${first ? '<span></span>' : '<button class="ob-back" data-act="ob-back" aria-label="Zurück">← Zurück</button>'}
-      <div class="dots" aria-hidden="true">${first ? '' : [1, 2, 3, 4, 5].map((i) => `<i class="${i <= ob.step || last ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="dots" aria-hidden="true">${first ? '' : [1, 2, 3].map((i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
       ${first ? '<button class="ob-skip" data-act="ob-skip">Überspringen</button>' : '<span></span>'}</div>
     <div class="ob-body">${obBody(id)}</div>
-    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? 'ob-finish' : 'ob-next'}">${nextLabel}</button></div>` : ''}
+    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? (state.maxW ? 'ob-finish' : 'ob-test') : 'ob-next'}">${nextLabel}</button>${last && !state.maxW ? '<button class="linkbtn" data-act="ob-finish">Später, zur Übersicht</button>' : ''}</div>` : ''}
   </div>`;
   sheet.scrollTop = 0;
 }
@@ -1105,7 +1118,7 @@ function closeOnboarding() {
 }
 function obNext(noDate = false) {
   const id = OB_STEPS[ob.step];
-  if (id === 'health') {
+  if (id === 'welcome') {
     state.ack = true;
     save();
   }
@@ -1328,7 +1341,10 @@ function applyRemote(remote) {
 }
 
 async function startSession(user, quick = false) {
-  account = { id: user.id, email: user.email || readSync().email || '' };
+  const birth = Number(user.user_metadata && user.user_metadata.birth_year) || Number(readSync().birth) || 0;
+  account = { id: user.id, email: user.email || readSync().email || '', birthYear: birth };
+  if (birth && Number(readSync().birth) !== birth) writeSync({ birth });
+  enforceProfile();
   if (quick) {
     // Server nicht erreichbar: sofort mit lokalen Daten starten, Abgleich läuft im Hintergrund
     syncStatus = 'offline';
@@ -1718,7 +1734,15 @@ document.addEventListener('click', (e) => {
     case 'ob-replay':
       startOnboarding(0);
       break;
+    case 'ob-profile-toggle':
+      ob.fightDraft = document.getElementById('obFight')?.value || '';
+      ob.profileOpen = !ob.profileOpen;
+      renderOnboarding();
+      break;
     case 'ob-profile':
+      if (!allowedProfiles().includes(t.dataset.key)) break;
+      ob.fightDraft = document.getElementById('obFight')?.value || '';
+      ob.profileOpen = false;
       state.profile = t.dataset.key;
       if (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) state.roundMin = PROFILES[state.profile].roundSecs / 60;
       save();
@@ -1732,11 +1756,13 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'ob-rounds':
+      ob.fightDraft = document.getElementById('obFight')?.value || '';
       state.rounds = Number(t.dataset.n);
       save();
       renderOnboarding();
       break;
     case 'ob-rlen':
+      ob.fightDraft = document.getElementById('obFight')?.value || '';
       state.roundMin = Number(t.dataset.n);
       save();
       renderOnboarding();
@@ -1884,6 +1910,10 @@ document.addEventListener('change', (e) => {
   }
   if (t.dataset.set) {
     const k = t.dataset.set;
+    if (k === 'profile' && !allowedProfiles().includes(t.value)) {
+      route();
+      return;
+    }
     state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Number(t.value) || 0 : t.value;
     if (k === 'maxW') { state.sprints = []; state.peakW = 0; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
     if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
