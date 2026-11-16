@@ -1438,7 +1438,6 @@ function authShell(inner) {
     document.body.appendChild(sheet);
   }
   document.body.classList.add('obopen');
-  sheet.classList.toggle('authbg', inner.includes('auth-brand'));
   sheet.innerHTML = `<div class="sheet-in">${inner}</div>`;
   sheet.scrollTop = 0;
 }
