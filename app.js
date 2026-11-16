@@ -664,33 +664,12 @@ async function sendFeedbackNow() {
   route();
 }
 
-function viewPassword() {
-  return `<a href="#/more" class="back">← Mehr</a><h1>Passwort</h1>
-  <p class="muted">Freiwillig: Mit Passwort kannst du dich auch ohne Code anmelden. Du bleibst angemeldet.</p>
-  <label for="pw1">Neues Passwort (mindestens 8 Zeichen)</label><input id="pw1" type="password" autocomplete="new-password">
-  <label for="pw2">Wiederholen</label><input id="pw2" type="password" autocomplete="new-password">
-  <button class="primary block" style="margin-top:16px" data-act="pw-change">Passwort speichern</button>`;
-}
-async function doChangePw(btn) {
-  const a = document.getElementById('pw1').value;
-  const b = document.getElementById('pw2').value;
-  if (a.length < 8) return toast('Das Passwort braucht mindestens 8 Zeichen.');
-  if (a !== b) return toast('Die Passwörter stimmen nicht überein.');
-  await withBusy(btn, async () => {
-    const { error } = await cloud.updatePassword(a);
-    if (error) return toast(authError(error));
-    toast('Passwort gespeichert');
-    location.hash = '#/more';
-  });
-}
-
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
   ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block" data-act="logout">Abmelden</button></div>` : ''}
-  ${account ? row('#/password', 'Passwort festlegen oder ändern', 'Freiwillig. Ohne Passwort meldest du dich mit Code an.') : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
@@ -866,7 +845,7 @@ function route() {
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'password', 'datenschutz', 'impressum'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'datenschutz', 'impressum'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -885,7 +864,6 @@ function route() {
     case 'feedback': html = viewFeedback(); break;
     case 'reports': html = viewReports(); loadReports(); break;
     case 'settings': html = viewSettings(); break;
-    case 'password': html = viewPassword(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
     case 'test': html = viewTest(); break;
@@ -1461,7 +1439,6 @@ let syncStatus = ''; // 'ok' | 'pending' | 'offline' | 'error'
 let pushTimer = null;
 let authView = 'login';
 let authPrev = 'login';
-let authPendingPw = '';
 let authMsg = '';
 let authEmail = '';
 const MIN_AGE = 14; // nach Geburtsjahr, im Zweifel streng (siehe Datenbank-Regel)
@@ -1675,7 +1652,6 @@ function closeAuth() {
 function renderLoading() {
   authShell(`${authBrand()}<p class="muted center" style="margin-top:30px">Lade …</p>`);
 }
-let recovering = /type=recovery/.test(cloud.INITIAL_HASH || '');
 async function boot() {
   renderLoading();
   let quickStart = false;
@@ -1696,18 +1672,8 @@ async function boot() {
     showIntro();
     return;
   }
-  if (recovering) {
-    renderAuth('newpw');
-    return;
-  }
   await startSession(user, quickStart);
 }
-cloud.onAuth((event) => {
-  if (event === 'PASSWORD_RECOVERY') {
-    recovering = true;
-    renderAuth('newpw');
-  }
-});
 window.addEventListener('online', () => {
   if (account && readSync().dirty) pushNow();
 });
@@ -1737,7 +1703,7 @@ function showIntro() {
   } catch {
     /* ohne Speicher: Intro zeigen */
   }
-  if (recovering || document.getElementById('intro')) return;
+  if (document.getElementById('intro')) return;
   const box = document.createElement('div');
   box.id = 'intro';
   box.setAttribute('role', 'dialog');
@@ -1806,22 +1772,16 @@ function renderAuth(view = 'login') {
   let body = '';
   if (view === 'login') {
     body = `${authBrand()}${authTabs('login')}${authMessage()}
-      <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Ein Passwort brauchst du nicht.</p>
+      <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Damit meldest du dich an.</p>
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <button class="primary block" style="margin-top:16px" data-act="auth-code">Code senden</button>
-      <button class="linkbtn" data-act="auth-view" data-v="pwlogin">Lieber mit Passwort anmelden</button>${legalLinks()}`;
-  } else if (view === 'pwlogin') {
-    body = `${authBrand()}${authTabs('login')}${authMessage()}
-      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <label for="aPw">Passwort</label><input id="aPw" type="password" autocomplete="current-password">
-      <button class="primary block" style="margin-top:16px" data-act="auth-login">Anmelden</button>
-      <button class="linkbtn" data-act="auth-view" data-v="login">Passwort vergessen oder keins? Code per E-Mail</button>${legalLinks()}`;
+${legalLinks()}`;
   } else if (view === 'register') {
     body = `${authBrand()}${authTabs('register')}${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
       <p id="aAgeHint" class="muted small" style="margin:6px 0 0"></p>
-      <p class="muted small" style="margin:10px 0 0">Ein Passwort brauchst du nicht: Du meldest dich immer mit einem Code per E-Mail an. Ein Passwort kannst du später unter „Mehr“ festlegen.</p>
+      <p class="muted small" style="margin:10px 0 0">Du meldest dich immer mit einem Code per E-Mail an, ein Passwort gibt es nicht.</p>
       <label class="chk" id="aGuardBox" hidden><input id="aGuard" type="checkbox"><span>Ein Elternteil oder Erziehungsberechtigter hat der Registrierung und der Verarbeitung der Daten zugestimmt.</span></label>
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
       <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
@@ -1832,11 +1792,6 @@ function renderAuth(view = 'login') {
       <p class="muted small">Keine Mail da? Schau im Spam-Ordner nach oder fordere einen neuen Code an.</p>
       <button class="linkbtn" data-act="auth-resend">Neuen Code senden</button>
       <button class="linkbtn" data-act="auth-view" data-v="${authPrev === 'register' ? 'register' : 'login'}">Zurück</button>`;
-  } else if (view === 'newpw') {
-    body = `${authBrand()}<h1 style="font-size:28px">Neues Passwort</h1>${authMessage()}
-      <label for="aPw">Neues Passwort (mindestens 8 Zeichen)</label><input id="aPw" type="password" autocomplete="new-password">
-      <label for="aPw2">Wiederholen</label><input id="aPw2" type="password" autocomplete="new-password">
-      <button class="primary block" style="margin-top:16px" data-act="auth-newpw">Passwort speichern</button>`;
   } else if (view === 'privacy' || view === 'imprint') {
     body = `<button class="ob-back" data-act="auth-view" data-v="${authPrev}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
   }
@@ -1863,24 +1818,6 @@ async function withBusy(btn, fn) {
   } finally {
     if (btn && document.body.contains(btn)) btn.disabled = false;
   }
-}
-async function doLogin(btn) {
-  const email = document.getElementById('aEmail').value.trim();
-  const pw = document.getElementById('aPw').value;
-  authEmail = email;
-  if (!email || !pw) {
-    authMsg = 'Bitte E-Mail und Passwort eingeben.';
-    return renderAuth('pwlogin');
-  }
-  await withBusy(btn, async () => {
-    const { data, error } = await cloud.signIn(email, pw);
-    if (error || !data?.user) {
-      authMsg = authError(error);
-      return renderAuth('pwlogin');
-    }
-    authMsg = '';
-    await startSession(data.user);
-  });
 }
 async function doRegister(btn) {
   const email = document.getElementById('aEmail').value.trim();
@@ -1913,7 +1850,6 @@ async function doRegister(btn) {
       return renderAuth('register');
     }
     authMsg = '';
-    authPendingPw = '';
     authPrev = 'register';
     renderAuth('confirm');
   });
@@ -1932,7 +1868,6 @@ async function doCode(btn) {
       return renderAuth('login');
     }
     authMsg = '';
-    authPendingPw = '';
     authPrev = 'login';
     renderAuth('confirm');
   });
@@ -1942,28 +1877,6 @@ async function doResend(btn) {
     const { error } = await cloud.sendCode(authEmail, authPrev === 'register', undefined);
     authMsg = error ? authError(error) : 'Ein neuer Code ist unterwegs.';
     renderAuth('confirm');
-  });
-}
-async function doNewPw(btn) {
-  const a = document.getElementById('aPw').value;
-  const b = document.getElementById('aPw2').value;
-  if (a.length < 8) {
-    authMsg = 'Das Passwort braucht mindestens 8 Zeichen.';
-    return renderAuth('newpw');
-  }
-  if (a !== b) {
-    authMsg = 'Die Passwörter stimmen nicht überein.';
-    return renderAuth('newpw');
-  }
-  await withBusy(btn, async () => {
-    const { data, error } = await cloud.updatePassword(a);
-    if (error) {
-      authMsg = authError(error);
-      return renderAuth('newpw');
-    }
-    authMsg = '';
-    recovering = false;
-    await startSession(data.user);
   });
 }
 async function doVerify(btn) {
@@ -1979,14 +1892,6 @@ async function doVerify(btn) {
       return renderAuth('confirm');
     }
     authMsg = '';
-    if (authPendingPw) {
-      try {
-        await cloud.updatePassword(authPendingPw);
-      } catch {
-        /* Passwort ist freiwillig, Anmeldung per Code geht trotzdem */
-      }
-      authPendingPw = '';
-    }
     await startSession(data.session.user);
   });
 }
@@ -2036,11 +1941,11 @@ function legalPrivacy() {
   return `<h1>Datenschutz</h1>${draftBanner}
   <h2>Wer ist verantwortlich?</h2><p>[Name und Anschrift des Verantwortlichen, E-Mail-Adresse für Datenschutzfragen]</p>
   <h2>Welche Daten werden verarbeitet?</h2>
-  <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse und Passwort (das Passwort wird nur als nicht lesbarer Wert gespeichert), Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
+  <ul class="plain"><li><b>Konto:</b> E-Mail-Adresse, Geburtsjahr, Zeitpunkt deiner Einwilligung und bei jungen Nutzern die Bestätigung der Eltern.</li>
   <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung (Text, Art, Seite, auf der du warst, App-Version, Gerätetyp und deine Einstellungen, z. B. Altersklasse) als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Wir speichern sie nicht zusätzlich in deinem Konto. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text. [Prüfen lassen]</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
-  <li><b>E-Mails:</b> Für Bestätigung und Zurücksetzen des Passworts wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
+  <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
   <h2>Kinder und Jugendliche</h2><p>Bis zu einem Alter von 16 Jahren ist die Einwilligung eines Elternteils nötig. Die App ist nicht für Kinder unter 14 Jahren vorgesehen. Das Alter wird nur anhand des Geburtsjahres geprüft, ohne Nachweis. [Prüfen lassen]</p>
@@ -2080,9 +1985,6 @@ document.addEventListener('click', (e) => {
       authMsg = '';
       renderAuth(t.dataset.v);
       break;
-    case 'auth-login':
-      doLogin(t);
-      break;
     case 'auth-register':
       doRegister(t);
       break;
@@ -2094,12 +1996,6 @@ document.addEventListener('click', (e) => {
       break;
     case 'auth-resend':
       doResend(t);
-      break;
-    case 'pw-change':
-      doChangePw(t);
-      break;
-    case 'auth-newpw':
-      doNewPw(t);
       break;
     case 'logout':
       doLogout();
@@ -2377,7 +2273,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 58;
+const APP_BUILD = 59;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
