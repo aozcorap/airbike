@@ -1731,7 +1731,7 @@ document.addEventListener('visibilitychange', async () => {
 /* ---- Intro-Video vor der Anmeldung (einmal pro Gerät, überspringbar) ---- */
 function showIntro() {
   try {
-    if (localStorage.getItem('rl-intro')) return;
+    if (sessionStorage.getItem('rl-intro')) return; // nur je Sitzung: beim Neuladen nicht erneut
   } catch {
     /* ohne Speicher: Intro zeigen */
   }
@@ -1753,7 +1753,7 @@ function showIntro() {
 function closeIntro() {
   document.getElementById('intro')?.remove();
   try {
-    localStorage.setItem('rl-intro', '1');
+    sessionStorage.setItem('rl-intro', '1');
   } catch {
     /* egal */
   }
@@ -2403,7 +2403,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 52;
+const APP_BUILD = 53;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
