@@ -5,7 +5,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
 ## Rechtlich (vor echten Nutzern, blockierend)
 
 1. **Programm aus gekauftem PDF.** Der Plan steckt öffentlich im Repo. Das Recht zur Nutzung und Vermarktung ist ungeklärt. Für Werbevideo und Verkauf dringend.
-2. **Datenschutz und Impressum** sind Entwürfe mit Lücken (`[...]`). Ohne sie keine echten Nutzer, besonders keine Minderjährigen.
+2. **Datenschutz** ist ein Entwurf mit Lücken (`[...]`). Ohne ihn keine echten Nutzer, besonders keine Minderjährigen. Das Impressum ist eingetragen (Name, Anschrift, E-Mail, ohne USt-ID, nicht rechtlich geprüft; die Anschrift ist öffentlich sichtbar).
 3. **Name „Nonstop Boxing"** ist nicht auf Marke, App-Store und Domain geprüft.
 4. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
 14. **Rückmeldungen der Tester sind öffentlich.** Sie landen als Issues im öffentlichen Repo, auch wenn ein Tester Namen oder Gesundheitsangaben hineinschreibt. Der Hinweis in der App steht drin, die Datenschutz-Entwürfe müssen es sauber abdecken.
