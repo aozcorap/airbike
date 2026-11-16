@@ -54,3 +54,4 @@ export async function deleteAccount() {
     /* Konto ist gelöscht, lokale Abmeldung ist nachrangig */
   }
 }
+export const sendFeedback = (row) => client.from('feedback').insert(row);

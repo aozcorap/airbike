@@ -403,3 +403,6 @@ body.obopen { overflow: hidden; }
 #toast .tick { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ok); color: #05210e; display: grid; place-items: center; font-weight: 800; }
 html { min-height: 100%; }
 body { min-height: 100vh; min-height: 100dvh; }
+
+textarea { font: inherit; width: 100%; min-height: 140px; padding: 14px; border-radius: 14px; background: var(--surface-2, #1b1f28); color: var(--text); border: 1px solid var(--line); resize: vertical; line-height: 1.4; }
+textarea:focus { outline: 2px solid var(--data, #5ac8fa); outline-offset: 2px; }
