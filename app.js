@@ -2272,29 +2272,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 63;
+const APP_BUILD = 64;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
     const m = /redline-v(\d+)/.exec(await r.text());
-    if (m && Number(m[1]) > APP_BUILD) {
-      // Direkt nach dem Start ohne Rückfrage neu laden (einmal je Version), sonst Hinweis mit Knopf
-      let tried = '';
-      try {
-        tried = sessionStorage.getItem('rl-auto') || '';
-      } catch {
-        /* egal */
-      }
-      if (performance.now() < 20000 && !document.body.classList.contains('running') && tried !== m[1]) {
-        try {
-          sessionStorage.setItem('rl-auto', m[1]);
-        } catch {
-          /* egal */
-        }
-        return void hardReload();
-      }
-      showUpdateBanner();
-    }
+    if (m && Number(m[1]) > APP_BUILD) showUpdateBanner();
   } catch {
     /* offline: später erneut */
   }
