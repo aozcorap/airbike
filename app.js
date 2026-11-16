@@ -148,8 +148,11 @@ function planSummary() {
     txt = `${p.fight ? `Noch ${daysToFight()} Tage bis zum Kampf. ` : ''}Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
     if (p.startsIn > 0) txt += ` Er beginnt am ${fmtDate(p.weeks[0].monday)}, vorher ist noch Zeit.`;
     if (p.compressed) txt += ' Der Plan ist gekürzt. Wie gekürzt wird, ist eine Annahme und noch nicht von einem Fachtrainer geprüft.';
+    if (p.weeks.length === 1) txt += ' Das ist sehr kurzfristig: Es bleibt nur die Kampfwoche. Einheiten an Tagen, die schon vorbei sind, kannst du auslassen.';
   } else {
     txt = `Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
+    const sd = parseDay(state.startDate);
+    if (sd && sd < startOfDay(new Date())) txt += ' Das Startdatum liegt in der Vergangenheit, die ersten Einheiten sind schon vorbei.';
   }
   if (freq < 3) txt += ' Bei weniger als 3 Einheiten pro Woche wählt die App die wichtigsten aus. Die Auswahl ist eine Annahme.';
   if (freq > effFreq()) txt += ` In deiner Altersklasse sind höchstens ${effFreq()} harte Einheiten pro Woche vorgesehen, die übrige ist eine Aktive Erholung.`;
@@ -347,7 +350,7 @@ function viewHome() {
     const d = daysToFight();
     fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
-      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${userFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
+      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${userFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}${p.weeks.length === 1 ? ' · sehr kurzfristig, nur die Kampfwoche' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
@@ -750,6 +753,7 @@ function viewSettings() {
   <h2>Dein Kampf</h2>
   <label for="fightDate">Kampftermin (Turnier)</label>
   ${dateField('fightDate', state.fightDate, 'data-set="fightDate"')}
+  ${state.fightDate ? '<button class="linkbtn inline" data-act="fight-remove">Ich habe keinen Kampftermin mehr</button>' : ''}
   ${!state.fightDate ? `<label for="startDate">Startdatum (nur ohne Kampftermin)</label>
   ${dateField('startDate', state.startDate, 'data-set="startDate"')}` : ''}
   <label for="rounds">Anzahl der Runden im nächsten Kampf</label>
@@ -829,6 +833,10 @@ function route() {
     runView(arg);
     return;
   }
+  if (updatePending) {
+    updatePending = false;
+    showUpdateBanner();
+  }
   let html;
   switch (view) {
     case '': case undefined: html = viewHome(); break;
@@ -872,7 +880,7 @@ let actx = null;
 function ensureAudio() {
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
+    if (actx.state !== 'running') actx.resume().catch(() => {}); // auch „interrupted“ (iOS nach Sperre oder Anruf)
   } catch {
     actx = null;
   }
@@ -942,6 +950,12 @@ function runView(id) {
   const speed = Number(new URLSearchParams(location.search).get('speed')) || 1;
 
   document.body.classList.add('running');
+  runHash = location.hash;
+  const upd = document.getElementById('update'); // Update-Hinweis nicht über den Timer legen, danach wieder zeigen
+  if (upd) {
+    upd.remove();
+    updatePending = true;
+  }
   $app.innerHTML = `<div class="timer k-prep" id="timer">
     <div class="t-top"><span id="t-block"></span><span id="t-count"></span></div>
     <div class="t-mid"><div class="t-blockname" id="t-blockname"></div><div class="t-round" id="t-round"></div><div class="t-label" id="t-label"></div><div class="t-time" id="t-time">0:00</div><div class="t-target" id="t-target"></div><div class="t-sub" id="t-sub"></div></div>
@@ -1046,6 +1060,7 @@ function runView(id) {
     last = now;
     if (paused || finished) return;
     elapsed += dt;
+    let moved = false;
     while (!finished && elapsed >= segs[i].secs * 1000) {
       const carry = elapsed - segs[i].secs * 1000;
       if (i + 1 >= segs.length) {
@@ -1054,6 +1069,10 @@ function runView(id) {
       }
       i += 1;
       elapsed = carry;
+      moved = true;
+    }
+    // Nach längerer Pause im Hintergrund nur das aktuelle Signal geben, nicht alle verpassten auf einmal
+    if (moved) {
       paintSegment();
       cue(segs[i]);
     }
@@ -1088,7 +1107,10 @@ function runView(id) {
   }
   const timer = setInterval(tick, 100);
   const onVis = () => {
-    if (document.visibilityState === 'visible' && !paused && !finished) lockScreen();
+    if (document.visibilityState === 'visible' && !paused && !finished) {
+      lockScreen();
+      ensureAudio();
+    }
     tick();
   };
   document.addEventListener('visibilitychange', onVis);
@@ -1100,6 +1122,10 @@ function runView(id) {
   };
 }
 let runCtl = null;
+let runHash = ''; // Adresse der laufenden Einheit (für die Rückfrage beim Verlassen)
+let leaveOk = false; // Verlassen ist schon bestätigt (z. B. über „Abbrechen“)
+let reloading = false;
+let updatePending = false; // neue Version gefunden, während ein Training läuft
 
 /* ---------------- Modal / Hinweis ---------------- */
 /* ---------------- Kalender (.ics) ---------------- */
@@ -1810,11 +1836,12 @@ ${legalLinks()}`;
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
       <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
   } else if (view === 'confirm') {
-    body = `${authBrand()}<h1 style="font-size:28px">Code eingeben</h1><p>Wir haben einen Code an <b>${em}</b> geschickt. Gib ihn hier ein, dann bist du angemeldet.</p>${authMessage()}
+    body = `${authBrand()}<h1 style="font-size:28px">Code eingeben</h1><p>${authPrev === 'register' ? `Wir haben einen Code an <b>${em}</b> geschickt.` : `Wenn es zu <b>${em}</b> ein Konto gibt, haben wir einen Code geschickt.`} Gib ihn hier ein, dann bist du angemeldet.</p>${authMessage()}
       <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
       <button class="primary block" style="margin-top:16px" data-act="auth-verify">Anmelden</button>
       <p class="muted small">Keine Mail da? Schau im Spam-Ordner nach oder fordere einen neuen Code an.</p>
       <button class="linkbtn" data-act="auth-resend">Neuen Code senden</button>
+      ${authPrev === 'register' ? '' : '<button class="linkbtn" data-act="auth-view" data-v="register">Noch kein Konto? Registrieren</button>'}
       <button class="linkbtn" data-act="auth-view" data-v="${authPrev === 'register' ? 'register' : 'login'}">Zurück</button>`;
   } else if (view === 'privacy' || view === 'imprint') {
     body = `<button class="ob-back" data-act="auth-view" data-v="${authPrev}">← Zurück</button>${view === 'privacy' ? legalPrivacy() : legalImprint()}`;
@@ -1866,8 +1893,9 @@ async function doCode(btn) {
   }
   await withBusy(btn, async () => {
     const { error } = await cloud.sendCode(email, false);
-    if (error) {
-      authMsg = /signups? not allowed/i.test(String(error.message || error.code)) ? 'Zu dieser Adresse gibt es kein Konto. Bitte registriere dich.' : authError(error);
+    // Gibt es kein Konto, sieht es für den Nutzer genauso aus wie bei einem Konto (verrät nicht, welche Adressen registriert sind)
+    if (error && !noAccountError(error)) {
+      authMsg = authError(error);
       return renderAuth('login');
     }
     authMsg = '';
@@ -1875,10 +1903,11 @@ async function doCode(btn) {
     renderAuth('confirm');
   });
 }
+const noAccountError = (e) => /signups? not allowed|otp_disabled/i.test(String((e && (e.message || e.code)) || ''));
 async function doResend(btn) {
   await withBusy(btn, async () => {
     const { error } = await cloud.sendCode(authEmail, authPrev === 'register', undefined);
-    authMsg = error ? authError(error) : 'Ein neuer Code ist unterwegs.';
+    authMsg = error && !noAccountError(error) ? authError(error) : 'Ein neuer Code ist unterwegs.';
     renderAuth('confirm');
   });
 }
@@ -2154,6 +2183,7 @@ document.addEventListener('click', (e) => {
       break;
     case 'texit':
       if (document.querySelector('.timer.k-done') || confirm('Training wirklich abbrechen?')) {
+        leaveOk = true;
         const id = location.hash.split('/')[2];
         location.hash = id === 'test' ? '#/test' : `#/s/${id}`;
       }
@@ -2162,6 +2192,17 @@ document.addEventListener('click', (e) => {
       state.done[t.dataset.id] = new Date().toISOString();
       save();
       location.hash = '#/';
+      break;
+    case 'fight-remove':
+      if (confirm('Kampftermin entfernen? Der Plan läuft dann über 10 Wochen ab heute.')) {
+        const n = new Date();
+        state.fightDate = '';
+        state.startDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+        save();
+        scheduleReminder();
+        route();
+        toast('Gespeichert');
+      }
       break;
     case 'ics':
       if (!plan().weeks[0]?.monday) {
@@ -2229,6 +2270,14 @@ document.addEventListener('change', (e) => {
       route();
       return;
     }
+    if (k === 'fightDate' && t.value) {
+      const d = parseDay(t.value);
+      if (!d || d <= startOfDay(new Date())) {
+        toast('Bitte ein Datum in der Zukunft eintragen (frühestens morgen).');
+        route();
+        return;
+      }
+    }
     if (k === 'maxW' || k === 'age') {
       const v = Number(t.value);
       const [lo, hi] = k === 'maxW' ? [100, 3000] : [10, 90];
@@ -2246,7 +2295,20 @@ document.addEventListener('change', (e) => {
     route();
     toast('Gespeichert');
   } else if (t.dataset.setDay) {
-    state.days[t.dataset.setDay] = Number(t.value);
+    const key = t.dataset.setDay;
+    const val = Number(t.value);
+    // Zwei harte Einheiten brauchen mindestens einen Tag Abstand (auch von Sonntag auf Montag)
+    const hard = ['s1', 's2', 's3'].slice(0, effFreq());
+    const tooClose = (a, b) => {
+      const d = Math.abs(a - b);
+      return Math.min(d, 7 - d) < 2;
+    };
+    if (hard.includes(key) && hard.some((o) => o !== key && tooClose(val, Number(state.days[o])))) {
+      toast('Zwei harte Einheiten brauchen mindestens einen Ruhetag dazwischen.');
+      route();
+      return;
+    }
+    state.days[key] = val;
     save();
     scheduleReminder();
     toast('Gespeichert');
@@ -2255,7 +2317,23 @@ document.addEventListener('change', (e) => {
 });
 
 window.addEventListener('hashchange', () => {
-  if (account) route();
+  if (!account) return;
+  // Läuft ein Training, fragt auch die Zurück-Taste nach, statt es still abzubrechen
+  if (document.body.classList.contains('running') && !document.querySelector('.timer.k-done')) {
+    if (location.hash === runHash) return; // Rückkehr zur laufenden Einheit
+    if (!leaveOk && !confirm('Training wirklich verlassen? Der Stand dieser Einheit geht verloren.')) {
+      location.hash = runHash;
+      return;
+    }
+  }
+  leaveOk = false;
+  route();
+});
+window.addEventListener('beforeunload', (e) => {
+  if (!reloading && document.body.classList.contains('running') && !document.querySelector('.timer.k-done')) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target && e.target.closest && e.target.closest('#auth') && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
@@ -2285,7 +2363,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 70;
+const APP_BUILD = 71;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2307,6 +2385,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pageshow', checkForUpdate);
 window.addEventListener('online', checkForUpdate);
 async function hardReload() {
+  reloading = true;
   try {
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -2341,6 +2420,10 @@ function toast(msg) {
 }
 function showUpdateBanner() {
   if (document.getElementById('update')) return;
+  if (document.body.classList.contains('running')) {
+    updatePending = true; // während des Trainings nicht stören, danach zeigen
+    return;
+  }
   const bar = document.createElement('div');
   bar.id = 'update';
   bar.setAttribute('role', 'status');
