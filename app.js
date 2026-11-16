@@ -262,7 +262,16 @@ const BRAND_MARK = `<svg viewBox="0 0 120 120" fill="none" aria-hidden="true"><d
 const APP_NAME_A = 'NONSTOP ';
 const APP_NAME_B = 'BOXING';
 const brandBar = () => `<div class="brandbar">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div>`;
-const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" onerror="this.remove()">';
+const HERO_PHOTO = '<img class="art-photo" src="img/hero.jpg" alt="" data-hide-on-error>';
+// Fehlendes Bild still entfernen (statt Inline-Handler, damit die Content-Security-Policy keine Inline-Skripte erlauben muss)
+document.addEventListener(
+  'error',
+  (e) => {
+    const t = e.target;
+    if (t && t.tagName === 'IMG' && t.hasAttribute('data-hide-on-error')) t.remove();
+  },
+  true,
+);
 const WHEEL_ART = (() => {
   const spokes = Array.from({ length: 24 }, (_, i) => {
     const a = (i * Math.PI) / 12;
@@ -385,10 +394,14 @@ function viewHome() {
         .join('')
     : '';
 
+  const run = readRun();
+  const runFound = run && Date.now() - run.t < RUN_MAX_AGE && (run.i > 0 || run.elapsed > 5000) ? findInPlan(run.id) : null;
+  const runHtml = runFound ? `<a class="card link accent" href="#/run/${esc(run.id)}"><span class="kicker">Unterbrochen</span><h3 style="margin-top:6px">Training fortsetzen</h3><p class="muted small" style="margin:4px 0 0">${esc(runFound.session.title)}</p></a>` : '';
+
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
   ${ageUnknown() ? '<div class="notice"><b>Dein Alter konnte nicht geladen werden.</b> Bis es geladen ist, gilt der vorsichtigste Plan (U13–U14 und jünger). Prüfe deine Verbindung und öffne die App neu.</div>' : ''}${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
-  ${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
+  ${runHtml}${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
 
 function viewTest() {
@@ -947,6 +960,14 @@ function runView(id) {
   const total = totalSecs(segs);
   const speed = Number(new URLSearchParams(location.search).get('speed')) || 1;
 
+  // Wurde das Training unterbrochen (z. B. Neuladen, App geschlossen), anbieten, dort fortzusetzen
+  let resumeAt = null;
+  const saved = readRun();
+  if (saved && saved.id === id && Date.now() - saved.t < RUN_MAX_AGE && Number.isInteger(saved.i) && saved.i >= 0 && saved.i < segs.length && (saved.i > 0 || saved.elapsed > 5000)) {
+    if (confirm(`Dein Training wurde unterbrochen (Schritt ${saved.i + 1} von ${segs.length}).\n\nOK = dort fortsetzen\nAbbrechen = von vorn beginnen`)) resumeAt = saved;
+    else writeRun(null);
+  }
+
   document.body.classList.add('running');
   runHash = location.hash;
   const upd = document.getElementById('update'); // Update-Hinweis nicht über den Timer legen, danach wieder zeigen
@@ -965,10 +986,10 @@ function runView(id) {
   const q = (i) => document.getElementById(i);
   const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), blockname: q('t-blockname'), round: q('t-round'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
 
-  let i = 0;
-  let elapsed = 0; // ms im aktuellen Segment
+  let i = resumeAt ? resumeAt.i : 0;
+  let elapsed = resumeAt ? Math.max(0, Math.min(Number(resumeAt.elapsed) || 0, segs[i].secs * 1000)) : 0; // ms im aktuellen Segment
   let last = Date.now();
-  let paused = !actx;
+  let paused = !actx || Boolean(resumeAt); // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
   let finished = false;
   let lastShownSec = -1;
   let beepedAt = -1;
@@ -1007,6 +1028,7 @@ function runView(id) {
     if (remain !== lastShownSec) {
       lastShownSec = remain;
       el.time.textContent = fmt(remain);
+      if (!finished) writeRun({ id, i, elapsed: Math.round(elapsed), t: Date.now() }); // Stand merken, einmal pro Sekunde
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
         beepedAt = remain;
         beep(820, 90, 0.35);
@@ -1019,6 +1041,7 @@ function runView(id) {
 
   function finish() {
     finished = true;
+    writeRun(null);
     unlockScreen();
     beep(900, 180);
     setTimeout(() => beep(1100, 180), 240);
@@ -1098,7 +1121,7 @@ function runView(id) {
 
   paintSegment();
   paintTime();
-  el.play.textContent = paused ? 'Start' : 'Pause';
+  el.play.textContent = paused ? (resumeAt ? 'Fortsetzen' : 'Start') : 'Pause';
   if (!paused) {
     lockScreen();
     last = Date.now();
@@ -1117,8 +1140,26 @@ function runView(id) {
     document.removeEventListener('visibilitychange', onVis);
     unlockScreen();
     runCtl = null;
+    writeRun(null); // Training bewusst verlassen: nichts mehr zum Fortsetzen
   };
 }
+const RUN_KEY = 'redline.run';
+const RUN_MAX_AGE = 3 * 3600 * 1000; // länger als 3 Stunden unterbrochene Trainings werden nicht mehr angeboten
+const readRun = () => {
+  try {
+    return JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+  } catch {
+    return null;
+  }
+};
+const writeRun = (v) => {
+  try {
+    if (v) localStorage.setItem(RUN_KEY, JSON.stringify(v));
+    else localStorage.removeItem(RUN_KEY);
+  } catch {
+    /* Speicher blockiert */
+  }
+};
 let runCtl = null;
 let runHash = ''; // Adresse der laufenden Einheit (für die Rückfrage beim Verlassen)
 let leaveOk = false; // Verlassen ist schon bestätigt (z. B. über „Abbrechen“)
@@ -1294,7 +1335,7 @@ function obBody(id) {
   const p = profile();
   switch (id) {
     case 'welcome':
-      return `<div class="ob-hero"><img src="img/hero.jpg" alt="" onerror="this.remove()"><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
+      return `<div class="ob-hero"><img src="img/hero.jpg" alt="" data-hide-on-error><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
         <h1>So startest du</h1>
         <p class="muted">In wenigen Minuten ist dein Plan bereit.</p>
         <div class="notice"><b>Gesundheit:</b> Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen vorher ärztlich untersuchen. Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen. Du trainierst auf eigene Verantwortung.</div>
@@ -1955,6 +1996,7 @@ async function doLogout() {
     localStorage.removeItem(KEY);
     localStorage.removeItem(SYNC_KEY);
     localStorage.removeItem(BASE_KEY);
+    localStorage.removeItem(RUN_KEY);
   } catch {
     /* ignorieren */
   }
@@ -1964,21 +2006,66 @@ async function doLogout() {
 async function doDeleteAccount() {
   if (!confirm('Konto wirklich löschen?\n\nDein Konto und alle gesicherten Daten werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.')) return;
   if (!confirm('Letzte Rückfrage: Konto jetzt endgültig löschen?')) return;
-  try {
-    await cloud.deleteAccount();
-  } catch {
-    alert('Das Konto konnte nicht gelöscht werden. Bitte versuche es später noch einmal.');
+  // Zur Sicherheit muss man sich erneut ausweisen: Code an die E-Mail-Adresse des Kontos
+  const email = account && account.email;
+  if (!email) {
+    alert('Das Konto konnte nicht geprüft werden. Bitte melde dich neu an.');
     return;
   }
-  try {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(SYNC_KEY);
-    localStorage.removeItem(BASE_KEY);
-  } catch {
-    /* ignorieren */
+  const { error } = await cloud.sendCode(email, false);
+  if (error) {
+    alert('Der Bestätigungs-Code konnte nicht gesendet werden. Bitte versuche es später noch einmal.');
+    return;
   }
-  location.hash = '';
-  location.reload();
+  showDeleteSheet(email);
+}
+function showDeleteSheet(email, msg = '') {
+  let sheet = document.getElementById('delsheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'delsheet';
+    sheet.className = 'sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    document.body.appendChild(sheet);
+  }
+  document.body.classList.add('obopen');
+  sheet.dataset.email = email;
+  sheet.innerHTML = `<div class="sheet-in"><h1 style="font-size:28px">Konto löschen</h1>
+    <p>Zur Sicherheit haben wir einen Code an <b>${esc(email)}</b> geschickt. Gib ihn ein, dann werden dein Konto und alle gesicherten Daten endgültig gelöscht.</p>
+    ${msg ? `<div class="notice" role="alert">${esc(msg)}</div>` : ''}
+    <label for="dCode">Code aus der E-Mail</label><input id="dCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
+    <button class="danger block" style="margin-top:16px" data-act="del-confirm">Konto endgültig löschen</button>
+    <button class="linkbtn" data-act="del-cancel">Abbrechen, Konto behalten</button></div>`;
+  sheet.scrollTop = 0;
+}
+function closeDeleteSheet() {
+  document.getElementById('delsheet')?.remove();
+  if (!document.getElementById('onboard') && !document.getElementById('auth')) document.body.classList.remove('obopen');
+}
+async function doDeleteConfirm(btn) {
+  const email = document.getElementById('delsheet')?.dataset.email || '';
+  const code = (document.getElementById('dCode')?.value || '').replace(/\s/g, '');
+  if (!/^\d{6,10}$/.test(code)) return showDeleteSheet(email, 'Bitte gib den Code aus der E-Mail ein (nur Ziffern).');
+  await withBusy(btn, async () => {
+    const { error } = await cloud.verifyCode(email, code, 'email');
+    if (error) return showDeleteSheet(email, authError(error));
+    try {
+      await cloud.deleteAccount();
+    } catch {
+      return showDeleteSheet(email, 'Das Konto konnte nicht gelöscht werden. Bitte versuche es später noch einmal.');
+    }
+    try {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(SYNC_KEY);
+      localStorage.removeItem(BASE_KEY);
+      localStorage.removeItem(RUN_KEY);
+    } catch {
+      /* ignorieren */
+    }
+    location.hash = '';
+    location.reload();
+  });
 }
 
 /* ---- Konto in den Einstellungen und rechtliche Seiten (Entwurf) ---- */
@@ -2048,6 +2135,12 @@ document.addEventListener('click', (e) => {
       break;
     case 'logout':
       doLogout();
+      break;
+    case 'del-confirm':
+      doDeleteConfirm(t);
+      break;
+    case 'del-cancel':
+      closeDeleteSheet();
       break;
     case 'delacc':
       doDeleteAccount();
@@ -2382,7 +2475,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 75;
+const APP_BUILD = 76;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2414,7 +2507,7 @@ async function hardReload() {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
-    await Promise.all(['./', 'index.html', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'styles.css', 'vendor/supabase.js', 'manifest.webmanifest', 'img/hero.jpg', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'].map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
+    await Promise.all(['./', 'index.html', 'splash.js', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'styles.css', 'vendor/supabase.js', 'manifest.webmanifest', 'img/hero.jpg', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'].map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
   } catch {
     /* im Zweifel trotzdem neu laden */
   }
