@@ -2272,7 +2272,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 64;
+const APP_BUILD = 65;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2283,7 +2283,8 @@ async function checkForUpdate() {
   }
 }
 setTimeout(checkForUpdate, 1500);
-setInterval(checkForUpdate, 10 * 60 * 1000);
+setInterval(checkForUpdate, 2 * 60 * 1000);
+window.addEventListener('focus', checkForUpdate);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     checkForUpdate();
