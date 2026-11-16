@@ -415,8 +415,8 @@ textarea:focus { outline: 2px solid var(--data, #5ac8fa); outline-offset: 2px; }
 .reply p { margin: 4px 0 0; white-space: pre-wrap; }
 
 /* Intro-Video vor der Anmeldung */
-#intro { position: fixed; inset: 0; z-index: 200; background: #000; display: flex; align-items: center; justify-content: center; }
-#intro video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-.intro-bar { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; gap: 10px; padding: max(14px, env(safe-area-inset-top)) 16px 0; }
-.intro-btn { min-height: 44px; padding: 0 18px; border-radius: 22px; background: rgba(0, 0, 0, .6); color: #fff; border: 1px solid rgba(255, 255, 255, .4); font-weight: 700; font-size: 16px; }
+#intro { position: fixed; inset: 0; z-index: 200; background: #07080c; display: flex; flex-direction: column; align-items: center; }
+.intro-bar { flex: none; width: 100%; max-width: 480px; display: flex; justify-content: space-between; gap: 10px; padding: max(12px, env(safe-area-inset-top)) 16px 10px; }
+#intro video { flex: 1 1 0; min-height: 0; width: 100%; max-width: 480px; object-fit: contain; background: #000; border-radius: 14px; margin: 0 0 max(12px, env(safe-area-inset-bottom)); }
+.intro-btn { min-height: 44px; padding: 0 18px; border-radius: 22px; background: rgba(255, 255, 255, .1); color: #fff; border: 1px solid rgba(255, 255, 255, .35); font-weight: 700; font-size: 16px; }
 .intro-btn.skip { background: linear-gradient(180deg, #ff4a5f, var(--accent-dark)); border-color: transparent; }
