@@ -54,4 +54,10 @@ export async function deleteAccount() {
     /* Konto ist gelöscht, lokale Abmeldung ist nachrangig */
   }
 }
-export const sendFeedback = (row) => client.from('feedback').insert(row);
+// Meldung geht direkt an die Brücken-Funktion, die daraus ein GitHub-Issue macht (nichts wird in der Datenbank gespeichert)
+export const sendFeedback = async (payload) => {
+  const { error, data } = await client.functions.invoke('feedback-to-github', { body: payload });
+  if (!error) return { error: null, data };
+  const status = error.context && error.context.status;
+  return { error: Object.assign(new Error(status === 429 ? 'Zu viele Meldungen' : 'Senden fehlgeschlagen'), { status }), data: null };
+};
