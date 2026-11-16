@@ -378,3 +378,17 @@ body.obopen { overflow: hidden; }
 #update { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 120; display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #1b1f28; border: 1px solid var(--accent); border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-size: 15px; line-height: 1.35; }
 #update span { flex: 1; }
 #update button { flex: none; min-height: 44px; padding: 0 16px; }
+
+/* Mehr, Fortschritt, Gefahrenzone */
+.chev { font-size: 28px; color: var(--muted); line-height: 1; }
+.card.link.row { align-items: center; }
+.bignum .of { font-size: 26px; color: var(--muted); }
+.meter { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 10px; }
+.meter i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff4a5f, var(--accent-dark)); }
+.bignum-s { font-size: 28px; }
+.amber-note { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255, 190, 80, .1); border: 1px solid rgba(255, 190, 80, .4); color: #ffcf7a; font-size: 14px; line-height: 1.4; }
+.danger-h { color: #ff8a82; margin-top: 28px; }
+#nav a[data-nav=more] circle { fill: currentColor; }
+#nav a[data-nav=more] circle { stroke: none; fill: currentColor; }
+.center { text-align: center; }
+#nav a.active[data-nav=more] circle { fill: var(--accent); }
