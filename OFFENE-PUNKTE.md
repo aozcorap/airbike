@@ -1,4 +1,4 @@
-# Offene Punkte – Last Round
+# Offene Punkte – Nonstop Boxing
 
 Stand: 15.11.2026. Wird bei Änderungen nachgeführt.
 
@@ -6,7 +6,7 @@ Stand: 15.11.2026. Wird bei Änderungen nachgeführt.
 
 1. **Programm aus gekauftem PDF.** Der Plan steckt öffentlich im Repo. Das Recht zur Nutzung und Vermarktung ist ungeklärt. Für Werbevideo und Verkauf dringend.
 2. **Datenschutz und Impressum** sind Entwürfe mit Lücken (`[...]`). Ohne sie keine echten Nutzer, besonders keine Minderjährigen.
-3. **Name „Last Round"** ist nicht auf Marke, App-Store und Domain geprüft.
+3. **Name „Nonstop Boxing"** ist nicht auf Marke, App-Store und Domain geprüft.
 4. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
 
 ## Fachlich

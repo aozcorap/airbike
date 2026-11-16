@@ -1,4 +1,4 @@
-# Trailer „Last Round" – Storyboard (Entwurf)
+# Trailer „Nonstop Boxing" – Storyboard (Entwurf)
 
 Länge ca. 55 Sekunden. Formate: 16:9 (Webseite) und 9:16 (Instagram, TikTok).
 Musik: Herzschlag in Szene 1–5, ab Szene 6 epischer, ab Szene 9 siegreich (eigene Musik, keine bestehenden Filmthemen).
@@ -11,10 +11,10 @@ Erstellung: Boxer-Szenen mit Higgsfield, App-Szenen als echte Bildschirmaufnahme
 | 3 | 12–18 s | „Doch du trainierst nach dem Standardprogramm am Bike." | Boxer auf dem Bike, Display zeigt ein Standardprogramm, leerer Blick, Uhr tickt |
 | 4 | 18–24 s | „Um eine Maschine zu schlagen, brauchst du selbst eine: das AirBike. Die Höllenmaschine." | Bike in Großaufnahme, Rad dreht sich, Flammenlicht, harte Schnitte |
 | 5 | 24–30 s | „Und der Plan dafür: aufgebaut nach sportwissenschaftlichen Prinzipien." | App: Plan mit 10 Wochen, Kampftermin (echte Aufnahme) |
-| 6 | 30–36 s | „Last Round: Dein Konditionsplan, auf dich zugeschnitten." | Logo und Name, App-Startseite mit Tage bis zum Kampf (echte Aufnahme) |
+| 6 | 30–36 s | „Nonstop Boxing: Dein Konditionsplan, auf dich zugeschnitten." | Logo und Name, App-Startseite mit Tage bis zum Kampf (echte Aufnahme) |
 | 7 | 36–42 s | „Fitness-Check, Rundenzahl, Kampftermin. Drei Sprints zeigen, wo du stehst. Dein Plan wird für dich berechnet." | Boxer macht Sprint, dann App: Einführung mit Rundenwahl und Kampfformat (echte Aufnahme) |
 | 8 | 42–49 s | „Es wird wehtun. Aber du kommst bereit in die letzte Runde." | Harte Einheit, Schweiß, Timer mit Watt-Ziel (echte Aufnahme), Boxer am Limit |
-| 9 | 49–55 s | „Last Round. Kondition wie ein Champion." plus Adresse | Boxer in der letzten Runde, Gegner müde, Arme hoch, Logo und Webadresse |
+| 9 | 49–55 s | „Nonstop Boxing. Mehr Kondition bis zur letzten Runde." plus Adresse | Boxer in der letzten Runde, Gegner müde, Arme hoch, Logo und Webadresse |
 
 ## Offene Punkte
 

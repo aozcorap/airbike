@@ -41,6 +41,10 @@ a { color: inherit; }
 .brandbar svg { width: 30px; height: 30px; flex: none; }
 .brandbar b { font-family: var(--display); font-size: 24px; letter-spacing: .12em; font-weight: 700; }
 .brandbar b i { font-style: normal; color: var(--accent); }
+.auth-brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 18px 0 6px; }
+.auth-brand svg { width: 44px; height: 44px; flex: none; }
+.auth-brand b { font-family: var(--display); font-size: min(30px, 7.4vw); letter-spacing: .1em; font-weight: 700; white-space: nowrap; }
+.auth-brand b i { font-style: normal; color: var(--accent); }
 
 /* Navigation */
 #nav {
@@ -166,7 +170,7 @@ body.running { padding-bottom: 0; }
   animation: splashOut .45s ease 1.5s forwards;
 }
 #splash svg { width: 150px; height: 150px; filter: drop-shadow(0 0 24px rgba(255, 45, 70, .55)); }
-#splash .word { font-family: var(--display); font-size: min(52px, 11.5vw); letter-spacing: .12em; font-weight: 700; margin-left: .12em; white-space: nowrap; }
+#splash .word { font-family: var(--display); font-size: min(46px, 8vw); letter-spacing: .1em; font-weight: 700; margin-left: .1em; white-space: nowrap; }
 #splash .word i { font-style: normal; color: var(--accent); }
 #splash .tag { font-family: var(--display); font-size: 15px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; margin-left: .16em; text-align: center; padding: 0 20px; }
 #splash .bar { width: 180px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; margin-top: 18px; }
@@ -270,7 +274,7 @@ body.obopen { overflow: hidden; }
 .ob-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7,8,12,.1), rgba(7,8,12,.85)); }
 .ob-hero-in { position: absolute; left: 16px; bottom: 14px; z-index: 1; display: flex; align-items: center; gap: 10px; }
 .ob-hero-in svg { width: 34px; height: 34px; }
-.ob-hero-in b { font-family: var(--display); font-size: 28px; letter-spacing: .1em; }
+.ob-hero-in b { font-family: var(--display); font-size: min(28px, 7.2vw); white-space: nowrap; letter-spacing: .1em; }
 .ob-hero-in b i { font-style: normal; color: var(--accent); }
 .ob-list { list-style: none; counter-reset: s; padding: 0; margin: 14px 0; }
 .ob-list li { counter-increment: s; display: flex; flex-direction: column; padding: 10px 0 10px 44px; position: relative; border-bottom: 1px solid var(--line); }
