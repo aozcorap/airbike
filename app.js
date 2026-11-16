@@ -10,7 +10,6 @@ const DEFAULTS = {
   fightDate: '',
   freq: 3,
   maxWDate: '',
-  peakW: 0,
   sprints: [],
   rounds: 3,
   roundMin: 0,
@@ -18,7 +17,6 @@ const DEFAULTS = {
   days: { s1: 1, rec: 3, s2: 4, s3: 6 },
   time: '18:00',
   age: 0,
-  ack: false,
   notify: false,
   recOpt: 'opt1',
   profile: 'elite',
@@ -234,7 +232,6 @@ function saveSprints(pre) {
   }
   const vals = raw.map(Math.round);
   state.sprints = vals;
-  state.peakW = Math.max(...vals);
   state.maxW = Math.round(vals.reduce((x, y) => x + y, 0) / 3);
   state.maxWDate = new Date().toISOString();
   save();
@@ -251,7 +248,6 @@ function saveTestWatt(pre) {
   }
   state.maxW = Math.round(v);
   state.sprints = [];
-  state.peakW = 0;
   state.maxWDate = new Date().toISOString();
   save();
   return true;
@@ -1204,6 +1200,7 @@ function scheduleReminder() {
   const wait = at - Date.now();
   if (wait <= 0 || wait > 2147483000) return;
   reminderTimer = setTimeout(() => {
+    if (isDone(hit.id) || !state.notify) return; // inzwischen erledigt oder abgeschaltet: nicht mehr erinnern
     try {
       new Notification('Nonstop Boxing', { body: `Heute: ${hit.title}`, icon: 'icons/icon-192.png' });
     } catch {
@@ -1394,10 +1391,6 @@ function closeOnboarding() {
 }
 function obNext(noDate = false) {
   const id = OB_STEPS[ob.step];
-  if (id === 'welcome') {
-    state.ack = true;
-    save();
-  }
   if (id === 'fight') {
     if (noDate) {
       const n = new Date();
@@ -1508,7 +1501,6 @@ function sanitizeImport(obj) {
   };
   const c = freshState();
   c.maxW = obj.maxW ? num(obj.maxW, 100, 3000, 0) : 0;
-  c.peakW = obj.peakW ? num(obj.peakW, 100, 3000, 0) : 0;
   c.maxWDate = isIso(obj.maxWDate) ? obj.maxWDate : '';
   c.sprints = Array.isArray(obj.sprints) ? obj.sprints.slice(0, 3).map((v) => num(v, 100, 3000, 0)).filter(Boolean) : [];
   c.startDate = isDayStr(obj.startDate) ? obj.startDate : '';
@@ -1519,7 +1511,6 @@ function sanitizeImport(obj) {
   c.age = obj.age ? num(obj.age, 10, 90, 0) : 0;
   c.time = typeof obj.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(obj.time) ? obj.time : DEFAULTS.time;
   for (const k of Object.keys(DEFAULTS.days)) c.days[k] = num(isObj(obj.days) ? obj.days[k] : undefined, 1, 7, DEFAULTS.days[k]);
-  c.ack = obj.ack === true;
   c.notify = obj.notify === true;
   c.onboarded = obj.onboarded === true;
   c.recOpt = Object.hasOwn(RECOVERY_OPTIONS, obj.recOpt) ? obj.recOpt : DEFAULTS.recOpt;
@@ -2153,11 +2144,13 @@ document.addEventListener('click', (e) => {
     case 'markdone':
       state.done[t.dataset.id] = new Date().toISOString();
       save();
+      scheduleReminder();
       route();
       break;
     case 'unmark':
       delete state.done[t.dataset.id];
       save();
+      scheduleReminder();
       route();
       break;
     case 'savetest':
@@ -2192,6 +2185,7 @@ document.addEventListener('click', (e) => {
     case 'tdone':
       state.done[t.dataset.id] = new Date().toISOString();
       save();
+      scheduleReminder();
       location.hash = '#/';
       break;
     case 'fight-remove':
@@ -2289,7 +2283,7 @@ document.addEventListener('change', (e) => {
       }
     }
     state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Math.round(Number(t.value)) || 0 : t.value;
-    if (k === 'maxW') { state.sprints = []; state.peakW = 0; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
+    if (k === 'maxW') { state.sprints = []; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
     if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
     save();
     scheduleReminder();
@@ -2364,7 +2358,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 73;
+const APP_BUILD = 74;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

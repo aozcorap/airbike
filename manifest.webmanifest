@@ -3,6 +3,7 @@
   "short_name": "Nonstop Boxing",
   "description": "Nonstop Boxing: Mehr Kondition bis zur letzten Runde. Air-Bike-Training für Boxer. Dein Plan rückwärts vom Kampftermin bis zur letzten Runde.",
   "lang": "de",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
