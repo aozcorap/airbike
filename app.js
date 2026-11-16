@@ -1919,10 +1919,17 @@ document.addEventListener('click', (e) => {
       route();
       break;
     case 'savetest':
-      if (saveSprints('tw')) location.hash = '#/';
+      if (saveSprints('tw')) {
+        toast(`Test-Watt gespeichert: ${state.maxW} W`);
+        location.hash = '#/progress';
+      }
       break;
     case 'savemax':
-      if (saveTestWatt('mi')) route();
+      if (saveTestWatt('mi')) {
+        toast(`Test-Watt gespeichert: ${state.maxW} W`);
+        if (location.hash === '#/test') location.hash = '#/progress';
+        else route();
+      }
       break;
     case 'tpause':
       runCtl?.toggle();
@@ -2014,10 +2021,12 @@ document.addEventListener('change', (e) => {
     save();
     scheduleReminder();
     route();
+    toast('Gespeichert');
   } else if (t.dataset.setDay) {
     state.days[t.dataset.setDay] = Number(t.value);
     save();
     scheduleReminder();
+    toast('Gespeichert');
     route();
   }
 });
@@ -2056,7 +2065,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 42;
+const APP_BUILD = 43;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2088,6 +2097,23 @@ async function hardReload() {
     /* im Zweifel trotzdem neu laden */
   }
   location.reload();
+}
+// Kurze Bestätigung unten über der Menüleiste
+let toastTimer = null;
+function toast(msg) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<span class="tick" aria-hidden="true">✓</span><span></span>';
+  el.lastChild.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
 }
 function showUpdateBanner() {
   if (document.getElementById('update')) return;
