@@ -1,4 +1,4 @@
-# Higgsfield-Prompts für den Trailer „Last Round"
+# Higgsfield-Prompts für den Trailer „Nonstop Boxing"
 
 Gilt für alle Szenen: ein Clip pro Szene, 5–6 Sekunden, zuerst 16:9 erzeugen, dann bei Bedarf 9:16.
 Texte (Sprecher und Einblendung) entstehen im Schnitt. Higgsfield erzeugt **keinen** Text im Bild.
