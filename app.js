@@ -451,8 +451,17 @@ function viewWeek(n) {
   const w = plan().weeks[n - 1];
   if (!w) return notFound();
   const list = weekOrder(w).map((s) => sessionRow(w, s)).join('');
-  return `<a href="#/plan" class="back">← Plan</a><span class="kicker" style="display:block;margin-top:8px">${esc(w.phase)}</span><h1>Woche ${w.n}</h1>
-  ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}<p class="muted">${esc(w.phaseText)}</p><p>Belastung: <b>${esc(w.load)}</b></p>${list}
+  const phases = PHASES.filter((ph) => plan().weeks.some((x) => x.tpl >= ph.weeks[0] && x.tpl <= ph.weeks[1]));
+  const pi = phases.findIndex((ph) => w.tpl >= ph.weeks[0] && w.tpl <= ph.weeks[1]);
+  const level = { Niedrig: 1, Mittel: 2, 'Mittel–Hoch': 3, Hoch: 4 }[w.load];
+  return `<a href="#/plan" class="back">← Plan</a>
+  <div class="phase-dot" style="margin-top:8px"><span class="kicker">Phase ${pi + 1}</span><b>${esc(w.phase)}</b><div class="muted small">${esc(w.phaseText)}</div></div>
+  <h1>Woche ${w.n}</h1>
+  ${weekRange(w) ? `<p class="muted small">${weekRange(w)}</p>` : ''}${profileBanner()}
+  <div class="card"><div class="row between"><span class="muted">Belastung</span><b>${esc(w.load)}</b></div>
+    <div class="load-bar" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i class="${i <= level ? 'on' : ''}"></i>`).join('')}</div></div>
+  <h2>Einheiten</h2>
+  ${list}
   ${list ? '' : '<p class="muted">In dieser Woche steht keine Einheit mehr an. Ruh dich aus.</p>'}
   ${w.tpl === 10 ? '<p class="muted small">In der Kampfwoche steht nur eine leichte Sprint-Einheit an, damit du frisch in den Kampf gehst.</p>' : ''}`;
 }
@@ -2067,7 +2076,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 44;
+const APP_BUILD = 45;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
