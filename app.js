@@ -587,12 +587,11 @@ function viewReports() {
         if (!info.owner.length && info.state === 'open') body = '<p class="muted small" style="margin:8px 0 0">Noch keine Antwort. Wir schauen es uns an.</p>';
       }
       return `<div class="card"><div class="row between"><span class="muted small">${esc(kind[r.k] || 'Meldung')} · #${esc(n)} · ${esc(new Date(r.at).toLocaleDateString('de-DE'))}</span>${info && info.isNew ? '<span class="newchip">Neu</span>' : ''}</div>
-      <h3 style="margin:6px 0 8px">${esc(r.t || 'Meldung')}</h3>${status}${body}
-      <p style="margin:10px 0 0"><a href="https://github.com/aozcorap/airbike/issues/${esc(n)}" target="_blank" rel="noopener"><u>Auf GitHub ansehen</u></a></p></div>`;
+      <h3 style="margin:6px 0 8px">${esc(r.t || 'Meldung')}</h3>${status}${body}</div>`;
     })
     .join('');
   return `<a href="#/more" class="back">← Mehr</a><h1>Meine Meldungen</h1>
-  <p class="muted">Hier siehst du, wie es mit deinen Meldungen weitergeht. Antworten und Status kommen von GitHub und sind öffentlich.</p>
+  <p class="muted">Hier siehst du, wie es mit deinen Meldungen weitergeht. Deine Meldungen und die Antworten sind öffentlich einsehbar.</p>
   ${cards || '<p class="muted">Du hast noch nichts gemeldet.</p>'}`;
 }
 
@@ -2259,7 +2258,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 48;
+const APP_BUILD = 49;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
