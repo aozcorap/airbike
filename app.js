@@ -1809,6 +1809,10 @@ document.addEventListener('click', (e) => {
       closeOnboarding();
       location.hash = '#/test';
       break;
+    case 'update-reload':
+      if (document.body.classList.contains('running') && !confirm('Dein Training läuft noch. Trotzdem neu laden?')) break;
+      location.reload();
+      break;
     case 'pickdate':
       openCalendar(t.dataset.for);
       break;
@@ -1972,5 +1976,27 @@ document.addEventListener('keydown', (e) => {
 /* ---------------- Start ---------------- */
 boot();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Update-Hinweis: Eine neue Version der App meldet sich per Banner, statt unbemerkt erst beim übernächsten Start zu erscheinen
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker
+    .register('sw.js')
+    .then((reg) => {
+      const check = () => reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+      setInterval(check, 30 * 60 * 1000);
+    })
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) showUpdateBanner();
+  });
+}
+function showUpdateBanner() {
+  if (document.getElementById('update')) return;
+  const bar = document.createElement('div');
+  bar.id = 'update';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = '<span><b>Neue Version verfügbar.</b> Lade neu, um sie zu nutzen.</span><button class="primary" data-act="update-reload">Neu laden</button>';
+  document.body.appendChild(bar);
 }
