@@ -26,7 +26,15 @@ jobs:
       - name: Nur App-Dateien veröffentlichen
         run: |
           mkdir _site
-          cp -r index.html styles.css app.js data.js plan.js cloud.js config.js vendor sw.js manifest.webmanifest icons img video _site/
+          cp -r index.html splash.js styles.css app.js data.js plan.js cloud.js config.js vendor sw.js manifest.webmanifest icons img video _site/
+      - name: Prüfen, dass jede Datei aus sw.js veröffentlicht wird
+        run: |
+          # Fehlt eine Datei der Offline-Liste im Ergebnis, kann sich der Service Worker nicht installieren. Dann besser den Deploy stoppen.
+          missing=0
+          for f in $(sed -n "/^const FILES = \[/,/^\];/p" sw.js | grep -o "'[^']*'" | tr -d "'" | grep -v '^\./$'); do
+            if [ ! -e "_site/$f" ]; then echo "Fehlt in _site: $f"; missing=1; fi
+          done
+          exit $missing
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
