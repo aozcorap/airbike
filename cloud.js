@@ -35,6 +35,11 @@ export async function pullState(userId) {
   if (error) throw error;
   return data;
 }
+// Legt die eigene Zeile an, falls sie fehlt (die Datenbank erlaubt das nur für die eigene Nutzer-ID). Existiert sie schon, ist das in Ordnung.
+export async function ensureStateRow(userId) {
+  const { error } = await client.from('user_state').insert({ user_id: userId });
+  if (error && error.code !== '23505') throw error;
+}
 // Schreibt nur, wenn niemand seit unserem letzten Stand etwas geändert hat (Versionsprüfung über updated_at).
 // Ergebnis: { ok: true, updated_at } oder { ok: false } bei Konflikt.
 export async function pushStateIf(userId, state, expectedVersion) {

@@ -50,8 +50,10 @@ function save(localOnly = false) {
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const DAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+// Kennen wir das Geburtsjahr (noch) nicht, gilt die vorsichtigste Klasse, damit niemand versehentlich einen zu harten Plan bekommt
+const ageUnknown = () => typeof account !== 'undefined' && Boolean(account) && !account.birthYear;
 const profile = () => {
-  const key = PROFILES[state.profile] ? state.profile : 'elite';
+  const key = ageUnknown() ? 'u14' : PROFILES[state.profile] ? state.profile : 'elite';
   return { key, ...PROFILES[key] };
 };
 const ctx = () => {
@@ -68,7 +70,7 @@ function weekOrderBase(w) {
 }
 const weekOrder = (w) => weekOrderBase(w).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
 const fmtRounds = () => Math.max(3, Math.min(12, Number(state.rounds) || 3));
-const fmtRoundSecs = () => (state.roundMin ? (Number(state.roundMin) === 2 ? 120 : 180) : (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) || 180);
+const fmtRoundSecs = () => (state.roundMin ? (Number(state.roundMin) === 2 ? 120 : 180) : profile().roundSecs || 180);
 const formatLabel = () => `${fmtRounds()} Runden à ${fmtRoundSecs() / 60} Minuten`;
 const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile(), { rounds: fmtRounds(), roundSecs: fmtRoundSecs() });
 // Letzten Fehler der App merken, damit er einer Meldung beigelegt werden kann
@@ -278,7 +280,7 @@ const PROFILE_ORDER = Object.keys(PROFILES);
 const ageClassKey = () => {
   const y = account && account.birthYear;
   if (!y) return null;
-  const age = new Date().getFullYear() - y;
+  const age = new Date().getFullYear() - y - 1; // ohne Geburtsmonat im Zweifel das jüngere Alter (streng)
   return age <= 14 ? 'u14' : age <= 16 ? 'u16' : age <= 18 ? 'u18' : 'elite';
 };
 function allowedProfiles() {
@@ -383,7 +385,7 @@ function viewHome() {
     : '';
 
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
-  ${fightInfo}
+  ${ageUnknown() ? '<div class="notice"><b>Dein Alter konnte nicht geladen werden.</b> Bis es geladen ist, gilt der vorsichtigste Plan (U13–U14 und jünger). Prüfe deine Verbindung und öffne die App neu.</div>' : ''}${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
   ${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
 }
@@ -1525,7 +1527,12 @@ async function pushNow() {
       for (let attempt = 0; attempt < 3; attempt++) {
         let version = readSync().syncedAt;
         if (!version) {
-          const remote = await withTimeout(cloud.pullState(account.id), 8000);
+          let remote = await withTimeout(cloud.pullState(account.id), 8000);
+          if (!remote) {
+            // Zeile im Konto fehlt: selbst anlegen, sonst scheitert die Sicherung dauerhaft
+            await withTimeout(cloud.ensureStateRow(account.id), 8000);
+            remote = await withTimeout(cloud.pullState(account.id), 8000);
+          }
           version = remote ? remote.updated_at : '';
           if (!version) throw new Error('keine Zeile');
           if (remote.state && Object.keys(remote.state).length) {
@@ -1649,6 +1656,7 @@ async function startSession(user, quick = false) {
   closeAuth();
   route();
   setTimeout(checkReports, 3000);
+  if (!account.birthYear) setTimeout(retryBirthYear, 8000);
   if (!state.onboarded) startOnboarding();
   scheduleReminder();
 }
@@ -1681,8 +1689,18 @@ async function boot() {
   }
   await startSession(user, quickStart);
 }
+// Geburtsjahr nachladen, falls es beim Start nicht ankam (schlechtes Netz, neues Gerät)
+async function retryBirthYear() {
+  if (!account || account.birthYear || !navigator.onLine) return;
+  const y = await loadBirthYear({ id: account.id }, false);
+  if (!y || !account) return;
+  account.birthYear = y;
+  if (enforceProfile()) save();
+  if (!document.getElementById('onboard') && !document.querySelector('.timer')) route();
+}
 window.addEventListener('online', () => {
   if (account && readSync().dirty) pushNow();
+  retryBirthYear();
 });
 document.addEventListener('visibilitychange', async () => {
   if (!account) return;
@@ -1690,6 +1708,7 @@ document.addEventListener('visibilitychange', async () => {
     if (readSync().dirty) pushNow();
     return;
   }
+  retryBirthYear();
   if (!navigator.onLine) return;
   try {
     if (readSync().dirty) return void (await pushNow());
@@ -1890,6 +1909,7 @@ async function doLogout() {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(SYNC_KEY);
+    localStorage.removeItem(BASE_KEY);
   } catch {
     /* ignorieren */
   }
@@ -1908,6 +1928,7 @@ async function doDeleteAccount() {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(SYNC_KEY);
+    localStorage.removeItem(BASE_KEY);
   } catch {
     /* ignorieren */
   }
@@ -2208,7 +2229,16 @@ document.addEventListener('change', (e) => {
       route();
       return;
     }
-    state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Number(t.value) || 0 : t.value;
+    if (k === 'maxW' || k === 'age') {
+      const v = Number(t.value);
+      const [lo, hi] = k === 'maxW' ? [100, 3000] : [10, 90];
+      if (t.value !== '' && !(v >= lo && v <= hi)) {
+        toast(k === 'maxW' ? 'Test-Watt: bitte 100 bis 3000 Watt eingeben.' : 'Alter: bitte 10 bis 90 eingeben.');
+        route();
+        return;
+      }
+    }
+    state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Math.round(Number(t.value)) || 0 : t.value;
     if (k === 'maxW') { state.sprints = []; state.peakW = 0; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
     if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
     save();
@@ -2255,7 +2285,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 69;
+const APP_BUILD = 70;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
