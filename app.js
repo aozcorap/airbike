@@ -62,7 +62,15 @@ const ctx = () => {
   const p = profile();
   return { maxW: Number(state.maxW) || 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
 };
-const weekOrder = (w) => weekOrderRaw(w, profile().hardPerWeek || 3).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
+// Der Wochentag einer Einheit richtet sich nach ihrer Stelle in der Woche (Einheit 1, 2, 3, Aktive Erholung), nicht nach ihrer Nummer im Grundplan
+const dayKeyOf = new Map();
+function weekOrderBase(w) {
+  const list = weekOrderRaw(w, profile().hardPerWeek || 3, userFreq());
+  let h = 0;
+  list.forEach((s) => dayKeyOf.set(s.id, s.type === 'recovery' ? 'rec' : ['s1', 's2', 's3'][h++]));
+  return list;
+}
+const weekOrder = (w) => weekOrderBase(w).filter((s) => !tooCloseToFight(sessionDate(w, dayOf(s)), plan().fight));
 const fmtRounds = () => Math.max(3, Math.min(12, Number(state.rounds) || 3));
 const fmtRoundSecs = () => (state.roundMin ? (Number(state.roundMin) === 2 ? 120 : 180) : (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) || 180);
 const formatLabel = () => `${fmtRounds()} Runden à ${fmtRoundSecs() / 60} Minuten`;
@@ -84,12 +92,14 @@ const $modal = document.getElementById('modal');
 /* ---------------- Hilfsfunktionen ---------------- */
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-const effFreq = () => Math.max(1, Math.min(Number(state.freq) || 3, profile().hardPerWeek || 3));
+const userFreq = () => Math.max(1, Math.min(Number(state.freq) || 3, 3)); // Einheiten pro Woche insgesamt, so wie gewählt
+const effFreq = () => Math.min(userFreq(), profile().hardPerWeek || 3); // davon harte Einheiten
 const wochen = (n) => `${n} ${n === 1 ? 'Woche' : 'Wochen'}`;
 let planCache = { key: '', value: null };
 function plan() {
-  const key = [state.fightDate, state.startDate, effFreq(), new Date().toDateString()].join('|');
+  const key = [state.fightDate, state.startDate, effFreq(), userFreq(), new Date().toDateString()].join('|');
   if (planCache.key !== key) {
+    dayKeyOf.clear();
     planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq() }) };
   }
   return planCache.value;
@@ -112,9 +122,9 @@ function sessionSecs(session) {
 const mins = (secs) => `${Math.round(secs / 60)} min`;
 const isDone = (id) => Boolean(state.done[id]);
 const dayOf = (session) => {
-  if (session.type === 'recovery') return state.days.rec;
-  const idx = ['s1', 's2', 's3'].find((_, i) => session.id.endsWith('s' + (i + 1)));
-  return state.days[idx];
+  if (!dayKeyOf.has(session.id)) plan().weeks.forEach((w) => weekOrderBase(w));
+  const key = dayKeyOf.get(session.id) || (session.type === 'recovery' ? 'rec' : ['s1', 's2', 's3'].find((_, i) => session.id.endsWith('s' + (i + 1))));
+  return state.days[key];
 };
 const fmtDate = (d) => d.toLocaleDateString('de-DE');
 
@@ -131,7 +141,7 @@ function daysToFight() {
 }
 function planSummary() {
   const p = plan();
-  const freq = effFreq();
+  const freq = userFreq();
   if (p.status === 'invalid') return 'Das Datum ist ungültig.';
   if (p.status === 'past') return 'Der Kampftermin liegt in der Vergangenheit. Bitte ein neues Datum eintragen.';
   if (p.mode === 'none') return 'Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.';
@@ -144,6 +154,7 @@ function planSummary() {
     txt = `Dein Plan hat ${wochen(p.weeks.length)} mit ${freq}× Training pro Woche.`;
   }
   if (freq < 3) txt += ' Bei weniger als 3 Einheiten pro Woche wählt die App die wichtigsten aus. Die Auswahl ist eine Annahme.';
+  if (freq > effFreq()) txt += ` In deiner Altersklasse sind höchstens ${effFreq()} harte Einheiten pro Woche vorgesehen, die übrige ist eine Aktive Erholung.`;
   return txt;
 }
 
@@ -341,7 +352,7 @@ function viewHome() {
     const d = daysToFight();
     fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
-      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${effFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
+      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${userFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
@@ -607,9 +618,9 @@ function viewSettings() {
   <select id="freq" data-set="freq">${[1, 2, 3].map((n) => `<option value="${n}" ${Number(state.freq) === n ? 'selected' : ''}>${n}× pro Woche</option>`).join('')}</select>
   <div class="field-row">
     <div><label>Einheit 1</label>${dayOpts('s1')}</div>
-    <div><label>Aktive Erholung</label>${dayOpts('rec')}</div>
     ${effFreq() >= 2 ? `<div><label>Einheit 2</label>${dayOpts('s2')}</div>` : ''}
     ${effFreq() >= 3 ? `<div><label>Einheit 3</label>${dayOpts('s3')}</div>` : ''}
+    ${userFreq() > effFreq() ? `<div><label>Aktive Erholung</label>${dayOpts('rec')}</div>` : ''}
   </div>
   <label for="age">Alter (für den Pulsbereich der Aktiven Erholung)</label>
   <input id="age" type="number" inputmode="numeric" min="10" max="90" value="${state.age || ''}" data-set="age">
@@ -1150,7 +1161,7 @@ function obBody(id) {
         <ul class="sum">
           <li><span>Altersklasse</span><b>${esc(p.name)}</b></li>
           <li><span>Kampf</span><b>${pl.fight ? fmtDate(pl.fight) + (d !== null ? ' · in ' + d + ' Tagen' : '') : 'noch kein Termin'}</b></li>
-          <li><span>Plan</span><b>${pl.weeks.length ? wochen(pl.weeks.length) + ', ' + effFreq() + '× pro Woche' : 'noch nicht berechnet'}</b></li>
+          <li><span>Plan</span><b>${pl.weeks.length ? wochen(pl.weeks.length) + ', ' + userFreq() + '× pro Woche' : 'noch nicht berechnet'}</b></li>
           <li><span>Kampfformat</span><b>${formatLabel()}</b></li>
           <li><span>Test-Watt</span><b>${state.maxW ? state.maxW + ' W' : 'noch offen'}</b></li>
         </ul>
@@ -2045,7 +2056,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 41;
+const APP_BUILD = 42;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
