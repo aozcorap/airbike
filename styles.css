@@ -394,3 +394,8 @@ body.obopen { overflow: hidden; }
 #nav a.active[data-nav=more] circle { fill: var(--accent); }
 .sprint-grid > div { margin-bottom: 10px; }
 .manual input { margin-top: 2px; }
+
+/* Bestätigung nach dem Speichern */
+#toast { position: fixed; left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 130; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: #10301c; border: 1px solid var(--ok); color: #eafff1; font-weight: 600; font-size: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s, transform .2s; }
+#toast.show { opacity: 1; transform: none; }
+#toast .tick { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ok); color: #05210e; display: grid; place-items: center; font-weight: 800; }
