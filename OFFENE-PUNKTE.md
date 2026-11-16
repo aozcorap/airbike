@@ -1,60 +1,74 @@
 # Offene Punkte – Nonstop Boxing
 
-Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
+Stand: 16.11.2026 (aufgeräumt). Wird bei Änderungen nachgeführt. Die Nummern gelten nur innerhalb dieser Datei.
 
-## Rechtlich (vor echten Nutzern, blockierend)
+## 1. Vor echten Nutzern (blockierend)
 
 1. **Programm aus gekauftem PDF.** Der Plan steckt öffentlich im Repo. Das Recht zur Nutzung und Vermarktung ist ungeklärt. Für Werbevideo und Verkauf dringend.
-2. **Datenschutz** ist ein Entwurf mit Lücken (`[...]`). Ohne ihn keine echten Nutzer, besonders keine Minderjährigen. Das Impressum ist eingetragen (Name, Anschrift, E-Mail, ohne USt-ID, nicht rechtlich geprüft; die Anschrift ist öffentlich sichtbar).
-3. **Name „Nonstop Boxing"** ist nicht auf Marke, App-Store und Domain geprüft.
-4. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
-14. **Rückmeldungen der Tester sind öffentlich.** Sie landen als Issues im öffentlichen Repo, auch wenn ein Tester Namen oder Gesundheitsangaben hineinschreibt. Der Hinweis in der App steht drin, die Datenschutz-Entwürfe müssen es sauber abdecken.
-15. **Kein Mindestalter und keine Einwilligung der Eltern (Entscheidung des Betreibers).** Die App fragt beides nicht mehr ab, der Plan passt sich weiter per Altersklasse an das Geburtsjahr an. Risiko: Die Einwilligung Minderjähriger in die Datenverarbeitung (DSGVO Art. 8, in Deutschland unter 16 Jahren Zustimmung der Eltern) ist damit nicht abgedeckt. Rechtlich prüfen lassen. **Die Datenbank-Regel muss von Hand geändert werden** (`docs/DB-REGISTRIERUNG.sql`), sonst lehnt sie Registrierungen unter 14 Jahren ab und verlangt unter 17 Jahren eine Elternzustimmung.
-16. **Musik im Tester-Video** (CC BY 4.0, ende.app) verlangt Namensnennung des Urhebers. Prüfen, ob sie im Video und in der Beschreibung steht.
+2. **Datenschutz** ist ein Entwurf mit Lücken (Mail-Anbieter, Fristen, Stellen mit „Prüfen lassen"). Er nennt den Verantwortlichen und passt zum Verhalten der App, ist aber nicht rechtlich geprüft. Das **Impressum** ist eingetragen (Name, Anschrift, E-Mail, ohne USt-ID, nicht rechtlich geprüft; die Anschrift ist öffentlich sichtbar).
+3. **Kein Mindestalter und keine Einwilligung der Eltern (Entscheidung des Betreibers).** Die App fragt beides nicht ab, der Plan passt sich per Altersklasse an das Geburtsjahr an. Risiko: Die Einwilligung Minderjähriger in die Datenverarbeitung (DSGVO Art. 8, in Deutschland unter 16 Jahren Zustimmung der Eltern) ist nicht abgedeckt. Rechtlich prüfen lassen. **Die Datenbank-Regel muss von Hand geändert werden** (`docs/DB-REGISTRIERUNG.sql` im SQL Editor von Supabase), sonst lehnt sie Registrierungen unter 14 Jahren ab und verlangt unter 17 Jahren eine Elternzustimmung.
+4. **Rückmeldungen der Tester sind öffentlich.** Sie landen als Issues im öffentlichen Repo, auch wenn ein Tester Namen oder Gesundheitsangaben hineinschreibt. Hinweis in der App und Datenschutz-Entwurf nennen es, rechtlich prüfen.
+5. **Name „Nonstop Boxing"** ist nicht auf Marke, App-Store und Domain geprüft.
+6. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
+7. **Musik im Tester-Video** (CC BY 4.0, ende.app) verlangt Namensnennung des Urhebers. Prüfen, ob sie im Video und in der Beschreibung steht.
+8. **Test-Konten in Supabase löschen** vor dem Start: `lr-test-a@example.com` und ein unbestätigtes Konto, das bei einem Test der Registrierung entstanden ist (Authentication → Users).
+9. **GitHub-Token neu erzeugen.** Der Token wurde im Chat eingefügt. Neu erzeugen und im Vault ersetzen (SQL). Ablaufdatum prüfen, sonst gehen Meldungen still verloren.
+10. **Anmeldung per Code testen:** Registrieren, Code eingeben, abmelden, per Code wieder anmelden, auf iPhone und Android. Vorlagen 1 (Confirm signup) und 4 (Magic link) sind in Supabase eingetragen (`docs/E-MAIL-VORLAGEN.md`), die Mails sind aber nicht mit echtem Versand geprüft.
 
-## Fachlich
+## 2. Fachlich
 
-5. **Jugendwerte (U17–U18, U15–U16, U13–U14 und jünger)** sind Annahmen und nicht von einem Trainer geprüft. Besonders die Werte für Kinder bis 14 (50 % Umfang, Sprints bis 10 s, 2 harte Einheiten, höchstens 80 % vom Test-Watt) sind geschätzt, nicht belegt. Maximale Sprints und der Fitness-Test sind für Kinder fachlich zu klären. In der App gibt es keine Sperre und keine Freigabe mehr (Entscheidung des Betreibers).
-6. **Regeln für Rundenzahl und Alter** sind Annahmen (+1 Kampfrunde je 2 Runden ab 3, +2,5 % Umfang je Runde, höchstens +20 %). Nicht fachlich geprüft.
-7. **„Sportwissenschaftlich"** ist für Werbung nicht belegt. Das PDF nennt keine Studien mit Quelle. Nur „nach Prinzipien" formulieren, nie „bewiesen". Ein Trainer sollte das bestätigen.
+1. **Jugendwerte (U17–U18, U15–U16, U13–U14 und jünger)** sind Annahmen und nicht von einem Trainer geprüft. Besonders die Werte für Kinder bis 14 (50 % Umfang, Sprints bis 10 s, 2 harte Einheiten, höchstens 80 % vom Test-Watt) sind geschätzt, nicht belegt. Maximale Sprints und der Fitness-Test sind für Kinder fachlich zu klären. In der App gibt es keine Sperre und keine Freigabe (Entscheidung des Betreibers). Das Alter wird vorsichtig gerechnet (Jahr minus Geburtsjahr minus 1), wer 19 ist, hat daher noch „U17–U18".
+2. **Regeln für Rundenzahl und Alter** sind Annahmen (+1 Kampfrunde je 2 Runden ab 3, +2,5 % Umfang je Runde, höchstens +20 %). Nicht fachlich geprüft.
+3. **„Sportwissenschaftlich"** ist für Werbung nicht belegt. Das PDF nennt keine Studien mit Quelle. Nur „nach Prinzipien" formulieren, nie „bewiesen". Ein Trainer sollte das bestätigen.
 
-## Technisch
+## 3. Technisch
 
-8. **Konto-Dienst (Supabase):** E-Mails laufen über den IONOS-Server (Absender Nonstop Boxing), die drei Vorlagen sind eingetragen (Vorlagen in `docs/E-MAIL-VORLAGEN.md`, getestet nur die Passwort-Mail). Offen: Bestätigungs-Mail testen, Sendegrenzen von IONOS und Supabase (30 Mails pro Stunde) bei vielen Nutzern prüfen. Schutz gegen geleakte Passwörter ist aus, Mindestpasswort serverseitig 6 Zeichen.
-   Rückmeldungen der Tester laufen **nicht** über Supabase-Tabellen, sondern über die Edge-Function `feedback-to-github` direkt als Issue ins Repo (Ablauf: `docs/FEEDBACK-ABLAUF.md`). Der GitHub-Token liegt im Supabase-Vault (`github_token`).
-9. **Der Plan ist öffentlich lesbar.** Das Login schützt nur den Fortschritt der Nutzer, nicht den Plan.
-10. **Projekt `matchmaker` in Supabase ist pausiert** (Gratis-Plan erlaubt zwei Projekte).
-11. **Nicht testbar von der KI:** iOS-Safari, Ton und Vibration des Timers, Offline-Betrieb. Auf dem Handy prüfen.
-17. **GitHub-Token neu erzeugen.** Der Token wurde im Chat eingefügt. Neu erzeugen und im Vault ersetzen (SQL). Ablaufdatum prüfen, sonst gehen Meldungen still verloren.
-18. **Test-Konto `lr-test-a@example.com`** in Supabase vor dem Start löschen.
-19. **Sendegrenze für Meldungen** (10 pro Stunde je Nutzer) liegt im Speicher der Funktion und setzt sich bei einem Neustart zurück. Für den Tester-Kreis ausreichend (Vermutung).
-20. **Supabase-Gratis-Plan:** Projekte mit wenig Aktivität werden pausiert. Beim Tester-Betrieb im Blick behalten (prüfen).
-27. **E-Mail-Vorlagen mit Code in Supabase einfügen** (`docs/E-MAIL-VORLAGEN.md`, Vorlage 1 und 4 Magic link; Anmeldung läuft jetzt standardmäßig per Code, Passwort ist freiwillig). Bestätigung und Passwort-Reset laufen in der App über einen Zahlen-Code, nicht mehr über den Link. Ohne neue Vorlagen steht in der Mail kein Code. Nicht getestet (braucht echte Mail).
-21. **Bedienung (UX-Auswertung, Stand unklar, prüfen):** Einstellungen gruppieren und Gefahrenzone (A8, B5, B6), Uhrzeit-Format „06:00 PM" (C2), „Woche 10: 0/0" (B7), doppelte Eingabewege für Test-Watt (B8). Siehe `docs/UX-AUSWERTUNG.md`.
-22. **Nicht geprüft:** Barrierefreiheit (Vorlesefunktion), Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone.
-23. **Fitness-Test wiederholen** nach 4 bis 6 Wochen: Hinweis und fester Ort fehlen.
+### Aus der Prüfung offen
+1. **Unbestätigte Registrierungen** bleiben samt Geburtsjahr und „Einwilligung" in der Datenbank, ohne Aufräumen. Plan: SQL von Hand, löscht sie nach 7 Tagen.
+2. **Content-Security-Policy fehlt.** Kein Angriffsweg bekannt. Eine Regel kann die App brechen, Inline-Skripte müssten umgebaut werden. Eher später.
+3. **Kalender-Export (.ics):** Dauer fest 45 Minuten, am Dateiende fehlt ein Zeilenumbruch, Einheiten, die aus dem Plan fallen, bleiben im Kalender stehen.
+4. **Konto löschen** hat zwei Rückfragen, aber keine erneute Prüfung per Code.
+5. **Kleinigkeiten:** Barrierefreiheit (Screenreader liest bei jedem Seitenwechsel alles vor, Tabs ohne Auswahlstatus, kein Fokus in Dialogen), fehlendes `noscript`, `manifest` ohne `id`, toter Code (`peakW`, `ack` werden nur geschrieben), die In-App-Erinnerung kann nach dem Abhaken noch feuern.
+6. **Weitere kleine Funde:** Ein Kontowechsel mit ungesicherten Daten verwirft sie still. Die Rückfrage beim Anmelden läuft in ein 8-Sekunden-Zeitlimit. Der Timer-Stand geht beim Neuladen verloren (die App warnt jetzt davor). Der Ton auf dem iPhone nach einer Sperre ist nicht auf dem Gerät geprüft.
+7. **Altnamen „redline"** stehen noch in Speicher-Schlüsseln (`redline.v1`, `redline.sync`, `redline.base`), im Cache (`redline-vNN`), in der Kalender-ID und in `rl-…`. Absichtlich nicht umbenannt, das würde lokale Daten und den Cache entwerten.
 
-## Betrieb
+### Konto-Dienst und Betrieb (Supabase)
+8. **E-Mail-Versand:** Die Mails laufen über den IONOS-Server (Absender Nonstop Boxing). Sendegrenzen von IONOS und Supabase (30 Mails pro Stunde) bei vielen Anmeldungen prüfen. Da jetzt jede Anmeldung eine Mail braucht, ist das der erste Engpass. Kommt keine Mail, kommt niemand rein.
+9. **Rückmeldungen der Tester** laufen über die Edge-Function `feedback-to-github` direkt als Issue ins Repo (Ablauf: `docs/FEEDBACK-ABLAUF.md`). Der GitHub-Token liegt im Supabase-Vault (`github_token`). Die Sendegrenze (10 pro Stunde je Nutzer) liegt im Speicher der Funktion und setzt sich bei einem Neustart zurück. Für den Tester-Kreis ausreichend (Vermutung).
+10. **Der Plan ist öffentlich lesbar.** Das Login schützt nur den Fortschritt der Nutzer, nicht den Plan.
+11. **Supabase-Gratis-Plan:** Projekte mit wenig Aktivität werden pausiert. Beim Tester-Betrieb im Blick behalten (prüfen). Das Projekt `matchmaker` ist pausiert (Gratis-Plan erlaubt zwei Projekte).
 
-24. **Tester-Nachricht** passt nicht mehr zum neuen Ablauf (Reihenfolge, Feedback-Weg). Vor dem Versand anpassen.
-25. **Tägliche Mail mit offenen Meldungen** (Routine „Nonstop-Boxing: Issues, Features und Fragen", 9:54 Uhr): Der Auftragstext in der Routine ist noch der Einfügetext („Lege eine Routine an …"). Den Teil ab „Auftrag der Routine" einsetzen. Tabelle mit echten Meldungen noch ungetestet.
+### Bedienung und Geräte
+12. **Eingabefeld „Uhrzeit"** in den Einstellungen ragte auf dem iPhone über den rechten Rand (Screenshot vom 16.11.). Noch nicht behoben.
+13. **Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`, Stand unklar, prüfen):** Einstellungen gruppieren und Gefahrenzone (A8, B5, B6), Uhrzeit-Format „06:00 PM" (C2), vier Eingabewege für den Test-Watt (B8).
+14. **Fitness-Test wiederholen:** Nach 28 Tagen erscheint ein Hinweis auf der Startseite, ein fester Ort in der App fehlt.
+15. **Nicht geprüft:** Geräte unter 360 px, Eingabe mit echter Tastatur auf dem iPhone, Ton und Vibration des Timers auf dem iPhone, Offline-Betrieb. Das kann die KI nicht testen, bitte auf dem Handy prüfen.
 
-## Geschäftsmodell
+## 4. Betrieb
 
-26. **Preis- und Abo-Modell ist nicht entschieden und nicht gebaut.** Es gibt weder Preise noch Bezahlfunktion noch Abo-Logik. Zu klären:
-    - Was ist kostenlos, was kostet? (z. B. Einzelpreis, Monats-/Jahresabo, Test-Zeitraum)
-    - Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores)
-    - Rechnung, Umsatzsteuer, Widerrufsrecht, Kündigung (rechtlich prüfen)
-    - Freischaltung im Konto (Supabase: Zahlstatus pro Nutzer, Ablaufdatum)
-    - Preise und Bedingungen in Datenschutz, Impressum und AGB aufnehmen
-    - Zusammenhang mit Punkt 1: Verkauf setzt geklärte Rechte am Programm voraus.
-    - Preis für Minderjährige: Vertragsabschluss nur mit Eltern (siehe Punkt 15).
+1. **Tester-Nachricht** passt nicht mehr zum neuen Ablauf (Anmeldung per Code, Reihenfolge, Feedback-Weg). Vor dem Versand anpassen.
+2. **Tägliche Mail mit offenen Meldungen** (Routine „Nonstop-Boxing: Issues, Features und Fragen", 9:54 Uhr): Der Auftragstext in der Routine ist noch der Einfügetext („Lege eine Routine an …"). Den Teil ab „Auftrag der Routine" einsetzen. Tabelle mit echten Meldungen noch ungetestet.
 
-## Video
+## 5. Geschäftsmodell
 
-12. **Video in der App (`video/start.mp4`)** zeigt noch den alten Ablauf (Max-Watt, Trainingsstand). Der Name „Last Round“ ist per Überblendung durch „Nonstop Boxing“ ersetzt (Logo-Szene, App-Kopfzeile, Endkarte); sauberer wäre ein Neurender aus der Quelle. Anpassen, wenn die App fertig ist.
-13. **Trailer** (`video/trailer/`): Webadresse für Szene 9 fehlt. Siehe dort auch die offenen Punkte.
+**Preis- und Abo-Modell ist nicht entschieden und nicht gebaut.** Es gibt weder Preise noch Bezahlfunktion noch Abo-Logik. Zu klären:
+- Was ist kostenlos, was kostet? (z. B. Einzelpreis, Monats-/Jahresabo, Test-Zeitraum)
+- Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores)
+- Rechnung, Umsatzsteuer, Widerrufsrecht, Kündigung (rechtlich prüfen)
+- Freischaltung im Konto (Supabase: Zahlstatus pro Nutzer, Ablaufdatum)
+- Preise und Bedingungen in Datenschutz, Impressum und AGB aufnehmen
+- Zusammenhang mit Punkt 1.1: Verkauf setzt geklärte Rechte am Programm voraus.
+- Preis für Minderjährige: Vertragsabschluss nur mit Eltern (siehe Punkt 1.3).
+
+## 6. Video
+
+1. **Video in der App (`video/start.mp4`)** zeigt noch den alten Ablauf (Max-Watt, Trainingsstand). Der Name „Last Round" ist per Überblendung durch „Nonstop Boxing" ersetzt (Logo-Szene, App-Kopfzeile, Endkarte); sauberer wäre ein Neurender aus der Quelle. Anpassen, wenn die App fertig ist. Es läuft als Intro bei jedem Start ohne Anmeldung und ist offline nicht verfügbar.
+2. **Trailer** (`video/trailer/`): Webadresse für Szene 9 fehlt. Siehe dort auch die offenen Punkte.
 
 ## Empfehlung
 
-Punkt 1 und 2 zuerst klären, die anderen blockieren nicht.
+Punkt 1.1 (Rechte am Plan) und 1.2 (Datenschutz) zuerst klären, danach 1.3 mit dem SQL und den Test der Anmeldung (1.10). Die anderen Punkte blockieren nicht.
+
+## Zuletzt erledigt (16.11.2026)
+
+Anmeldung per Code statt Passwort, Impressum und Datenschutz-Verantwortlicher eingetragen, Datenschutz-Text an das Verhalten angepasst, Sicherung ohne Datenverlust bei gleichzeitigen Änderungen, Import von Sicherungsdateien geprüft, Jugend-Sperre und Trainer-Freigabe entfernt, eigene Klasse für Kinder bis 14, Altersklasse mit Rückfall, Eingaben geprüft, Plan-Randfälle (Kampf in unter einer Woche, Kampftermin entfernen, Trainingstage), Timer-Rückfrage, Update-Hinweis über Intro und Timer.

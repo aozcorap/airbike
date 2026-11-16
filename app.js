@@ -113,6 +113,8 @@ function findInPlan(id) {
 function allSessions() {
   return plan().weeks.flatMap((w) => weekOrder(w).map((s) => ({ s, w })));
 }
+// Erledigte Einheiten im aktuellen Plan (einheitlich für Startseite, Fortschritt und Einführung)
+const doneInPlan = () => allSessions().filter(({ s }) => isDone(s.id)).length;
 function sessionSecs(session) {
   const blocks = sessionBlocks(session, state.recOpt);
   return totalSecs(flatten({ ...session, blocks }, ctx())) + 10;
@@ -377,7 +379,7 @@ function viewHome() {
     </a>`;
   }
 
-  const doneCount = allSessions().filter(({ s }) => isDone(s.id)).length;
+  const doneCount = doneInPlan();
   const total = allSessions().length;
   const week = cw || (next ? next.w : p.weeks[p.weeks.length - 1]);
   const list = week
@@ -698,7 +700,7 @@ function viewInfo() {
   const steps = [
     { done: Boolean(state.onboarded && (state.fightDate || state.startDate)), title: 'Einrichten', text: 'Altersklasse, Kampftermin und Kampfformat eintragen. Daraus baut die App deinen Plan.', value: state.onboarded && (state.fightDate || state.startDate) ? `${p.name} · ${pl.fight ? 'Kampf ' + fmtDate(pl.fight) : 'ohne Kampftermin'} · ${formatLabel()}` : '', btn: state.onboarded ? '<a class="btn primary" href="#/settings">Eintragen</a>' : '<button class="primary" data-act="ob-replay">Jetzt einrichten</button>', again: '<a class="stepchange" href="#/settings">Ändern</a>' },
     { done: Boolean(state.maxW), title: 'Fitness-Test', text: 'Drei Sprints à 10 Sekunden auf dem Air Bike, 1 Minute Pause dazwischen. Du trägst danach die drei Höchstwerte ein. Der Durchschnitt ist dein Test-Watt, daraus berechnet die App alle Watt-Ziele.', value: state.maxW ? `Test-Watt: ${state.maxW} W` : '', btn: '<a class="btn primary" href="#/test">Test starten</a>', again: '<a class="stepchange" href="#/test">Wiederholen</a>' },
-    { done: Object.keys(state.done || {}).length > 0, title: 'Erste Einheit trainieren', text: 'Öffne deine nächste Einheit und tippe auf Starten. Der Timer führt dich durch jede Runde und zeigt dir das Watt-Ziel.', value: Object.keys(state.done || {}).length ? `${Object.keys(state.done).length} Einheit(en) erledigt` : '', btn: nextSession() ? `<a class="btn primary" href="#/s/${nextSession().s.id}">Einheit öffnen</a>` : '<a class="btn primary" href="#/plan">Zum Plan</a>', again: '<a class="stepchange" href="#/plan">Zum Plan</a>' },
+    { done: doneInPlan() > 0, title: 'Erste Einheit trainieren', text: 'Öffne deine nächste Einheit und tippe auf Starten. Der Timer führt dich durch jede Runde und zeigt dir das Watt-Ziel.', value: doneInPlan() ? `${doneInPlan()} Einheit(en) erledigt` : '', btn: nextSession() ? `<a class="btn primary" href="#/s/${nextSession().s.id}">Einheit öffnen</a>` : '<a class="btn primary" href="#/plan">Zum Plan</a>', again: '<a class="stepchange" href="#/plan">Zum Plan</a>' },
   ];
   const cur = steps.findIndex((x) => !x.done);
   const stepHtml = steps
@@ -1785,12 +1787,10 @@ function authMessage() {
 }
 function authError(err) {
   const m = String((err && (err.message || err.code)) || '');
-  if (/invalid login|invalid_credentials/i.test(m)) return 'E-Mail oder Passwort stimmt nicht.';
   if (/otp|token has expired|token.*invalid|expired/i.test(m)) return 'Der Code stimmt nicht oder ist abgelaufen. Prüfe die Zahl oder fordere einen neuen Code an.';
   if (/not confirmed|email_not_confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail. Schau auch im Spam-Ordner nach.';
   if (/rate limit|too many|over_email_send_rate_limit|over_request_rate_limit/i.test(m)) return 'Zu viele Versuche. Bitte warte kurz und versuche es später noch einmal.';
   if (/database error|saving new user|unexpected_failure/i.test(m)) return 'Die Registrierung ist nicht möglich. Bitte prüfe Alter und Einwilligung.';
-  if (/password/i.test(m) && /short|weak|least|characters/i.test(m)) return 'Das Passwort ist zu kurz oder zu schwach (mindestens 8 Zeichen).';
   if (/valid email|invalid format|email address.*invalid|is invalid/i.test(m)) return 'Diese E-Mail-Adresse ist nicht gültig.';
   if (/network|fetch|failed to/i.test(m)) return 'Keine Verbindung. Bitte prüfe dein Internet.';
   return 'Das hat nicht geklappt. Bitte versuche es noch einmal.';
@@ -2363,7 +2363,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 71;
+const APP_BUILD = 72;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2395,7 +2395,7 @@ async function hardReload() {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
-    await Promise.all(['./', 'index.html', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'styles.css'].map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
+    await Promise.all(['./', 'index.html', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'styles.css', 'vendor/supabase.js', 'manifest.webmanifest', 'img/hero.jpg', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'].map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
   } catch {
     /* im Zweifel trotzdem neu laden */
   }

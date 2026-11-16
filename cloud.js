@@ -1,5 +1,5 @@
 // Anbindung an das Konto-System (Supabase): Anmeldung und Sicherung des Fortschritts je Konto.
-// Hash der Adresse sichern, bevor die Bibliothek ihn auswertet und löscht (Passwort-Link, Bestätigungs-Link)
+// Hash der Adresse sichern, bevor die Bibliothek ihn auswertet und löscht (alte Bestätigungs-Links)
 export const INITIAL_HASH = typeof location !== 'undefined' ? location.hash : '';
 import { createClient } from './vendor/supabase.js';
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';

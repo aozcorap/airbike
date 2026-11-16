@@ -2,6 +2,8 @@
 
 Stand: 16.11.2026. Reine Auswertung, es wurde nichts geändert.
 
+**Hinweis, später ergänzt:** Teile sind überholt. Die Anmeldung läuft ohne Passwort per Code aus der E-Mail. Die Einführung hat vier statt sieben Bildschirme (Willkommen, Kampf, Fitness-Test, Fertig), die Altersklasse folgt dem Geburtsjahr. Elternfreigabe, Sperre und Trainer-Freigabe hat der Betreiber entfernt. Den aktuellen Stand der offenen Punkte zeigt `OFFENE-PUNKTE.md`.
+
 ## Was geprüft wurde
 
 Ich habe die App mit einem neuen Konto bei 390 × 844 px durchgespielt und angesehen: Anmeldung, alle Einführungsschritte, Startseite, Plan, Woche, Einheit, Fitness-Test, Einführungsseite, Einstellungen.
@@ -20,7 +22,7 @@ Das ist eine fachliche Einschätzung, keine Nutzerstudie. Mit 3 bis 5 echten Box
 
 ### Ist (so gemessen)
 
-Registrieren (E-Mail, Passwort, Geburtsjahr, Einwilligung) → E-Mail bestätigen → Anmelden → Einführung mit 7 Bildschirmen:
+Registrieren (damals: E-Mail, Passwort, Geburtsjahr, Einwilligung; heute ohne Passwort, mit Code aus der E-Mail) → E-Mail bestätigen → Anmelden → Einführung mit 7 Bildschirmen (heute 4):
 Willkommen → Gesundheit → Altersklasse → Kampftermin → Kampfformat → Fitness-Test (Eingabe oder starten oder „später") → Fertig → Startseite.
 
 Die Einführung erscheint nach der ersten Anmeldung sofort. Bestätigt: im Test kam sie direkt nach dem Login.
@@ -92,11 +94,11 @@ Vorschlag für die Gruppen: **Dein Kampf** (Termin, Runden, Länge) · **Dein Tr
 
 ## 6. Dinge, die fürs Launchen fehlen oder noch nicht entschieden sind
 
-- Leere Zustände und Fehlertexte (kein Netz, Server nicht erreichbar, E-Mail schon registriert, falsches Passwort) sind teilweise vorhanden, aber nicht einheitlich geprüft.
+- Leere Zustände und Fehlertexte (kein Netz, Server nicht erreichbar, falscher oder abgelaufener Code) sind teilweise vorhanden, aber nicht einheitlich geprüft.
 - Eine Hilfe-/Kontaktmöglichkeit fehlt (Mail-Adresse, FAQ).
 - Wiederholung des Fitness-Tests (alle 4 bis 6 Wochen) braucht einen Hinweis und einen festen Ort.
 - Es gibt keine Rückmeldung zum Fortschritt (z. B. „12 von 36 Einheiten", Verlauf des Test-Watt). Für Motivation und Bindung wichtig.
-- Die Jugendschutz-Regeln (Altersklasse, Elternfreigabe) sind zwischen Registrierung und Plan nicht verbunden (siehe A1).
+- Die Altersklasse folgt jetzt dem Geburtsjahr aus der Registrierung (A1 ist damit erledigt). Elternfreigabe und Sperre hat der Betreiber entfernt.
 - Die Rechtstexte sind Entwürfe (siehe `OFFENE-PUNKTE.md`).
 
 ## 7. Reihenfolge der Umsetzung (Vorschlag)
