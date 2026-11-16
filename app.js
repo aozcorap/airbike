@@ -1438,10 +1438,11 @@ function authShell(inner) {
     document.body.appendChild(sheet);
   }
   document.body.classList.add('obopen');
+  sheet.classList.toggle('authbg', inner.includes('auth-brand'));
   sheet.innerHTML = `<div class="sheet-in">${inner}</div>`;
   sheet.scrollTop = 0;
 }
-const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="muted center" style="margin:2px 0 14px">Mehr Kondition bis zur letzten Runde</p>`;
+const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="auth-tag">Mehr Kondition bis zur letzten Runde</p>`;
 const authTabs = (on) => `<div class="seg2" role="tablist"><button class="${on === 'login' ? 'sel' : ''}" data-act="auth-view" data-v="login" role="tab">Anmelden</button><button class="${on === 'register' ? 'sel' : ''}" data-act="auth-view" data-v="register" role="tab">Registrieren</button></div>`;
 const legalLinks = () => `<p class="muted small center" style="margin-top:18px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
 
