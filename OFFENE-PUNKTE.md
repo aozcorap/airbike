@@ -9,7 +9,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt.
 3. **Name „Nonstop Boxing"** ist nicht auf Marke, App-Store und Domain geprüft.
 4. **Foto auf der Startseite** (`img/hero.jpg`) hat ein iStock-Wasserzeichen und liegt im öffentlichen Repo. Lizenz oder Ersatz nötig.
 14. **Rückmeldungen der Tester sind öffentlich.** Sie landen als Issues im öffentlichen Repo, auch wenn ein Tester Namen oder Gesundheitsangaben hineinschreibt. Der Hinweis in der App steht drin, die Datenschutz-Entwürfe müssen es sauber abdecken.
-15. **Einwilligung der Eltern bei Minderjährigen fehlt.** Das Geburtsjahr ist nur eine Selbstangabe, unter 16 braucht es eine Freigabe. Gehört zu Punkt 2.
+15. **Kein Mindestalter und keine Einwilligung der Eltern (Entscheidung des Betreibers).** Die App fragt beides nicht mehr ab, der Plan passt sich weiter per Altersklasse an das Geburtsjahr an. Risiko: Die Einwilligung Minderjähriger in die Datenverarbeitung (DSGVO Art. 8, in Deutschland unter 16 Jahren Zustimmung der Eltern) ist damit nicht abgedeckt. Rechtlich prüfen lassen. **Die Datenbank-Regel muss von Hand geändert werden** (`docs/DB-REGISTRIERUNG.sql`), sonst lehnt sie Registrierungen unter 14 Jahren ab und verlangt unter 17 Jahren eine Elternzustimmung.
 16. **Musik im Tester-Video** (CC BY 4.0, ende.app) verlangt Namensnennung des Urhebers. Prüfen, ob sie im Video und in der Beschreibung steht.
 
 ## Fachlich
