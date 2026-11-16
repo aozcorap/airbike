@@ -11,7 +11,7 @@ Hinweis: Absender ("Supabase Auth, noreply@mail.app.supabase.io") ändert sich d
 
 **Wichtig (Code statt Link):** Die Vorlagen 1 und 2 enthalten jetzt `{{ .Token }}`, den Zahlen-Code, den man in der App eintippt. Ein Link in der E-Mail öffnet immer den Browser, nie die installierte App (auf dem iPhone technisch nicht möglich). Beide Vorlagen müssen in Supabase ersetzt werden, sonst steht in der E-Mail kein Code. Länge des Codes: Supabase → Authentication → Sign In / Providers → Email → „Email OTP Length“ (Standard 6, die App akzeptiert 6 bis 10 Ziffern).
 
-**Neu: Anmeldung per Code.** Die App meldet standardmäßig mit einem Code an (kein Passwort nötig). Neue Konten bekommen dabei die Vorlage 1 (Confirm signup), bestehende Konten die Vorlage 4 (Magic link). Beide müssen `{{ .Token }}` enthalten. Vorlage 2 (Reset password) wird von der App nicht mehr ausgelöst, nur alte Links funktionieren noch.
+**Neu: Anmeldung per Code.** Die App meldet standardmäßig mit einem Code an (kein Passwort nötig). Neue Konten bekommen dabei die Vorlage 1 (Confirm signup), bestehende Konten die Vorlage 4 (Magic link). Beide müssen `{{ .Token }}` enthalten. Die App kennt keine Passwörter mehr; Vorlage 2 (Reset password) wird nicht mehr ausgelöst und kann stehen bleiben.
 
 ## 1. Confirm signup (Konto bestätigen)
 

@@ -25,12 +25,9 @@ export async function currentUser() {
     return null;
   }
 }
-export const signUp = (email, password, meta) => client.auth.signUp({ email, password, options: { data: meta, emailRedirectTo: redirectUrl() } });
-export const signIn = (email, password) => client.auth.signInWithPassword({ email, password });
 export const signOut = () => client.auth.signOut();
 export const sendCode = (email, create, data) => client.auth.signInWithOtp({ email, options: { shouldCreateUser: create, ...(data ? { data } : {}) } });
 export const verifyCode = (email, token, type) => client.auth.verifyOtp({ email, token, type });
-export const updatePassword = (password) => client.auth.updateUser({ password });
 export const onAuth = (cb) => client.auth.onAuthStateChange(cb);
 
 export async function pullState(userId) {
