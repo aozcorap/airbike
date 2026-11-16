@@ -424,15 +424,17 @@ function viewPlan() {
   const p = plan();
   let html = `<h1>Trainingsplan</h1><p class="muted">${esc(planSummary())}</p>`;
   if (p.status !== 'ok') return html;
+  let phaseNo = 0;
   PHASES.forEach((ph) => {
     const weeks = p.weeks.filter((w) => w.tpl >= ph.weeks[0] && w.tpl <= ph.weeks[1]);
     if (!weeks.length) return;
-    html += `<div class="phase-dot"><b>${esc(ph.name)}</b><div class="muted small">${esc(ph.text)}</div></div>`;
+    phaseNo += 1;
+    html += `<div class="phase-dot"><span class="kicker">Phase ${phaseNo}</span><b>${esc(ph.name)}</b><div class="muted small">${esc(ph.text)}</div></div>`;
     weeks.forEach((w) => {
       const list = weekOrder(w);
       const done = list.filter((s) => isDone(s.id)).length;
       const level = { Niedrig: 1, Mittel: 2, 'Mittel–Hoch': 3, Hoch: 4 }[w.load];
-      html += `<a class="card link" href="#/week/${w.n}"><div class="week-head"><h3>Woche ${w.n}</h3><span class="muted small">${weekRange(w)}${weekRange(w) ? ' · ' : ''}${done}/${list.length} erledigt</span></div>
+      html += `<a class="card link" href="#/week/${w.n}"><div class="week-head"><h3>Woche ${w.n}</h3><span class="muted small">${weekRange(w)}${weekRange(w) ? ' · ' : ''}${list.length ? `${done}/${list.length} erledigt` : 'Kampfwoche, keine Einheit'}</span></div>
         <div class="muted small">Belastung: ${esc(w.load)}</div>
         <div class="load-bar" aria-hidden="true">${[1, 2, 3, 4].map((i) => `<i class="${i <= level ? 'on' : ''}"></i>`).join('')}</div></a>`;
     });
@@ -2065,7 +2067,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 43;
+const APP_BUILD = 44;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
