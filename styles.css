@@ -368,3 +368,8 @@ body.obopen { overflow: hidden; }
 .seg2x .opt { margin: 0; text-align: center; }
 .manual { padding: 0 14px; }
 .manual[open] { padding-bottom: 14px; }
+.manual .ghost.block { min-height: 48px; }
+@media (max-width: 380px) {
+  .ob-hero-in b { font-size: 5.8vw; letter-spacing: .05em; }
+  .agerow { flex-wrap: wrap; }
+}
