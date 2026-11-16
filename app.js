@@ -36,12 +36,13 @@ function load() {
 }
 let state = load();
 function save(localOnly = false) {
+  const corrected = enforceProfile();
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     /* Speicher blockiert (z. B. privater Modus) – App läuft trotzdem weiter */
   }
-  if (!localOnly && typeof account !== 'undefined' && account) {
+  if ((!localOnly || corrected) && typeof account !== 'undefined' && account) {
     writeSync({ dirty: true });
     schedulePush();
   }
@@ -69,7 +70,7 @@ const sessionBlocks = (session, rec) => sessionBlocksRaw(session, rec, profile()
 function profileBanner() {
   const p = profile();
   if (p.blocked) {
-    return `<div class="notice" style="background:#3a1311;border-color:#7a2622;color:#ff8a82"><b>Profil ${esc(p.name)}: Plan gesperrt.</b> Dieser Plan ist für diese Altersklasse nicht vorgesehen. Wechsle das Profil unter <a href="#/settings">Einstellungen</a>.</div>`;
+    return `<div class="notice" style="background:#3a1311;border-color:#7a2622;color:#ff8a82"><b>Profil ${esc(p.name)}: Plan gesperrt.</b> Dieser Plan ist für diese Altersklasse nicht vorgesehen. Sprich mit einem Elternteil oder deinem Trainer.</div>`;
   }
   if (!profileOk()) {
     return `<div class="notice"><b>Profil ${esc(p.name)}:</b> Die Werte sind Platzhalter und noch nicht von einem Fachtrainer freigegeben. Bestätige die Freigabe in den <a href="#/settings">Einstellungen</a>.</div>`;
@@ -263,13 +264,27 @@ function allowedProfiles() {
   return PROFILE_ORDER.filter((k) => PROFILE_ORDER.indexOf(k) >= PROFILE_ORDER.indexOf(own) && (!PROFILES[k].blocked || k === own));
 }
 function enforceProfile() {
-  const own = ageClassKey();
-  if (!own) return;
-  if (!state.onboarded) state.profile = own;
-  if (!allowedProfiles().includes(state.profile)) {
-    state.profile = own;
-    save();
+  const own = typeof account !== 'undefined' ? ageClassKey() : null;
+  if (!own || allowedProfiles().includes(state.profile)) return false;
+  state.profile = own;
+  return true;
+}
+// Geburtsjahr kommt vom Server (Tabelle profiles, vom Nutzer nicht änderbar), nicht aus den änderbaren Kontodaten
+async function loadBirthYear(user, offline) {
+  const s = readSync();
+  const cached = s.birthOwner === user.id ? Number(s.birth) || 0 : 0;
+  if (offline) return cached;
+  try {
+    const { data } = await withTimeout(cloud.client.from('profiles').select('birth_year').eq('user_id', user.id).maybeSingle(), 4000);
+    const y = Number(data && data.birth_year) || 0;
+    if (y) {
+      if (y !== cached) writeSync({ birth: y, birthOwner: user.id });
+      return y;
+    }
+  } catch {
+    /* offline oder Server nicht erreichbar: zwischengespeicherten Wert nutzen */
   }
+  return cached;
 }
 
 function setupCard() {
@@ -454,7 +469,7 @@ function viewInfo() {
   const p = profile();
   const pl = plan();
   const steps = [
-    { done: Boolean(state.onboarded && state.fightDate), title: 'Einrichten', text: 'Altersklasse, Kampftermin und Kampfformat eintragen. Daraus baut die App deinen Plan.', value: state.onboarded && state.fightDate ? `${p.name} · Kampf ${fmtDate(pl.fight)} · ${formatLabel()}` : '', btn: state.onboarded ? '<a class="btn primary" href="#/settings">Eintragen</a>' : '<button class="primary" data-act="ob-replay">Jetzt einrichten</button>', again: '<a class="stepchange" href="#/settings">Ändern</a>' },
+    { done: Boolean(state.onboarded && (state.fightDate || state.startDate)), title: 'Einrichten', text: 'Altersklasse, Kampftermin und Kampfformat eintragen. Daraus baut die App deinen Plan.', value: state.onboarded && (state.fightDate || state.startDate) ? `${p.name} · ${pl.fight ? 'Kampf ' + fmtDate(pl.fight) : 'ohne Kampftermin'} · ${formatLabel()}` : '', btn: state.onboarded ? '<a class="btn primary" href="#/settings">Eintragen</a>' : '<button class="primary" data-act="ob-replay">Jetzt einrichten</button>', again: '<a class="stepchange" href="#/settings">Ändern</a>' },
     { done: Boolean(state.maxW), title: 'Fitness-Test', text: 'Drei Sprints à 10 Sekunden auf dem Air Bike, 1 Minute Pause dazwischen. Du trägst danach die drei Höchstwerte ein. Der Durchschnitt ist dein Test-Watt, daraus berechnet die App alle Watt-Ziele.', value: state.maxW ? `Test-Watt: ${state.maxW} W` : '', btn: '<a class="btn primary" href="#/test">Test starten</a>', again: '<a class="stepchange" href="#/test">Wiederholen</a>' },
     { done: Object.keys(state.done || {}).length > 0, title: 'Erste Einheit trainieren', text: 'Öffne deine nächste Einheit und tippe auf Starten. Der Timer führt dich durch jede Runde und zeigt dir das Watt-Ziel.', value: Object.keys(state.done || {}).length ? `${Object.keys(state.done).length} Einheit(en) erledigt` : '', btn: nextSession() ? `<a class="btn primary" href="#/s/${nextSession().s.id}">Einheit öffnen</a>` : '<a class="btn primary" href="#/plan">Zum Plan</a>', again: '<a class="stepchange" href="#/plan">Zum Plan</a>' },
   ];
@@ -573,6 +588,8 @@ function notFound() {
 /* ---------------- Router ---------------- */
 let cleanup = null;
 function route() {
+  if (enforceProfile()) save();
+  closeModalCal();
   if (cleanup) {
     cleanup();
     cleanup = null;
@@ -960,6 +977,16 @@ function dateField(id, value, extra = '') {
   return `<input id="${id}" type="hidden" value="${esc(value)}" ${extra}><button type="button" class="datebtn ${value ? '' : 'empty'}" data-act="pickdate" data-for="${id}" aria-label="Datum wählen"><span id="${id}Txt">${value ? esc(dateLabel(value)) : 'Datum wählen'}</span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></button>`;
 }
 let cal = null;
+function closeModalCal() {
+  if (!cal) return;
+  cal = null;
+  $modal.hidden = true;
+  $modal.className = '';
+  $modal.innerHTML = '';
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModalCal();
+});
 function renderCalendar() {
   const first = new Date(cal.y, cal.m, 1);
   const lead = (first.getDay() + 6) % 7;
@@ -1022,12 +1049,12 @@ function obBody(id) {
       return `<div class="ob-hero"><img src="img/hero.jpg" alt="" onerror="this.remove()"><div class="ob-hero-in">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div></div>
         <h1>So startest du</h1>
         <p class="muted">In wenigen Minuten ist dein Plan bereit.</p>
+        <div class="notice"><b>Gesundheit:</b> Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen vorher ärztlich untersuchen. Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen. Du trainierst auf eigene Verantwortung.</div>
         <ol class="ob-list">
           <li><b>Dein Kampf</b><span>Termin, Runden und Rundenlänge</span></li>
           <li><b>Fitness-Test</b><span>3 Sprints, daraus berechnet die App deine Watt-Ziele</span></li>
           <li><b>Training</b><span>Dein Plan bis zum Kampf, Einheit für Einheit</span></li>
-        </ol>
-        <div class="notice"><b>Gesundheit:</b> Maximale Sprints sind extrem belastend. Lass dich bei Vorerkrankungen vorher ärztlich untersuchen. Bei Schwindel, Brustschmerz, Atemnot oder Übelkeit sofort abbrechen. Du trainierst auf eigene Verantwortung.</div>`;
+        </ol>`;
     case 'fight': {
       const own = ageClassKey();
       const ok = allowedProfiles();
@@ -1041,7 +1068,7 @@ function obBody(id) {
         <label for="obFight">Kampftermin</label>
         ${dateField('obFight', ob.fightDraft !== undefined ? ob.fightDraft : state.fightDate)}
         <button class="linkbtn inline" data-act="ob-nodate">Ich habe noch keinen Termin</button>
-        <label>Anzahl der Runden</label>
+        <label>Wie viele Runden hat dein Kampf?</label>
         <div class="rounds-grid">${[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => `<button class="opt sm ${fmtRounds() === n ? 'sel' : ''}" data-act="ob-rounds" data-n="${n}"><b>${n}</b></button>`).join('')}</div>
         <label>Länge einer Runde</label>
         <div class="seg2x">${[2, 3].map((m) => `<button class="opt sm ${fmtRoundSecs() === m * 60 ? 'sel' : ''}" data-act="ob-rlen" data-n="${m}"><b>${m} Minuten</b></button>`).join('')}</div>
@@ -1092,14 +1119,14 @@ function renderOnboarding() {
   const id = OB_STEPS[ob.step];
   const last = ob.step === OB_STEPS.length - 1;
   const first = ob.step === 0;
-  const nextLabel = id === 'welcome' ? 'Verstanden, los geht’s' : last ? (state.maxW ? 'Zur Übersicht' : 'Fitness-Test starten') : 'Weiter';
+  const nextLabel = id === 'welcome' ? 'Verstanden, los geht’s' : last ? (state.maxW || profile().blocked ? 'Zur Übersicht' : 'Fitness-Test starten') : 'Weiter';
   const showNext = id !== 'watt';
   sheet.innerHTML = `<div class="sheet-in">
     <div class="ob-top">${first ? '<span></span>' : '<button class="ob-back" data-act="ob-back" aria-label="Zurück">← Zurück</button>'}
-      <div class="dots" aria-hidden="true">${first ? '' : [1, 2, 3].map((i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="dots" aria-hidden="true">${first ? '' : [1, 2].map((i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
       ${first ? '<button class="ob-skip" data-act="ob-skip">Überspringen</button>' : '<span></span>'}</div>
     <div class="ob-body">${obBody(id)}</div>
-    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? (state.maxW ? 'ob-finish' : 'ob-test') : 'ob-next'}">${nextLabel}</button>${last && !state.maxW ? '<button class="linkbtn" data-act="ob-finish">Später, zur Übersicht</button>' : ''}</div>` : ''}
+    ${showNext ? `<div class="ob-foot"><button class="primary block" data-act="${last ? (state.maxW || profile().blocked ? 'ob-finish' : 'ob-test') : 'ob-next'}">${nextLabel}</button>${last && !state.maxW && !profile().blocked ? '<button class="linkbtn" data-act="ob-finish">Später, zur Übersicht</button>' : ''}</div>` : ''}
   </div>`;
   sheet.scrollTop = 0;
 }
@@ -1334,17 +1361,16 @@ async function syncOnLogin(user) {
 }
 function applyRemote(remote) {
   state = normalizeState(remote.state);
+  const fixed = enforceProfile();
   save(true);
   writeBase(state);
   writeSync({ syncedAt: remote.updated_at, dirty: false });
   syncStatus = 'ok';
+  if (fixed) save(); // unzulässige Altersklasse aus dem Konto korrigiert: Korrektur ins Konto zurückschreiben
 }
 
 async function startSession(user, quick = false) {
-  const birth = Number(user.user_metadata && user.user_metadata.birth_year) || Number(readSync().birth) || 0;
-  account = { id: user.id, email: user.email || readSync().email || '', birthYear: birth };
-  if (birth && Number(readSync().birth) !== birth) writeSync({ birth });
-  enforceProfile();
+  account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick) };
   if (quick) {
     // Server nicht erreichbar: sofort mit lokalen Daten starten, Abgleich läuft im Hintergrund
     syncStatus = 'offline';
@@ -1362,6 +1388,8 @@ async function startSession(user, quick = false) {
       syncStatus = navigator.onLine ? 'error' : 'offline'; // mit lokalen Daten weiterarbeiten, später erneut versuchen
     }
   }
+  if (!state.onboarded && ageClassKey()) state.profile = ageClassKey();
+  if (enforceProfile()) save();
   closeAuth();
   route();
   if (!state.onboarded) startOnboarding();
@@ -1744,7 +1772,7 @@ document.addEventListener('click', (e) => {
       ob.fightDraft = document.getElementById('obFight')?.value || '';
       ob.profileOpen = false;
       state.profile = t.dataset.key;
-      if (PROFILES[state.profile] && PROFILES[state.profile].roundSecs) state.roundMin = PROFILES[state.profile].roundSecs / 60;
+      if (!ob.lenChosen && PROFILES[state.profile] && PROFILES[state.profile].roundSecs) state.roundMin = PROFILES[state.profile].roundSecs / 60;
       save();
       renderOnboarding();
       break;
@@ -1762,6 +1790,7 @@ document.addEventListener('click', (e) => {
       renderOnboarding();
       break;
     case 'ob-rlen':
+      ob.lenChosen = true;
       ob.fightDraft = document.getElementById('obFight')?.value || '';
       state.roundMin = Number(t.dataset.n);
       save();
