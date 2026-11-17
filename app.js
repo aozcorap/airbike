@@ -1072,6 +1072,17 @@ function runView(id) {
     }
   }
 
+  // Die große Wattzahl so verkleinern, dass sie in die Breite passt (z. B. „540–900 W“ auf schmalen Handys)
+  function fitTarget() {
+    const t = el.target;
+    t.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(t).fontSize);
+    for (let n = 0; n < 40 && t.scrollWidth > t.clientWidth + 1 && size > 24; n++) {
+      size *= 0.94;
+      t.style.fontSize = `${size}px`;
+    }
+  }
+
   function paintSegment() {
     const seg = segs[i];
     el.box.className = `timer k-${seg.kind}`;
@@ -1082,6 +1093,7 @@ function runView(id) {
     el.round.textContent = seg.kind !== 'prep' && seg.reps > 1 ? `Runde ${seg.rep} von ${seg.reps}` : '';
     el.label.textContent = seg.label.toLowerCase() === seg.target.main.toLowerCase() || (seg.kind === 'rest' && seg.label === 'Pause') ? '' : seg.label;
     el.target.textContent = seg.target.main;
+    fitTarget();
     el.sub.textContent = seg.target.sub;
     const nx = segs[i + 1];
     el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
@@ -1202,9 +1214,11 @@ function runView(id) {
     tick();
   };
   document.addEventListener('visibilitychange', onVis);
+  window.addEventListener('resize', fitTarget); // auch beim Drehen des Handys
   cleanup = () => {
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVis);
+    window.removeEventListener('resize', fitTarget);
     unlockScreen();
     runCtl = null;
     writeRun(null); // Training bewusst verlassen: nichts mehr zum Fortsetzen
@@ -2550,7 +2564,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 77;
+const APP_BUILD = 78;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
