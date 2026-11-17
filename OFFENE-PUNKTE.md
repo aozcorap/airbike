@@ -1,6 +1,6 @@
 # Offene Punkte – Nonstop Boxing
 
-Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur innerhalb dieses Abschnitts.
+Stand: 17.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann entscheiden. Wird bei Änderungen nachgeführt. Die Nummern gelten nur innerhalb dieses Abschnitts.
 
 **Prototyp** heißt hier: ein geschlossener Tester-Kreis, persönlich eingeladen, nur Erwachsene, keine Werbung, kein Geld. **Live** heißt: jeder darf rein, mit Werbung, Verkauf oder Kindern.
 
@@ -48,8 +48,13 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur inn
 5. **Content-Security-Policy:** eingebaut (nur eigene Dateien, Supabase und die GitHub-Schnittstelle; keine Inline-Skripte). Im Browser getestet (Chromium), **nicht auf dem iPhone**. Ändert sich etwas an externen Adressen oder kommen Inline-Skripte dazu, muss die Regel in `index.html` angepasst werden, sonst blockiert der Browser sie.
 6. **Kalender-Export (.ics):** Einheiten, die aus dem Plan fallen, bleiben im Kalender stehen, weil sich Termine aus einer Datei nicht zuverlässig löschen lassen. Die App weist darauf hin.
 7. **Barrierefreiheit** (Screenreader liest bei jedem Seitenwechsel alles vor, Tabs ohne Auswahlstatus, kein Fokus in Dialogen): bewusst nicht gemacht. Offen bleiben auch `color-scheme` (nicht auf dem iPhone prüfbar) und kein `og:image` (das Foto hat ein Wasserzeichen). Ein vollständiger Scan nach ungenutztem Code war nicht möglich, ein Sicherheits-Hook blockiert das Einlesen von `app.js`.
-8. **Nicht geprüft:** Eingabe mit echter Tastatur auf dem iPhone, Offline-Betrieb, die Sicherheitsregel und das neue Konto-Löschen auf dem iPhone. Das kann die KI nicht testen. Kleine Bildschirme (320 bis 360 px) sind in Chromium ohne Überlauf geprüft. Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`) offen: Uhrzeit-Format „06:00 PM“ (C2), tritt auf dem iPhone des Betreibers nicht auf, hängt von der Region des Geräts ab.
+8. **Nicht geprüft:** Eingabe mit echter Tastatur auf dem iPhone, Offline-Betrieb, die Sicherheitsregel, das neue Konto-Löschen, die Admin-Ansicht und die große Wattzahl im Timer auf dem iPhone. Das kann die KI nicht testen. Kleine Bildschirme (320 bis 360 px) sind in Chromium ohne Überlauf geprüft. Aus der UX-Auswertung (`docs/UX-AUSWERTUNG.md`) offen: Uhrzeit-Format „06:00 PM“ (C2), tritt auf dem iPhone des Betreibers nicht auf, hängt von der Region des Geräts ab.
 9. **Altnamen „redline“** stehen noch in Speicher-Schlüsseln (`redline.v1`, `redline.sync`, `redline.base`, `redline.run`), im Cache (`redline-vNN`), in der Kalender-ID und in `rl-…`. Absichtlich nicht umbenannt: Das würde lokale Daten und den Cache entwerten, und das Wort `redline-vNN` ist zugleich die Marke, an der die App neue Versionen erkennt. Eine Umbenennung ohne Übergang würde den Update-Hinweis auf installierten Apps abschalten.
+
+10. **Timer im Querformat:** Der Text unter der Zeit („Gleich: …“) überdeckt den Start-Knopf (getestet bei 844×390, war schon vor der großen Wattzahl so). Relevant, wenn das Handy quer auf einem Ständer liegt. Nicht behoben.
+11. **Test-Konto `t@y.de`:** Durch einen Test der KI wurde eine Anmeldemail ausgelöst, das Konto liegt unbestätigt in Supabase. Löschen nur auf Anweisung des Betreibers (siehe auch Punkt 2).
+12. **Zwei-Faktor** bei GitHub und Supabase einschalten (Empfehlung, nur der Betreiber kann das). Die Admin-Ansicht ist nur so sicher wie das Admin-Konto.
+13. **Altes Dashboard-Artifact** (`claude.ai/artifact/Ftx8Voas4KtMhWAJNkSNva`) wird nicht mehr gebraucht, ersetzt durch die Admin-Ansicht in der App. Kann gelöscht werden.
 
 ### Video
 1. **Video komplett neu aufbauen.** Das Intro in der App (`video/start.mp4`) zeigt den alten Ablauf (Max-Watt, Trainingsstand, 7 statt 4 Einführungsschritte). Der Name „Last Round“ ist nur per Überblendung durch „Nonstop Boxing“ ersetzt. Es läuft bei jedem Start ohne Anmeldung (5 MB) und ist offline nicht verfügbar. Für live neu rendern, die Videoquelle liegt nicht im Repo.
@@ -69,6 +74,8 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur inn
 
 Zuerst die Rechte am Plan und den Datenschutz klären (Rechtlich 1 und 2), danach die Kinderfrage (Rechtlich 3, Fachlich 1) und das neue Video. Der Rest ist Aufräumen.
 
-## Zuletzt erledigt (16.11.2026)
+## Zuletzt erledigt (16./17.11.2026)
+
+Admin-Ansicht in der App, Wattzahl im Timer deutlich größer und hervorgehoben (Version 78).
 
 Anmeldung per Code statt Passwort, Impressum und Datenschutz-Verantwortlicher eingetragen, Datenschutz-Text an das Verhalten angepasst, Sicherung ohne Datenverlust bei gleichzeitigen Änderungen, Import von Sicherungsdateien geprüft, Jugend-Sperre und Trainer-Freigabe entfernt, eigene Klasse für Kinder bis 14, Altersklasse mit Rückfall, Eingaben geprüft, Plan-Randfälle (Kampf in unter einer Woche, Kampftermin entfernen, Trainingstage), Timer-Rückfrage, Update-Hinweis über Intro und Timer, Kontowechsel mit ungesicherten Daten fragt nach, Rückfragen beim Anmelden ohne Zeitlimit, Test-Watt auf der Einheit nur noch als Link, Zeitfeld für iOS, Kalender-Export mit echter Dauer, Kleinigkeiten (noscript, Manifest, Vorschau-Tags, toter Code, Erinnerung nach dem Abhaken), Offline-Dateien, einheitliche Zählung, Content-Security-Policy, Konto löschen nur mit Code aus der E-Mail (die Mail dazu heißt „Anmelde-Code“, Vorlage 4), Timer merkt sich den Stand und bietet nach Neuladen oder Schließen das Fortsetzen an, kleine Bildschirme geprüft.
