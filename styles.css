@@ -172,6 +172,17 @@ body.running { padding-bottom: 0; }
   background: rgba(0, 0, 0, .28); border: 1.5px solid rgba(255, 255, 255, .4); color: #fff; opacity: 1; font-size: 17px; font-weight: 700;
 }
 .timer.k-done .t-mid { gap: 14px; justify-content: center; padding-top: 0; }
+/* Sprint-Werte nach dem Test: drei große Felder in einer Reihe, im Stil des Timers */
+.tw-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 380px; margin-top: 8px; }
+.tw-wrap label { margin: 0 0 6px !important; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .8); text-align: center; }
+.tw-wrap input {
+  width: 100%; min-width: 0; min-height: 72px; text-align: center; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, .32); color: #fff; border: 2px solid rgba(255, 255, 255, .28); border-radius: 16px; padding: 8px 4px;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.tw-wrap input::placeholder { color: rgba(255, 255, 255, .45); font-size: 16px; font-weight: 600; }
+.tw-wrap input:focus { border-color: #fff; outline: none; background: rgba(0, 0, 0, .5); }
+.tw-wrap input::-webkit-outer-spin-button, .tw-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .timer.k-done .t-sub { min-height: 0; }
 
 /* Startbild */
