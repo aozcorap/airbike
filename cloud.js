@@ -30,6 +30,17 @@ export const sendCode = (email, create, data) => client.auth.signInWithOtp({ ema
 export const verifyCode = (email, token, type) => client.auth.verifyOtp({ email, token, type });
 export const onAuth = (cb) => client.auth.onAuthStateChange(cb);
 
+// Admin-Ansicht: Wer Daten bekommt, entscheidet die Datenbank (Funktionen is_admin und admin_overview, siehe docs/DB-ADMIN.sql)
+export const isAdmin = async () => {
+  try {
+    const { data, error } = await client.rpc('is_admin');
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+};
+export const adminOverview = () => client.rpc('admin_overview');
+
 export async function pullState(userId) {
   const { data, error } = await client.from('user_state').select('state, updated_at').eq('user_id', userId).maybeSingle();
   if (error) throw error;
