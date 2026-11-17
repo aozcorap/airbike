@@ -660,6 +660,67 @@ async function sendFeedbackNow() {
   route();
 }
 
+/* ---------------- Admin: Testuser und Nutzung (nur für Admins, die Datenbank prüft das) ---------------- */
+let adminData = null;
+let adminState = 'idle'; // idle, loading, ok, denied, error
+const admWhen = (ts) => {
+  if (!ts) return '–';
+  const d = new Date(String(ts));
+  return Number.isNaN(d.getTime()) ? '–' : d.toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+function adminHtml() {
+  if (adminState === 'denied') return '<div class="notice">Kein Zugriff. Diese Ansicht ist nur für Admins.</div>';
+  if (!adminData) {
+    if (adminState === 'error') return '<div class="notice">Die Daten konnten nicht geladen werden. Prüfe deine Verbindung.</div><button class="ghost block" data-act="admin-refresh">Erneut versuchen</button>';
+    return '<p class="muted">Lädt …</p>';
+  }
+  const s = adminData.summary || {};
+  const n = (k) => esc(Number(s[k]) || 0);
+  const tile = (label, big, sub) => `<div class="card adm-tile"><span class="muted small">${label}</span><b class="adm-v">${big}</b><span class="muted small">${sub}</span></div>`;
+  const tone = { aktiv: 'ok', ruhig: 'amber', inaktiv: 'red' };
+  const rows = (adminData.users || [])
+    .map(
+      (u) => `<tr><td>${esc(u.email || '')}</td><td><span class="chip ${tone[u.aktivitaet] || ''}">${esc(u.aktivitaet || '')}</span></td><td>${esc(Number(u.einheiten_erledigt) || 0)}</td><td>${u.test_watt ? esc(Number(u.test_watt)) : '–'}</td><td>${esc(Number(u.meldungen) || 0)}</td><td>${esc(admWhen(u.zuletzt_gespeichert))}</td><td>${esc(admWhen(u.letzte_anmeldung))}</td><td>${u.bestaetigt ? 'ja' : 'nein'}</td></tr>`,
+    )
+    .join('');
+  return `<p class="muted">Von ${n('konten_gesamt')} Konten sind ${n('bestaetigt')} bestätigt. In den letzten 7 Tagen waren ${n('aktiv_7_tage')} aktiv, insgesamt sind ${n('einheiten_gesamt')} Einheiten erledigt.</p>
+  <div class="adm-tiles">
+    ${tile('Konten', n('konten_gesamt'), `bestätigt ${n('bestaetigt')} · nie genutzt ${n('nie_genutzt')}`)}
+    ${tile('Aktiv in 7 Tagen', n('aktiv_7_tage'), `in 3 Tagen ${n('aktiv_3_tage')}`)}
+    ${tile('Einheiten erledigt', n('einheiten_gesamt'), `Konten mit mindestens einer ${n('mit_erledigter_einheit')}`)}
+    ${tile('Mit Test-Watt', n('mit_test_watt'), `Einrichtung fertig ${n('einrichtung_fertig')}`)}
+  </div>
+  <h2>Alle Testuser</h2>
+  <div class="adm-scroll"><table class="adm-table"><thead><tr><th>E-Mail</th><th>Status</th><th>Einheiten</th><th>Test-Watt</th><th>Meldungen</th><th>Zuletzt gespeichert</th><th>Letzte Anmeldung</th><th>Bestätigt</th></tr></thead><tbody>${rows || '<tr><td colspan="8">Noch keine Konten.</td></tr>'}</tbody></table></div>
+  <button class="ghost block" style="margin-top:14px" data-act="admin-refresh">Aktualisieren</button>
+  <details class="muted small" style="margin-top:14px"><summary>Was bedeutet der Status?</summary>
+    <p><b>aktiv</b>: in den letzten 3 Tagen etwas gespeichert. <b>ruhig</b>: bis 14 Tage her. <b>inaktiv</b>: länger her. <b>nie genutzt</b>: Konto ohne gespeicherte Daten.</p>
+    <p>Die App speichert nur, wenn sich etwas ändert (Einheit abgehakt, Test gemacht, Einstellung geändert). Wer sie nur öffnet, taucht hier nicht auf. Die letzte Anmeldung ändert sich nur bei einer neuen Anmeldung per Code.</p>
+    <p>Diese Seite zeigt E-Mail-Adressen. Keine Bildschirmfotos teilen.</p></details>`;
+}
+function viewAdmin() {
+  return `<a href="#/more" class="back">← Mehr</a><h1>Admin</h1><div id="adminBody">${adminHtml()}</div>`;
+}
+async function loadAdmin() {
+  if (!adminData) adminState = 'loading';
+  try {
+    const { data, error } = await withTimeout(cloud.adminOverview(), 12000);
+    if (error) {
+      adminData = null;
+      adminState = /Kein Zugriff|42501|permission denied/i.test(`${error.message || ''} ${error.code || ''}`) ? 'denied' : 'error';
+    } else {
+      adminData = data;
+      adminState = 'ok';
+    }
+  } catch {
+    adminState = 'error';
+  }
+  if (location.hash === '#/admin') {
+    const el = document.getElementById('adminBody');
+    if (el) el.innerHTML = adminHtml();
+  }
+}
+
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
@@ -670,6 +731,7 @@ function viewMore() {
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
   ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
+  ${account && account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}
   ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
   ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
   <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_BUILD}</p>`;
@@ -831,13 +893,17 @@ function route() {
   setChrome('idle');
   const parts = location.hash.replace(/^#\/?/, '').split('/');
   const [view, arg] = parts;
+  if (view !== 'admin') {
+    adminData = null; // Nutzerdaten nicht im Speicher behalten, wenn man die Admin-Ansicht verlässt
+    adminState = 'idle';
+  }
   if (view !== 'feedback') {
     if (view !== 'more') lastRoute = location.hash || '#/'; // zuletzt besuchte Seite vor „Mehr“, dort ist meist der Fehler passiert
     fb = { kind: 'fehler', text: '', sent: false, busy: false };
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'datenschutz', 'impressum'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'datenschutz', 'impressum'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -859,6 +925,7 @@ function route() {
     case 'more': html = viewMore(); break;
     case 'feedback': html = viewFeedback(); break;
     case 'reports': html = viewReports(); loadReports(); break;
+    case 'admin': html = viewAdmin(); loadAdmin(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -1741,6 +1808,11 @@ async function startSession(user, quick = false) {
   closeAuth();
   route();
   setTimeout(checkReports, 3000);
+  cloud.isAdmin().then((v) => {
+    if (!account) return;
+    account.isAdmin = v;
+    if (v && location.hash === '#/more' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
+  });
   if (!account.birthYear) setTimeout(retryBirthYear, 8000);
   if (!state.onboarded) startOnboarding();
   scheduleReminder();
@@ -2136,6 +2208,9 @@ document.addEventListener('click', (e) => {
     case 'logout':
       doLogout();
       break;
+    case 'admin-refresh':
+      loadAdmin();
+      break;
     case 'del-confirm':
       doDeleteConfirm(t);
       break;
@@ -2475,7 +2550,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 76;
+const APP_BUILD = 77;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

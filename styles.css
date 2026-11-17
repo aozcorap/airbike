@@ -209,6 +209,16 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 .card.accent .kicker { color: var(--accent); }
 
 /* Zurück-Link */
+/* Admin-Ansicht */
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0 4px; }
+.adm-tile { display: grid; gap: 4px; align-content: start; min-width: 0; margin: 0; }
+.adm-v { font-family: var(--display); font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.adm-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.adm-table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 620px; font-size: 14px; }
+.adm-table th, .adm-table td { text-align: left; white-space: nowrap; padding: 10px 12px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.adm-table th { font-size: 12px; color: var(--muted); font-weight: 700; }
+.adm-table tr:last-child td { border-bottom: 0; }
+.adm-table th:first-child, .adm-table td:first-child { position: sticky; left: 0; background: var(--surface); max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .back { display: inline-flex; align-items: center; min-height: 44px; font-size: 18px; font-weight: 600; text-decoration: none; color: var(--text); padding: 6px 0; }
 
 /* Ablauf einer Einheit */

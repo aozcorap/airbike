@@ -12,7 +12,7 @@ Stand: 16.11.2026. Wird bei Änderungen nachgeführt. Die Nummern gelten nur inn
 - Tester-Nachricht an den neuen Ablauf angepasst
 - Auf dem iPhone geprüft (Zeitfeld, Ton, Zurück-Geste im Timer), keine Beanstandung gemeldet
 - Supabase-Projekt `last-round` läuft
-- Admin-Überblick über Testuser und Nutzung: `docs/ADMIN-UEBERSICHT.sql` (im SQL Editor von Supabase ausführen, nur lesend). Zeigt Konten, letzte Änderung, erledigte Einheiten, Test-Watt. Reines Öffnen der App wird nicht erfasst.
+- Admin-Ansicht in der App: `https://aozcorap.github.io/airbike/#/admin` (Mehr, Admin). Sichtbar und nutzbar nur für Konten in der Tabelle `admins`, die Prüfung liegt in der Datenbank (`docs/DB-ADMIN.sql`, am 17.11. eingespielt, Admin eingetragen: das Konto des Betreibers). Zeigt Konten, letzte Änderung, erledigte Einheiten, Test-Watt. Reines Öffnen der App wird nicht erfasst. Weitere Admins: `insert into public.admins (user_id) values ('<KONTO-ID>');`. Ersatz ohne App: `docs/ADMIN-UEBERSICHT.sql`. Geschützt ist die Ansicht so gut wie das Admin-Konto, deshalb dort Zwei-Faktor einschalten.
 - Meldungen aus der App kommen an, die tägliche Mail-Routine „Nonstop-Boxing: Issues, Features und Fragen“ (9:54 Uhr) läuft mit richtigem Auftragstext
 
 **Bewusst akzeptiert für den Prototyp (Entscheidung des Betreibers):**
