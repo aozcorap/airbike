@@ -214,6 +214,21 @@ export const PROFILES = {
   u14: { name: 'U13–U14 und jünger', roundSecs: 120, volume: 0.5, maxSprintSecs: 10, hardPerWeek: 2, wattCapPct: 80 },
 };
 
+// ---------- Wattwerte nach Alter (nur Klasse „Elite / Erwachsene“) ----------
+// Dauer, Wiederholungen und Pausen bleiben gleich, nur die Wattwerte werden mit diesem Anteil kleiner.
+// Annahme des Betreibers/der KI, nicht von einem Trainer oder Sportmediziner geprüft.
+export const AGE_BANDS = [
+  { to: 29, name: 'bis 29 Jahre', pct: 100 },
+  { to: 39, name: '30–39 Jahre', pct: 95 },
+  { to: 49, name: '40–49 Jahre', pct: 90 },
+  { to: 54, name: '50–54 Jahre', pct: 85 },
+  { to: 59, name: '55–59 Jahre', pct: 82.5 },
+  { to: 64, name: '60–64 Jahre', pct: 80 },
+  { to: 69, name: '65–69 Jahre', pct: 77.5 },
+  { to: Infinity, name: 'ab 70 Jahre', pct: 75 },
+];
+export const ageBand = (age) => AGE_BANDS.find((b) => age <= b.to);
+
 // ---------- Phasen ----------
 export const PHASES = [
   { weeks: [1, 2], name: 'Tempo aufbauen', text: 'Stufen-Intervalle und 20-s-Sprints bauen die Basis auf und bringen Geschwindigkeit.' },
@@ -375,7 +390,10 @@ export function fmtSecs(s) {
 }
 
 export function resolveTarget(step, ctx) {
-  const { maxW } = ctx;
+  // Alter: Alle Watt-Ziele sind ein Anteil des Test-Watts (ageFactor 0,75 bis 1)
+  const f = ctx.ageFactor > 0 && ctx.ageFactor < 1 ? ctx.ageFactor : 1;
+  const maxW = (ctx.maxW || 0) * f;
+  let aged = false;
   const cap = ctx.cap || 0;
   // Feste Wattbereiche der Vorlage gelten für ca. 1000 W; hier als Prozent des persönlichen Test-Watt
   if (step.wAbs) return { main: `${step.wAbs[0]}–${step.wAbs[1]} W`, sub: 'Richtwert, da du noch keinen Test-Watt hast' };
@@ -388,15 +406,15 @@ export function resolveTarget(step, ctx) {
   }
   if (step.maxEffort) {
     if (maxW && step.within) {
-      const top = capW || maxW;
+      const top = capW || (f < 1 ? r5(maxW) : maxW);
       main = `${r5(top * (1 - step.within / 100))}–${top} W`;
-      sub.push(`Maximal. Halte mindestens ${r5(top * (1 - step.within / 100))} W (Test-Watt ${top} W)`);
+      sub.push(`Maximal. Halte mindestens ${r5(top * (1 - step.within / 100))} W (${f < 1 ? 'Richtwert für dein Alter' : 'Test-Watt'} ${top} W)`);
     } else if (capW) {
       main = `bis ${capW} W`;
       sub.push(`Obergrenze ${cap} % deines Test-Watt`);
     } else {
       main = 'MAXIMAL';
-      sub.push(maxW ? `Dein Test-Watt: ${maxW} W` : cap ? `höchstens ${cap} % deines Test-Watt` : 'Alles geben');
+      sub.push(maxW ? `Dein Test-Watt: ${ctx.maxW} W` : cap ? `höchstens ${cap} % deines Test-Watt` : 'Alles geben');
       if (step.within) sub.push(`höchstens ${step.within} % unter deinem Test-Watt`);
     }
   } else if (step.pct !== undefined) {
@@ -404,6 +422,7 @@ export function resolveTarget(step, ctx) {
     const arr = cap ? raw.map((v) => Math.min(v, cap)) : raw;
     const lbl = arr[0] === arr[1] ? `${arr[0]} %` : `${arr[0]}–${arr[1]} %`;
     if (maxW) {
+      aged = f < 1;
       let top = r5((maxW * arr[1]) / 100);
       let low = r5((maxW * arr[0]) / 100);
       let floored = '';
@@ -420,7 +439,7 @@ export function resolveTarget(step, ctx) {
         const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
         main = `${floor}–${top} W`;
         sub.push(
-          raw[0] === 100 && !cap
+          raw[0] === 100 && !cap && f === 1
             ? `Maximal starten (${maxW} W), nicht unter ${floor} W fallen`
             : `${lbl} von deinem Test-Watt starten, nicht unter ${floor} W fallen`,
         );
@@ -439,6 +458,7 @@ export function resolveTarget(step, ctx) {
     main = 'ARBEIT';
   }
   if (step.rpe && (step.w || step.maxEffort || step.pct !== undefined)) sub.push(`Belastung ${step.rpe} von 10`);
+  if (aged) sub.push(`Alter: ${String(Math.round(f * 1000) / 10).replace('.', ',')} %`);
   if (step.txt) sub.push(step.txt);
   return { main, sub: sub.join(' · ') };
 }

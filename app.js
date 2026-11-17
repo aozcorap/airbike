@@ -1,4 +1,4 @@
-import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
+import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, ageBand, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 import * as cloud from './cloud.js';
 import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
 
@@ -54,9 +54,16 @@ const profile = () => {
   const key = ageUnknown() ? 'u14' : PROFILES[state.profile] ? state.profile : 'elite';
   return { key, ...PROFILES[key] };
 };
+// Erwachsene (Klasse „Elite“): Wattwerte nach Alter in 5- bis 10-Jahres-Stufen angepasst (siehe AGE_BANDS in data.js)
+const ageBandNow = () => {
+  const y = typeof account !== 'undefined' && account && account.birthYear;
+  if (!y || profile().key !== 'elite') return null;
+  return ageBand(new Date().getFullYear() - y - 1);
+};
 const ctx = () => {
   const p = profile();
-  return { maxW: Number(state.maxW) || 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0 };
+  const band = ageBandNow();
+  return { maxW: Number(state.maxW) || 0, cap: p.wattCapPct && p.wattCapPct < 100 ? p.wattCapPct : 0, ageFactor: band ? band.pct / 100 : 1 };
 };
 // Der Wochentag einer Einheit richtet sich nach ihrer Stelle in der Woche (Einheit 1, 2, 3, Aktive Erholung), nicht nach ihrer Nummer im Grundplan
 const dayKeyOf = new Map();
@@ -812,6 +819,8 @@ function profileSettingsInfo() {
     ['Harte Sessions pro Woche', `${p.hardPerWeek}`],
     ['Watt-Obergrenze', p.wattCapPct && p.wattCapPct < 100 ? `${p.wattCapPct} % vom Test-Watt` : 'keine'],
   ];
+  const band = ageBandNow();
+  if (band) rows.push([`Wattwerte (${band.name})`, `${String(band.pct).replace('.', ',')} % vom Plan`]);
   return `<table class="targets"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -2631,7 +2640,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 81;
+const APP_BUILD = 82;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
