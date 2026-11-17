@@ -1026,6 +1026,8 @@ function runView(id) {
   });
   const total = totalSecs(segs);
   const speed = Number(new URLSearchParams(location.search).get('speed')) || 1;
+  const isTest = session.type === 'test';
+  const entered = [null, null, null]; // Werte, die schon während der Pausen eingetragen wurden
 
   // Wurde das Training unterbrochen (z. B. Neuladen, App geschlossen), anbieten, dort fortzusetzen
   let resumeAt = null;
@@ -1049,6 +1051,10 @@ function runView(id) {
     <div class="t-bar"><i id="t-bar"></i></div>
     <div class="t-btns"><button data-act="tprev">Zurück</button><button class="main" data-act="tpause" id="t-play">Pause</button><button data-act="tnext">Weiter</button></div>
     <button class="t-exit" data-act="texit">Abbrechen</button>
+    ${isTest ? `<div class="t-entry" id="t-entry" hidden role="group" aria-label="Wert des Sprints eintragen">
+      <div class="te-head"><span id="te-title"></span><button data-act="te-close" aria-label="Fenster schließen">✕</button></div>
+      <div class="te-row"><input id="te-in" type="number" inputmode="numeric" min="100" max="3000" step="1" placeholder="Watt" aria-label="Höchster Wert in Watt"><button class="main" data-act="te-ok">OK</button></div>
+    </div>` : ''}
   </div>`;
   const q = (i) => document.getElementById(i);
   const el = { box: q('timer'), block: q('t-block'), count: q('t-count'), label: q('t-label'), blockname: q('t-blockname'), round: q('t-round'), time: q('t-time'), target: q('t-target'), sub: q('t-sub'), next: q('t-next'), bar: q('t-bar'), play: q('t-play') };
@@ -1083,6 +1089,50 @@ function runView(id) {
     }
   }
 
+  // Fitness-Test: Nach jedem Sprint öffnet sich in der Pause ein Fenster für den höchsten Wert.
+  // Es schließt sich 10 s vor Ende der Pause oder früher über das ✕.
+  const entry = isTest ? { box: q('t-entry'), title: q('te-title'), input: q('te-in'), n: 0 } : null;
+  const sprintNo = (k) => segs.slice(0, k + 1).filter((s) => s.label === 'Test-Sprint').length;
+  const validWatt = (v) => v >= 100 && v <= 3000;
+  function placeEntry() {
+    if (!entry || entry.box.hidden) return;
+    entry.box.style.bottom = `${Math.max(8, el.box.clientHeight - el.bar.parentElement.offsetTop + 8)}px`;
+  }
+  function hideEntry() {
+    if (!entry) return;
+    entry.input.blur();
+    entry.box.hidden = true;
+  }
+  function showEntry(n) {
+    entry.n = n;
+    entry.title.textContent = `Sprint ${n}: Höchster Wert?`;
+    entry.input.value = entered[n - 1] ?? '';
+    entry.input.classList.remove('bad');
+    entry.box.hidden = false;
+    placeEntry();
+  }
+  function entryOk() {
+    const v = Math.round(Number(entry.input.value));
+    if (!validWatt(v)) {
+      entry.input.classList.add('bad');
+      return;
+    }
+    entered[entry.n - 1] = v;
+    hideEntry();
+  }
+  function entryClose() {
+    const v = Math.round(Number(entry.input.value));
+    if (validWatt(v)) entered[entry.n - 1] = v; // schon Eingetipptes nicht verlieren
+    hideEntry();
+  }
+  if (entry) {
+    entry.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') entryOk();
+    });
+    entry.input.addEventListener('input', () => entry.input.classList.remove('bad'));
+    window.addEventListener('resize', placeEntry);
+  }
+
   function paintSegment() {
     const seg = segs[i];
     el.box.className = `timer k-${seg.kind}`;
@@ -1099,11 +1149,16 @@ function runView(id) {
     el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
+    if (entry) {
+      if (seg.kind === 'rest' && i > 0 && segs[i - 1].label === 'Test-Sprint') showEntry(sprintNo(i - 1));
+      else hideEntry();
+    }
   }
 
   function paintTime() {
     const seg = segs[i];
     const remain = Math.max(0, Math.ceil((seg.secs * 1000 - elapsed) / 1000));
+    if (entry && !entry.box.hidden && remain <= 10) entryClose(); // 10 s vor Ende der Pause: Fenster weg, Sprint wird sichtbar
     if (remain !== lastShownSec) {
       lastShownSec = remain;
       el.time.textContent = fmt(remain);
@@ -1130,10 +1185,13 @@ function runView(id) {
     setChrome('done');
     if (session.type === 'test') {
       el.box.innerHTML = `<div class="t-mid"><div class="t-label">Test geschafft</div><div class="t-target">Deine drei Werte?</div>
-        <div class="t-sub">Trage den höchsten Wert jedes Sprints ein.</div>
+        <div class="t-sub">${entered.every(Boolean) ? 'Kontrolliere deine drei Werte und speichere sie.' : 'Trage den höchsten Wert jedes Sprints ein.'}</div>
         <div class="tw-wrap">${sprintInputs('tw')}</div></div>
         <div class="btn-row"><button class="main" style="background:#fff;color:#111" data-act="savetest">Speichern</button></div>
         <button class="t-exit" data-act="texit">Ohne Speichern zurück</button>`;
+      entered.forEach((v, k) => {
+        if (v) document.getElementById(`tw${k + 1}`).value = v;
+      });
       return;
     }
     el.box.innerHTML = `<div class="t-mid"><div class="t-label">Geschafft</div><div class="t-target">${esc(session.title)}</div><div class="t-sub">Gut gemacht. Trinken, locker auslaufen lassen und kurz notieren, wie es sich angefühlt hat.</div></div>
@@ -1196,6 +1254,8 @@ function runView(id) {
       if (finished) return;
       goto(i + 1);
     },
+    entryOk: () => entry && entryOk(),
+    entryClose: () => entry && entryClose(),
   };
 
   paintSegment();
@@ -1219,6 +1279,7 @@ function runView(id) {
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('resize', fitTarget);
+    window.removeEventListener('resize', placeEntry);
     unlockScreen();
     runCtl = null;
     writeRun(null); // Training bewusst verlassen: nichts mehr zum Fortsetzen
@@ -2381,6 +2442,12 @@ document.addEventListener('click', (e) => {
     case 'tnext':
       runCtl?.next();
       break;
+    case 'te-ok':
+      runCtl?.entryOk();
+      break;
+    case 'te-close':
+      runCtl?.entryClose();
+      break;
     case 'texit':
       if (document.querySelector('.timer.k-done') || confirm('Training wirklich abbrechen?')) {
         leaveOk = true;
@@ -2564,7 +2631,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 80;
+const APP_BUILD = 81;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

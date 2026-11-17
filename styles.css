@@ -172,6 +172,16 @@ body.running { padding-bottom: 0; }
   background: rgba(0, 0, 0, .28); border: 1.5px solid rgba(255, 255, 255, .4); color: #fff; opacity: 1; font-size: 17px; font-weight: 700;
 }
 .timer.k-done .t-mid { gap: 14px; justify-content: center; padding-top: 0; }
+/* Fenster für den Sprint-Wert während der Pause im Test */
+.t-entry { position: absolute; left: 14px; right: 14px; z-index: 5; background: rgba(0, 0, 0, .78); border: 1px solid rgba(255, 255, 255, .3); border-radius: 18px; padding: 12px 14px 14px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.t-entry[hidden] { display: none; }
+.te-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 700; font-size: 17px; margin-bottom: 10px; }
+.te-head button { background: rgba(255, 255, 255, .14); color: #fff; border: 0; border-radius: 12px; min-width: 44px; min-height: 44px; font-size: 18px; }
+.te-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.te-row input { min-width: 0; min-height: 56px; text-align: center; font-size: 28px; font-weight: 800; background: rgba(255, 255, 255, .1); color: #fff; border: 2px solid rgba(255, 255, 255, .35); border-radius: 14px; padding: 6px; font-variant-numeric: tabular-nums; }
+.te-row input.bad { border-color: #ff8a8a; }
+.te-row input::placeholder { color: rgba(255, 255, 255, .5); font-size: 16px; font-weight: 600; }
+.te-row .main { min-width: 96px; min-height: 56px; background: #fff; color: #111; border-radius: 14px; font-weight: 800; }
 /* Sprint-Werte nach dem Test: drei große Felder in einer Reihe, im Stil des Timers */
 .tw-wrap { width: 100%; max-width: 380px; margin: 8px auto 0; }
 .tw-wrap .sprint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
