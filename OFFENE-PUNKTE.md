@@ -40,6 +40,8 @@ Stand: 17.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 2. **Regeln für Rundenzahl und Alter** sind Annahmen (+1 Kampfrunde je 2 Runden ab 3, +2,5 % Umfang je Runde, höchstens +20 %). Nicht fachlich geprüft.
 3. **„Sportwissenschaftlich“** ist für Werbung nicht belegt. Das PDF nennt keine Studien mit Quelle. Nur „nach Prinzipien“ formulieren, nie „bewiesen“. Ein Trainer sollte das bestätigen.
 
+4. **Wattwerte nach Alter (Erwachsene)** sind Annahmen und nicht von einem Trainer oder Sportmediziner geprüft. Ab Version 82 werden alle Wattwerte der Klasse „Elite / Erwachsene“ nach Alter gesenkt (Dauer, Wiederholungen und Pausen bleiben): bis 29 Jahre 100 %, 30–39 95 %, 40–49 90 %, 50–54 85 %, 55–59 82,5 %, 60–64 80 %, 65–69 77,5 %, ab 70 75 % (`AGE_BANDS` in `data.js`). Der Test-Watt selbst und der Test (maximal) bleiben unverändert. Das Alter kommt aus dem Geburtsjahr (Jahr minus Geburtsjahr minus 1). Wer kein Konto hat oder dessen Alter fehlt, bekommt 100 %. Nicht angepasst: Umfang, Sprintdauer, harte Einheiten pro Woche, die festen Richtwerte ohne Test-Watt.
+
 ### Technisch und Betrieb
 1. **E-Mail-Versand:** Die Mails laufen über den IONOS-Server. Sendegrenzen von IONOS und Supabase (30 Mails pro Stunde) bei vielen Anmeldungen prüfen. Jede Anmeldung braucht eine Mail, kommt keine, kommt niemand rein.
 2. **Unbestätigte Registrierungen** bleiben samt Geburtsjahr und „Einwilligung“ in der Datenbank. `docs/DB-AUFRAEUMEN.sql` in Supabase ausführen: erst prüfen, dann einmalig löschen, optional nachts automatisch per `pg_cron` (verfügbar, noch nicht aktiv).
