@@ -173,7 +173,9 @@ body.running { padding-bottom: 0; }
 }
 .timer.k-done .t-mid { gap: 14px; justify-content: center; padding-top: 0; }
 /* Sprint-Werte nach dem Test: drei große Felder in einer Reihe, im Stil des Timers */
-.tw-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 380px; margin-top: 8px; }
+.tw-wrap { width: 100%; max-width: 380px; margin: 8px auto 0; }
+.tw-wrap .sprint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tw-wrap .sprint-grid > div { margin: 0; }
 .tw-wrap label { margin: 0 0 6px !important; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .8); text-align: center; }
 .tw-wrap input {
   width: 100%; min-width: 0; min-height: 72px; text-align: center; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums;
