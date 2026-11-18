@@ -8,8 +8,8 @@ Erstellung: Boxer-Szenen mit Higgsfield, App-Szenen als echte Bildschirmaufnahme
 
 **Besetzung:**
 - **Ahmet (Betreiber, Boxtrainer):** kurzer Auftritt am Anfang (Szene 1), optional ein zweiter am Ende (Szene 9). Dafür 2–3 eigene Fotos als Referenz. Nur Fotos von Ahmet selbst.
-- **Held:** erfundene Figur (Boxer, Ende 20), in Szene 2, 4, 7, 8, 9 immer gleich beschrieben.
-- **Gegner:** erfundene Figur, Gesicht immer im Schatten oder abgewandt.
+- **Held:** erfundene Figur (Boxer, Ende 20, kurze dunkle Haare, Stoppelbart), in Szene 2, 4, 5, 7, 8, 9 immer dieselbe Figur wie in Szene 2 (Standbild aus Szene 2 als Referenz). Er trainiert auf dem Airbike und **gewinnt am Ende** (Szene 9).
+- **Gegner:** erfundene Figur, glatzköpfig, groß, muskulös, Gesicht immer im Schatten oder abgewandt (Szene 3). Er darf **nicht** der Held sein und nicht auf dem Airbike trainieren. In Szene 9 verliert er gegen den Helden.
 
 | # | Zeit | Sprecher / Einblendung | Bild |
 |---|---|---|---|
