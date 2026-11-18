@@ -44,7 +44,7 @@ photorealistic, real human, natural skin texture with pores, sweat, realistic an
 photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Dark empty boxing gym at night. A tall muscular bald boxer seen only as a backlit silhouette, hammering a heavy punching bag with relentless, mechanical rhythm. Steam and dust in the beam of a single overhead light, sweat flying off with every punch. His face stays in deep shadow. Slow push-in camera from behind the bag. Ominous, unstoppable, machine-like precision. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 4 (12–17 s): Runde 3, die Luft ist weg — erzeugt (prüfen: ist der Held wie in Szene 2?)
+## Szene 4 (12–17 s): Runde 3, die Luft ist weg — NOCH NICHT erzeugt
 
 Referenzbild: Standbild des Helden aus Szene 2.
 
@@ -52,7 +52,7 @@ Referenzbild: Standbild des Helden aus Szene 2.
 photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Boxing ring during a fight. The boxer is exactly the man shown in the reference image, same face, same short dark hair, same short stubble, same lean build, white hand wraps, backed against the ropes, chest heaving, mouth open, gloves slowly dropping, sweat running down his face. The tall bald opponent stays out of focus in the foreground, pressing forward. The boxer is fighting to stay on his feet. Slow handheld push-in on his exhausted face, hard rim light, tense and dramatic. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 5 (17–22 s): Die Höllenmaschine — wird neu erzeugt
+## Szene 5 (17–22 s): Die Höllenmaschine (Airbike) — in Arbeit (das ist der Clip, an dem Ahmet gerade arbeitet)
 
 Referenzbilder in dieser Reihenfolge: 1. Airbike-Foto, 2. Standbild des Helden aus Szene 2.
 
