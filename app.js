@@ -687,7 +687,7 @@ function adminHtml() {
   const tone = { aktiv: 'ok', ruhig: 'amber', inaktiv: 'red' };
   const rows = (adminData.users || [])
     .map(
-      (u) => `<tr><td>${esc(u.email || '')}</td><td><span class="chip ${tone[u.aktivitaet] || ''}">${esc(u.aktivitaet || '')}</span></td><td>${esc(Number(u.einheiten_erledigt) || 0)}</td><td>${u.test_watt ? esc(Number(u.test_watt)) : '–'}</td><td>${esc(Number(u.meldungen) || 0)}</td><td>${esc(admWhen(u.zuletzt_gespeichert))}</td><td>${esc(admWhen(u.letzte_anmeldung))}</td><td>${u.bestaetigt ? 'ja' : 'nein'}</td></tr>`,
+      (u) => `<tr><td>${esc(u.email || '')}<br>${u.ist_admin || !u.user_id ? '<span class="muted small">Admin</span>' : `<button class="ghost adm-del" data-act="admin-del" data-id="${esc(u.user_id)}" data-mail="${esc(u.email || '')}">Löschen</button>`}</td><td><span class="chip ${tone[u.aktivitaet] || ''}">${esc(u.aktivitaet || '')}</span></td><td>${esc(Number(u.einheiten_erledigt) || 0)}</td><td>${u.test_watt ? esc(Number(u.test_watt)) : '–'}</td><td>${esc(Number(u.meldungen) || 0)}</td><td>${esc(admWhen(u.zuletzt_gespeichert))}</td><td>${esc(admWhen(u.letzte_anmeldung))}</td><td>${u.bestaetigt ? 'ja' : 'nein'}</td></tr>`,
     )
     .join('');
   return `<p class="muted">Von ${n('konten_gesamt')} Konten sind ${n('bestaetigt')} bestätigt. In den letzten 7 Tagen waren ${n('aktiv_7_tage')} aktiv, insgesamt sind ${n('einheiten_gesamt')} Einheiten erledigt.</p>
@@ -704,6 +704,21 @@ function adminHtml() {
     <p><b>aktiv</b>: in den letzten 3 Tagen etwas gespeichert. <b>ruhig</b>: bis 14 Tage her. <b>inaktiv</b>: länger her. <b>nie genutzt</b>: Konto ohne gespeicherte Daten.</p>
     <p>Die App speichert nur, wenn sich etwas ändert (Einheit abgehakt, Test gemacht, Einstellung geändert). Wer sie nur öffnet, taucht hier nicht auf. Die letzte Anmeldung ändert sich nur bei einer neuen Anmeldung per Code.</p>
     <p>Diese Seite zeigt E-Mail-Adressen. Keine Bildschirmfotos teilen.</p></details>`;
+}
+let adminBusy = false;
+async function adminDelete(id, mail) {
+  if (adminBusy || !id) return;
+  if (!confirm(`Konto ${mail || ''} wirklich löschen?\n\nDas Konto und alle gespeicherten Daten dieses Nutzers werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.`)) return;
+  adminBusy = true;
+  try {
+    const { error } = await withTimeout(cloud.adminDeleteUser(id), 12000);
+    if (error) alert(/Kein Zugriff|42501/i.test(`${error.message || ''} ${error.code || ''}`) ? 'Kein Zugriff.' : /Admin|eigene/i.test(error.message || '') ? error.message : 'Das Konto konnte nicht gelöscht werden. Bitte versuche es später noch einmal.');
+    else toast('Konto gelöscht');
+  } catch {
+    alert('Das Konto konnte nicht gelöscht werden. Prüfe deine Verbindung.');
+  }
+  adminBusy = false;
+  loadAdmin();
 }
 function viewAdmin() {
   return `<a href="#/more" class="back">← Mehr</a><h1>Admin</h1><div id="adminBody">${adminHtml()}</div>`;
@@ -2295,6 +2310,9 @@ document.addEventListener('click', (e) => {
     case 'admin-refresh':
       loadAdmin();
       break;
+    case 'admin-del':
+      adminDelete(t.dataset.id, t.dataset.mail);
+      break;
     case 'del-confirm':
       doDeleteConfirm(t);
       break;
@@ -2640,7 +2658,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 82;
+const APP_BUILD = 83;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
