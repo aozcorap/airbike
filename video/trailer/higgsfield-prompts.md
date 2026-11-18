@@ -1,29 +1,38 @@
 # Higgsfield-Prompts für den Trailer „Nonstop Boxing" (Stand: die Fassungen, die tatsächlich verwendet werden)
 
-## EIN-PROMPT-FASSUNG (aktuell gültig): ganzer Story-Teil in einem Video, ca. 30 s
+## EIN-PROMPT-FASSUNG (aktuell gültig): 30 Sekunden = Story, App, Sieg; danach 5 s Abspann
 
-Entscheidung des Betreibers: **Ahmet kommt im Trailer nicht vor** (weder als Trainer noch als Boxer). Der Trailer beginnt direkt mit dem Helden. Szene 1 (Ahmet) entfällt.
-Modell: Seedance 2.5, Modus „Omni Reference“, 9:16, 30 Sekunden, Ton an, zuerst Entwurf (480p).
-Referenzbilder in dieser Reihenfolge: 1. Airbike (echtes Foto), 2. Held (Gesichts-Standbild aus der Umkleide-Szene), 3. Gegner (Standbild aus der Sandsack-Szene).
-Danach: App-Teil (echte Aufnahmen, Deutsch) hinten anhängen, dann Logo und Adresse. Deutsche Sprachfassung später mit dem Modell „Dubbing“.
+Aufbau: **Story 0–10 s** (Held, Gegner, Runde 3, Airbike), **App 10–22 s** (6 Beats mit echten App-Bildern), **Sieg 22–30 s**. Danach 5 s Abspann (Logo, Adresse), gebaut außerhalb von Higgsfield.
+Entscheidung des Betreibers: **Ahmet kommt im Trailer nicht vor.** Der Herzschlag in der Umkleide ist laut und klar zu hören.
+Modell: Seedance 2.5, Modus „Omni Reference", 9:16, 30 Sekunden, Ton an, zuerst Entwurf (480p). Deutsche Fassung später mit dem Modell „Dubbing".
+App-Bilder (echte Aufnahmen, 1080×1920): `b1_kampftermin`, `b2_fitnesstest`, `b3_plan`, `b4_alter`, `b5_timer`, `b6a_fortschritt`, `b6b_kalender`. Die Startseite wird nicht verwendet (iStock-Wasserzeichen im Foto).
+Referenzbilder in dieser Reihenfolge: 1 Airbike (Foto), 2 Held (Gesicht aus der Umkleide-Szene), 3 Gegner (Standbild Sandsack), 4 Kampftermin, 5 Fitness-Test, 6 Plan, 7 Alter, 8 Timer, 9 Fortschritt, 10 Kalender.
 
 ```
-Cinematic 30-second boxing trailer, vertical 9:16, photorealistic, real humans, natural skin with pores, 35mm film grain, dark low-key lighting, strong rim light, desaturated teal and steel tones with warm orange highlights. No on-screen text, no subtitles, no logos, no watermark.
+Cinematic 30-second boxing trailer, vertical 9:16, photorealistic, real humans, natural skin with pores, 35mm film grain, dark low-key lighting, strong rim light, desaturated teal and steel tones with warm orange highlights. No subtitles, no logos, no watermark, no added text in the story shots.
 
-Sound design: a deep, slow, clearly audible heartbeat, loud and prominent in the mix, especially in the first scene, rising in tension; the heartbeat stays under everything. A deep male narrator speaks the lines below, calm and intense. Driving cinematic music builds from the second scene on.
+Sound design: a deep, slow, clearly audible heartbeat, loud and prominent in the mix, especially in the first scene, rising in tension. A deep male narrator speaks the lines below, calm and intense. Driving cinematic music builds from the second scene on.
 
-References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, muscular, bald, shaved head, face mostly in shadow.
+References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, muscular, bald, shaved head, face mostly in shadow. Reference images 4 to 10 are screenshots of a mobile app, all in German.
 
-0-6 s: Quiet locker room under a flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear, nothing else, controlled breathing. Narrator: "Fight night is coming. And you want to be standing in the last round."
-6-10 s: Dark empty boxing gym. The bald opponent from reference image 3, backlit, hammers a heavy bag with machine-like rhythm, face in shadow, steam and dust in a single beam of light. Narrator: "Your opponent trains. Every round."
-10-15 s: Boxing ring, round three. The hero is against the ropes, chest heaving, mouth open, gloves slowly dropping, sweat running down his face, the bald opponent pressing forward. Narrator: "Without a plan, round three will empty you."
-15-22 s: The hero on the air bike from reference image 1 in a dark gym, all-out maximum effort: legs pumping, arms driving the push-pull handles, veins in his neck, jaw clenched, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight, heat haze. Narrator: "To beat a machine, you need one yourself. The air bike."
-22-30 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
+STORY, 0-10 s:
+0-4 s: Quiet locker room, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear. Narrator: "Fight night is coming."
+4-6 s: Dark empty boxing gym. The bald opponent from reference image 3, backlit, hammers a heavy bag with machine-like rhythm, face in shadow, steam and dust. Narrator: "Your opponent trains. Every round."
+6-8 s: Boxing ring, round three. The hero is against the ropes, chest heaving, mouth open, gloves dropping, sweat running down his face, the bald opponent pressing forward. Narrator: "Without a plan, round three will empty you."
+8-10 s: The hero on the air bike from reference image 1 in a dark gym, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine."
 
-Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, trainer in a suit, cartoon, illustration, 3D render, animation, comic style, plastic skin, text, subtitles, logos, watermark.
+APP, 10-22 s: Six quick vertical full-frame shots of a phone screen, about 2 seconds each. Each shows the given reference image EXACTLY and UNCHANGED, sharp and fully readable, no redrawn or invented text, no changed numbers, only a very slow push-in. Hard rhythmic cuts on the beat of the music, a thin glow on the edges.
+10-12 s: reference image 4 (fight date and rounds). Narrator: "Nonstop Boxing. Your fight date. Your rounds."
+12-14 s: reference image 5 (fitness test). Narrator: "Your fitness test."
+14-16 s: reference image 6 (plan). Narrator: "Your plan, week by week."
+16-18 s: reference image 7 (age class and watt values). Narrator: "Built for your age."
+18-20 s: reference image 8 (timer with watt target). Narrator: "Every interval in watts."
+20-22 s: reference image 9 (progress) for one second, then reference image 10 (calendar) for one second. Narrator: "Your progress. In your calendar."
+
+STORY, 22-30 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
+
+Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
 ```
-
----
 
 ## Einzelszenen-Fassung (alt, nur noch als Reserve)
 
