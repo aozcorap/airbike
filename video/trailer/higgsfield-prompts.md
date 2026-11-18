@@ -1,100 +1,101 @@
-# Higgsfield-Prompts für den Trailer „Nonstop Boxing" (Fassung 2)
+# Higgsfield-Prompts für den Trailer „Nonstop Boxing" (Stand: die Fassungen, die tatsächlich verwendet werden)
 
-Gilt für alle Szenen: ein Clip pro Szene, 5–6 Sekunden, zuerst 16:9 erzeugen, dann bei Bedarf 9:16.
+**Format: Hochformat 9:16, 5–6 Sekunden pro Clip. Alles in ein Feld (kein separates Negativ-Feld): Der Teil „Avoid: …" am Ende ist das Negativ.**
 Texte (Sprecher und Einblendung) entstehen im Schnitt. Higgsfield erzeugt **keinen** Text im Bild.
-Szenen 6 und der App-Teil von 7 sind echte Bildschirmaufnahmen der App, nicht Higgsfield.
-Szene 2 braucht Higgsfield nur für den Hintergrund, Datum und Tage kommen im Schnitt.
+Die App-Teile (Szene 6, App-Teil von 7) sind echte Bildschirmaufnahmen der App, nicht Higgsfield.
 
-## Wiederkehrende Figuren (in jedem Prompt gleich beschreiben, damit sie zusammenpassen)
+## Figuren (festgelegt)
 
-- **Ahmet:** nur mit eigenen Referenzfotos (siehe Szene 1). Nicht beschreiben, was auf den Fotos nicht zu sehen ist.
-- **Held:** a lean male boxer in his late twenties, short dark hair, short stubble, athletic build, plain black shorts, white hand wraps, no logos
-- **Gegner:** a taller muscular boxer, bald, shaved head, plain dark shorts, no logos, face always in shadow or turned away
+- **Ahmet (Boxtrainer, Betreiber):** nur Szene 1, mit seinen eigenen Fotos als Referenz.
+- **Held:** schlanker Boxer Ende 20, kurze dunkle Haare, Stoppelbart, schwarze Shorts, weiße Bandagen. **Immer dieselbe Figur wie in Szene 2** (Standbild aus Szene 2 als Referenzbild). Er trainiert auf dem Airbike und **gewinnt** am Ende (Szene 9).
+- **Gegner:** groß, muskulös, **Glatze**, Gesicht im Schatten (Szene 3). Verliert am Ende. Nicht auf dem Airbike.
 
-## Allgemeiner Stil (an jeden Prompt anhängen)
+## Airbike (Referenz)
 
-`cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, photorealistic`
-
-## Negativ (an jeden Prompt anhängen oder ins Negativ-Feld)
-
-`no text, no letters, no numbers, no logos, no brand names, no watermark, no subtitles, no celebrity likeness, no cartoon, no extra fingers, no distorted hands`
-
-(Der Teil „no real person" ist für Ahmets Szene entfernt, sonst blockiert er das Referenzfoto. Für alle anderen Szenen hinzufügen: `no real person`.)
+Stehendes Gerät mit großem Lüfterrad vorn im Käfig, zwei langen Griffen, die sich vor und zurück bewegen, kleiner Anzeige, schwerem Rahmen. Kein Fahrrad. Das Airbike-Foto (eigenes Foto, keine Herstellerfotos) wird als Referenzbild hochgeladen.
 
 ---
 
-## Szene 1 (0–6 s): Ahmet, der Trainer
+## Szene 1 (0–5 s): Ahmet, der Trainer — erzeugt
 
-Mit Referenzfoto von Ahmet erzeugen. Zwei Varianten, beide ausprobieren und die bessere nehmen.
+Referenzfoto: Variante A das dunkle Foto mit Schweiß, Variante B das Foto im schwarzen Sakko.
 
-**Variante A, ernst und kraftvoll:**
+**Variante A (ernst):**
 ```
-The man from the reference image stands in a dark empty boxing gym at night, backlit by a single hard overhead light, steam in the air. He stands still, shoulders square, and looks straight into the camera with a calm, intense, confident stare. Slow push-in camera. Powerful, serious, authoritative.
-```
-
-**Variante B, selbstbewusst im Anzug:**
-```
-The man from the reference image, dressed in a dark tailored suit, stands in a dark boxing gym at night, boxing ring and heavy bags softly lit behind him. He slowly turns his head and looks straight into the camera with a composed, confident, slightly intimidating stare. Slow push-in camera. Calm authority.
+photorealistic, real human, natural skin texture with pores, shot on 35mm cinema camera. The man from the reference image, same face, same short dark hair, same dark stubble, same intense dark eyes, shirtless with sweat on his skin, stands in a dark empty boxing gym at night, backlit by a single hard overhead light, steam in the air. He stands still, shoulders square, and looks straight into the camera with a calm, intense, intimidating stare. Slow push-in camera. Powerful, serious, authoritative. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, subject centered, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands, different face
 ```
 
-## Szene 2 (6–12 s): Der Termin rückt näher
-
+**Variante B (Sakko):**
 ```
-Quiet locker room under a flickering fluorescent light. A lean male boxer in his late twenties, short dark hair, short stubble, slowly wraps his hands with white tape. Extreme close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background, a tall bald silhouette of a rival stands in the doorway, out of focus. Heartbeat tension, controlled breathing.
-```
-
-## Szene 3 (12–17 s): Der Gegner als Maschine
-
-```
-Dark empty boxing gym at night. A tall muscular bald boxer seen only as a backlit silhouette, hammering a heavy punching bag with relentless, mechanical rhythm. Steam and dust in the beam of a single overhead light, sweat flying off with every punch. His face stays in deep shadow. Slow push-in camera from behind the bag. Ominous, unstoppable, machine-like precision.
+photorealistic, real human, natural skin texture with pores, shot on 35mm cinema camera. The man from the reference image, same face, same short dark hair, same eyes, wearing the same black blazer over a white open-collar shirt, stands in a dark boxing gym at night, boxing ring and heavy bags softly lit behind him. He slowly turns his head and looks straight into the camera with a composed, confident, slightly intimidating stare. Slow push-in camera. Calm authority. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, subject centered, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands, different face
 ```
 
-## Szene 4 (17–23 s): Runde 3, die Luft ist weg
+## Szene 2 (5–10 s): Der Termin rückt näher (Held, Umkleide) — erzeugt
+
+Standbild mit dem Gesicht des Helden speichern. Es wird in allen Szenen mit dem Helden als Referenz verwendet.
 
 ```
-Boxing ring during a fight. A lean male boxer in his late twenties, short dark hair, short stubble, white hand wraps, backed against the ropes, chest heaving, mouth open, gloves slowly dropping, sweat running down his face. The tall bald opponent stays out of focus in the foreground, pressing forward. The boxer is fighting to stay on his feet. Slow handheld push-in on his exhausted face, hard rim light, tense and dramatic.
+photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Quiet locker room under a flickering fluorescent light. A lean male boxer in his late twenties, short dark hair, short stubble, athletic build, slowly wraps his hands with white tape. Extreme close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background, a tall bald silhouette of a rival stands in the doorway, out of focus. Heartbeat tension, controlled breathing. Empty dark space in the upper third of the frame. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 5 (23–29 s): Die Höllenmaschine
+## Szene 3 (10–12 s im Schnitt): Der Gegner als Maschine — erzeugt
 
 ```
-Extreme close-up of an air bike in a dark gym, the big fan wheel spinning violently, dust and sweat droplets flying through hard orange backlight, embers and heat haze, red glow from below. Fast aggressive cuts between the spinning fan, the pedals, the handles, a boxer's gripping hands. Looks like a hellish machine, menacing and powerful. No brand markings on the bike.
+photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Dark empty boxing gym at night. A tall muscular bald boxer seen only as a backlit silhouette, hammering a heavy punching bag with relentless, mechanical rhythm. Steam and dust in the beam of a single overhead light, sweat flying off with every punch. His face stays in deep shadow. Slow push-in camera from behind the bag. Ominous, unstoppable, machine-like precision. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 6 (29–36 s): App (Bildschirmaufnahme)
+## Szene 4 (12–17 s): Runde 3, die Luft ist weg — erzeugt (prüfen: ist der Held wie in Szene 2?)
 
-Echte Aufnahme der App: Einführung (Kampftermin, Rundenzahl, Kampfformat), Plan mit 10 Wochen und Tage bis zum Kampf, Logo-Einblendung. Kein Higgsfield.
-Optional für die Überleitung (1 s) aus Szene 5: Glut-Funken, die ins Bild der App wischen.
-
-## Szene 7 (36–44 s): Der Fitness-Test
-
-Higgsfield-Teil (2–3 s), danach Bildschirmaufnahme (Timer mit großer Watt-Zahl):
+Referenzbild: Standbild des Helden aus Szene 2.
 
 ```
-Close-up of a lean male boxer in his late twenties on an air bike, all-out maximal sprint, face contorted with effort, veins in his neck, sweat flying, hard side lighting, 10-second burst of explosive power, slight slow motion, the fan wheel blurring in the foreground.
+photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Boxing ring during a fight. The boxer is exactly the man shown in the reference image, same face, same short dark hair, same short stubble, same lean build, white hand wraps, backed against the ropes, chest heaving, mouth open, gloves slowly dropping, sweat running down his face. The tall bald opponent stays out of focus in the foreground, pressing forward. The boxer is fighting to stay on his feet. Slow handheld push-in on his exhausted face, hard rim light, tense and dramatic. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, slow deliberate camera movement, vertical 9:16 framing, tight composition. Avoid: text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 8 (44–51 s): Es wird wehtun
+## Szene 5 (17–22 s): Die Höllenmaschine — wird neu erzeugt
+
+Referenzbilder in dieser Reihenfolge: 1. Airbike-Foto, 2. Standbild des Helden aus Szene 2.
 
 ```
-A lean male boxer in his late twenties at the limit on an air bike in a dark gym, exhausted but refusing to stop, sweat dripping from his chin, deep breaths, jaw clenched, last rep of a brutal interval. Slow push-in on his face, hard rim light from behind, pain turning into determination.
+photorealistic, real human, natural skin texture with pores, soaked in sweat, shot on 35mm cinema camera. The air bike is exactly the stationary air bike shown in reference image 1, same design, same fan wheel, same frame, same handles, same console, in a dark gym. The boxer is exactly the man shown in reference image 2, same face, same short dark hair, same short stubble, same lean athletic build, white hand wraps. He is riding the air bike all-out at maximum effort: legs pumping violently, arms driving the push-pull handles back and forth with brutal force, veins in his neck and forearms, jaw clenched, face contorted with pain, mouth open gasping for air, sweat pouring down his face and streaming off his chin and elbows, drops flying through the air. The large fan wheel is a spinning blur, wind whipping his hair and spraying sweat sideways, dust and embers in hard orange backlight, heat haze, red glow from below. Fast aggressive cuts between his straining face, the blurring fan wheel, his hammering legs, his gripping hands. It is a stationary fan bike, not a road bicycle, it does not move forward. Only this one man is in the frame. Raw, brutal, punishing, hellish machine. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, vertical 9:16 framing, tight composition. Avoid: bald man, shaved head, second person, relaxed pace, smiling, casual, leisurely cycling, road bicycle, mountain bike, spinning bike, extra text, garbled letters, watermark, subtitles, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-## Szene 9 (51–58 s): Siegreiche letzte Runde
+## Szene 6 (22–38 s): App (Bildschirmaufnahme)
+
+Echte Aufnahme der App im Hochformat: Kampftermin und Rundenzahl, Fitness-Test, Plan nach Alter und Leistung. Kein Higgsfield.
+
+## Szene 7 (38–43 s): Der Fitness-Test (Sprint) — noch nicht erzeugt
+
+Higgsfield-Teil (2–3 s), danach Bildschirmaufnahme (Timer mit großer Watt-Zahl). Referenzbilder: 1. Airbike-Foto, 2. Standbild des Helden.
 
 ```
-Boxing ring, the final round. The lean male boxer in his late twenties, short dark hair, still strong and composed, pushes forward with fast clean combinations. His tall bald opponent, visibly exhausted, drops his guard and stumbles back. Final shot: the lean boxer stands upright in the ring, arms raised, arena lights flaring behind him, golden warm light, confetti-like dust in the air. Triumphant, heroic, epic slow motion.
+photorealistic, real human, natural skin texture with pores, soaked in sweat, shot on 35mm cinema camera. The air bike is exactly the stationary air bike shown in reference image 1. The boxer is exactly the man shown in reference image 2, same face, same short dark hair, same short stubble. Close-up of him on the air bike in an all-out maximal sprint, face contorted with effort, veins in his neck, sweat flying, hard side lighting, a 10-second burst of explosive power, slight slow motion, the fan wheel blurring in the foreground. Stationary fan bike, not a road bicycle. Only this one man is in the frame. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, vertical 9:16 framing, tight composition. Avoid: bald man, shaved head, second person, road bicycle, extra text, garbled letters, watermark, subtitles, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
 ```
 
-Optional zweiter Auftritt von Ahmet am Ende (2–3 s): derselbe Ansatz wie Szene 1, aber ruhig im warmen Licht, leichtes Nicken in die Kamera.
+## Szene 8 (43–50 s): Es wird wehtun — noch nicht erzeugt
+
+Referenzbilder: 1. Airbike-Foto, 2. Standbild des Helden.
+
+```
+photorealistic, real human, natural skin texture with pores, soaked in sweat, shot on 35mm cinema camera. The air bike is exactly the stationary air bike shown in reference image 1. The boxer is exactly the man shown in reference image 2, same face, same short dark hair, same short stubble. He is at his limit on the air bike in a dark gym, exhausted but refusing to stop, sweat dripping from his chin, deep breaths, jaw clenched, last rep of a brutal interval. Slow push-in on his face, hard rim light from behind, pain turning into determination. Stationary fan bike, not a road bicycle. Only this one man is in the frame. cinematic, dramatic low-key lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, vertical 9:16 framing, tight composition. Avoid: bald man, shaved head, second person, road bicycle, relaxed, smiling, extra text, garbled letters, watermark, subtitles, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
+```
+
+## Szene 9 (50–58 s): Der Held gewinnt die letzte Runde — noch nicht erzeugt
+
+Referenzbild: Standbild des Helden aus Szene 2. Der Held gewinnt, der glatzköpfige Gegner verliert.
+
+```
+photorealistic, real human, natural skin texture with pores, sweat, realistic anatomy, shot on 35mm cinema camera. Boxing ring, the final round. The boxer is exactly the man shown in the reference image, same face, same short dark hair, same short stubble, same lean athletic build, white hand wraps. He is still strong and composed and pushes forward with fast clean combinations. His tall bald opponent with a shaved head, visibly exhausted, drops his guard and stumbles back. Final shot: the dark-haired boxer stands upright in the ring, arms raised in victory, arena lights flaring behind him, golden warm light, dust in the air. Triumphant, heroic, epic slow motion. cinematic, dramatic lighting, strong rim light, deep shadows, shallow depth of field, anamorphic lens, 35mm film grain, desaturated teal and steel tones with warm orange highlights, vertical 9:16 framing, tight composition. Avoid: the bald man winning, the bald man with raised arms, text, letters, numbers, logos, brand names, watermark, subtitles, celebrity likeness, real person, cartoon, illustration, 3D render, animation, comic style, plastic skin, airbrushed skin, extra fingers, distorted hands
+```
+
+Optional (2–3 s): Ahmet am Ende, ruhig im warmen Licht, leichtes Nicken in die Kamera (wie Szene 1).
 
 ---
 
 ## Hinweise
 
-- Reihenfolge zum Erzeugen: Szene 1 (Ahmet), dann 3, 5, 2, 4, 7, 8, 9. Der Held zuerst in Szene 2 prüfen, dann sein Aussehen in 4, 7, 8, 9 gleich halten.
-- Bei Clips mit dem Helden (Szene 2, 4, 7, 8, 9) immer dieselbe Figurenbeschreibung nutzen. Wenn Higgsfield ein Referenzbild des Helden zulässt, in allen Szenen das gleiche Referenzbild nehmen.
+- **Credits:** Vor jedem Erzeugen prüfen, ob Referenzbilder, Format 9:16 und Dauer stimmen. Erst dann starten.
 - Wenn ein Clip Text oder Logos zeigt: neu erzeugen. Nicht retuschieren.
-- Das Bike darf keine echte Marke zeigen (Markenrecht).
 - Kein „im Stil von Rocky" oder Namen von Filmen und Schauspielern in den Prompts.
-- Higgsfield-Clips sind kurz. Wenn eine Szene länger als der Clip sein muss, zwei Clips mit unterschiedlichen Einstellungen schneiden.
+- Higgsfield-Clips sind kurz. Wenn eine Szene länger sein muss, zwei Clips mit unterschiedlichen Einstellungen schneiden.
+- Marke auf dem Airbike: nicht im Prompt verlangen, sondern bei Bedarf im Schnitt einblenden. Rechte an Herstellerfotos und Markenname nicht geprüft.
