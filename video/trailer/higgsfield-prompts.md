@@ -2,8 +2,14 @@
 
 ## EIN-PROMPT-FASSUNG (aktuell gültig): 25 Sekunden in Higgsfield, danach 5 s Abspann
 
-**Festgelegter Ablauf (nicht ohne Rückfrage ändern):** 1 Umkleide mit lautem Herzschlag (0–3 s), 2 brutaler glatzköpfiger Gegner am Sandsack (3–6 s), 3 Runde 3, Held erschöpft (6–8 s), 4 Held auf dem Airbike am Limit (8–10 s), 5 App mit 3 Bildern: Fitness-Test, Plan, Timer mit Watt-Zahl (10–20 s), 6 Held gewinnt (20–25 s), 7 Abspann (25–30 s, separat gebaut, Logo und Adresse).
-Ahmet kommt im Trailer nicht vor.
+**Festgelegter Ablauf (vom Betreiber bestätigt, nicht ohne Rückfrage ändern):**
+1. Held in der Umkleide, lauter Herzschlag, Gegner als Schatten (0–3,5 s)
+2. Glatzköpfiger, brutaler Gegner hämmert auf den Sandsack (3,5–6,5 s)
+3. Held auf dem Airbike am Limit = Vorbereitung auf den Kampf (6,5–10 s)
+4. App mit 3 Bildern: Fitness-Test, Plan, Timer mit Watt-Zahl (10–20 s)
+5. Held gewinnt durch die Vorbereitung (20–25 s)
+6. Abspann (25–30 s, separat gebaut, Logo und Adresse)
+**Nicht im Trailer:** Ahmet. Keine Szene „Runde 3, Held erschöpft an den Seilen" (Betreiber hat sie ausdrücklich gestrichen).
 Modell: Seedance 2.5, Modus „Omni Reference", 9:16, **25 Sekunden**, Ton an, zuerst Entwurf (480p). Deutsche Fassung später mit „Dubbing".
 App-Bilder: `b2_fitnesstest`, `b3_plan`, `b5_timer` (echte Aufnahmen, 1080×1920). Die Startseite wird nicht verwendet (iStock-Wasserzeichen).
 Referenzbilder in dieser Reihenfolge: 1 Airbike (Foto), 2 Held (Gesicht aus der Umkleide-Szene), 3 Gegner (Standbild Sandsack), 4 Fitness-Test, 5 Plan, 6 Timer.
@@ -15,10 +21,9 @@ Sound design: a deep, slow, clearly audible heartbeat, loud and prominent in the
 
 References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, extremely muscular, bald, shaved head, brutal and terrifying, face mostly in shadow. Reference images 4 to 6 are screenshots of a mobile app, in German.
 
-0-3 s: Quiet locker room, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear. Narrator: "Fight night is coming."
-3-6 s: Dark empty boxing gym at night. The bald, extremely muscular opponent from reference image 3, backlit, hammers a heavy bag with brutal, machine-like power, the bag jerking on its chain with every punch, sweat flying, steam and dust in a single beam of light, face in deep shadow, terrifying and unstoppable. Narrator: "He trains like a machine."
-6-8 s: Boxing ring, round three. The hero is against the ropes, chest heaving, mouth open, gloves dropping, sweat running down his face, the bald opponent pressing forward and dominating him. Narrator: "No stamina? Round three is the end."
-8-10 s: The hero on the air bike from reference image 1 in a dark gym, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine."
+0-3.5 s: Quiet locker room, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear. Narrator: "Fight night is coming."
+3.5-6.5 s: Dark empty boxing gym at night. The bald, extremely muscular opponent from reference image 3, backlit, hammers a heavy bag with brutal, machine-like power, the bag jerking on its chain with every punch, sweat flying, steam and dust in a single beam of light, face in deep shadow, terrifying and unstoppable. Narrator: "He trains like a machine."
+6.5-10 s: The hero on the air bike from reference image 1 in a dark gym, preparing for the fight, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine. The air bike."
 
 10-20 s, APP: Three slow vertical full-frame shots of a phone screen, about 3 seconds each. Each shows the given reference image EXACTLY and UNCHANGED, sharp and fully readable, no redrawn or invented text, no changed numbers, only a very slow push-in and a thin glow on the edges.
 10-13 s: reference image 4 (fitness test). Narrator: "Three sprints show where you stand."
@@ -27,7 +32,7 @@ References: reference image 1 is the exact stationary air bike (large black fan 
 
 20-25 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
 
-Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
+Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, hero exhausted on the ropes, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
 ```
 
 ## Einzelszenen-Fassung (alt, nur noch als Reserve)
