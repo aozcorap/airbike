@@ -58,8 +58,10 @@ begin
     'users', (
       select coalesce(jsonb_agg((to_jsonb(x) - 'sort_key') order by x.sort_key desc), '[]'::jsonb) from (
         select
+          u.id as user_id,
           u.email,
           (u.email_confirmed_at is not null) as bestaetigt,
+          public.is_admin_id(u.id) as ist_admin,
           u.last_sign_in_at as letzte_anmeldung,
           case when jsonb_typeof(s.state -> 'done') = 'object' then (select count(*) from jsonb_object_keys(s.state -> 'done')) else 0 end::int as einheiten_erledigt,
           nullif(nullif(s.state ->> 'maxW', '')::int, 0) as test_watt,
@@ -80,8 +82,47 @@ begin
 end
 $function$;
 
+-- Hilfsfunktion: Ist dieses Konto ein Admin? (nur intern für admin_overview und admin_delete_user)
+create or replace function public.is_admin_id(uid uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path to ''
+as $function$
+  select exists (select 1 from public.admins where user_id = uid)
+$function$;
+
+-- Konto eines Nutzers löschen (Admin-Ansicht). Entfernt das Konto aus Supabase samt Profil und Trainingsstand
+-- (alle Tabellen löschen mit). Nicht möglich: sich selbst oder einen anderen Admin löschen.
+create or replace function public.admin_delete_user(target uuid)
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+begin
+  if not public.is_admin() then
+    raise exception 'Kein Zugriff' using errcode = '42501';
+  end if;
+  if target is null or target = (select auth.uid()) then
+    raise exception 'Das eigene Konto kann hier nicht gelöscht werden' using errcode = '22023';
+  end if;
+  if public.is_admin_id(target) then
+    raise exception 'Ein Admin-Konto kann hier nicht gelöscht werden' using errcode = '22023';
+  end if;
+  delete from auth.users where id = target;
+  if not found then
+    raise exception 'Konto nicht gefunden' using errcode = 'P0002';
+  end if;
+end
+$function$;
+
 -- Nur angemeldete Nutzer dürfen die Funktionen aufrufen, Anonyme nicht. Wer wirklich etwas sieht, entscheidet is_admin().
 revoke all on function public.is_admin() from public, anon;
 revoke all on function public.admin_overview() from public, anon;
+revoke all on function public.is_admin_id(uuid) from public, anon, authenticated;
+revoke all on function public.admin_delete_user(uuid) from public, anon;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.admin_overview() to authenticated;
