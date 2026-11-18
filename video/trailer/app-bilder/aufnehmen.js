@@ -1,0 +1,40 @@
+const { chromium } = require('playwright');
+const S = process.argv[2] + '/app';
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 3, locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+  const p = await ctx.newPage(); const errs=[]; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  const fd = new Date(); fd.setDate(fd.getDate()+63);
+  const start = new Date(); start.setDate(start.getDate()-7);
+  await p.addInitScript(([fd, start]) => { sessionStorage.setItem('rl-intro','1'); Object.defineProperty(navigator,'onLine',{get:()=>false});
+    window.__skew=0; const n=Date.now; Date.now=()=>n()+window.__skew;
+    window.AudioContext = class { constructor(){this.state='running';this.currentTime=0;this.destination={};} resume(){return Promise.resolve();} createOscillator(){return {connect(){},start(){},stop(){},frequency:{},type:''};} createGain(){return {connect(){},gain:{}};} };
+    localStorage.setItem('sb-esmlmgfbsconhknssgcr-auth-token', JSON.stringify({access_token:'a.b.c',refresh_token:'r',token_type:'bearer',expires_in:3600,expires_at:9999999999,user:{id:'u1',email:'boxer@example.com',aud:'authenticated',app_metadata:{},user_metadata:{}}}));
+    localStorage.setItem('redline.sync', JSON.stringify({owner:'u1',email:'boxer@example.com',birth:1985,birthOwner:'u1'}));
+    localStorage.setItem('redline.v1', JSON.stringify({onboarded:true,fightDate:fd,startDate:start,maxW:1000,maxWDate:new Date().toISOString(),sprints:[1010,990,1000],rounds:4,roundMin:3,profile:'elite',freq:3,time:'18:00',done:{w1s1:new Date(Date.now()-6*864e5).toISOString(),w1s2:new Date(Date.now()-4*864e5).toISOString(),w1s3:new Date(Date.now()-2*864e5).toISOString()}})); }, [iso(fd), iso(start)]);
+  await p.goto('http://localhost:8161/'); await p.waitForSelector('#app *'); await p.waitForTimeout(1500);
+  const shot = async (name, hash) => { await p.evaluate((h) => { location.hash = h; }, hash); await p.waitForTimeout(700); await p.screenshot({ path: `${S}/${name}.png` }); const t = await p.evaluate(() => document.body.innerText.slice(0, 260).replace(/\n+/g,' | ')); console.log(name, hash, '=>', t); };
+  await shot('b1_kampftermin', '#/settings');
+  await shot('b2_fitnesstest', '#/test');
+  await shot('b3_plan', '#/plan');
+  await p.evaluate(() => { location.hash = '#/settings'; }); await p.waitForTimeout(600);
+  await p.evaluate(() => { const e = document.getElementById('profile'); e && e.scrollIntoView({ block: 'start' }); window.scrollBy(0, -110); }); await p.waitForTimeout(500);
+  await p.screenshot({ path: S + '/b4_alter.png' });
+  console.log('b4', await p.evaluate(() => document.body.innerText.slice(document.body.innerText.indexOf('Altersklasse'), document.body.innerText.indexOf('Altersklasse') + 300).replace(/\n+/g,' | ')));
+  await shot('b6a_fortschritt', '#/progress');
+  await p.evaluate(() => { location.hash = '#/settings'; }); await p.waitForTimeout(600);
+  await p.evaluate(() => { const b = document.querySelector('[data-act=ics]'); b && b.scrollIntoView({ block: 'start' }); window.scrollBy(0, -24); }); await p.waitForTimeout(500);
+  await p.screenshot({ path: S + '/b6b_kalender.png' });
+  // Timer: harte Einheit, Belastungsphase
+  await p.evaluate(() => { location.hash = '#/week/2'; }); await p.waitForTimeout(400);
+  const hrefs = await p.$$eval('a[href^="#/s/"]', a => a.map(x => x.getAttribute('href')));
+  const hard = hrefs[1] || hrefs[0];
+  await p.evaluate(hh => { location.hash = hh.replace('#/s/','#/run/'); }, hard); await p.waitForSelector('#t-play'); await p.click('#t-play');
+  let got = false;
+  for (let i=0;i<500 && !got;i++){ await p.evaluate(()=>{window.__skew+=1000;}); await p.waitForTimeout(60);
+    const k = await p.evaluate(()=>{const c=document.getElementById('timer').className, t=document.getElementById('t-target').textContent; const m=t.match(/(\d+)\D+(\d+) W/); return /k-work/.test(c) && m && Number(m[1])>=450 ? t : ''});
+    if (k) { await p.evaluate(()=>{window.__skew+=0;}); await p.waitForTimeout(300); await p.screenshot({ path: S + '/b5_timer.png' }); console.log('b5 timer', k, hard); got = true; } }
+  console.log(errs);
+  await b.close();
+})();
