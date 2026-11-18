@@ -687,7 +687,7 @@ function adminHtml() {
   const tone = { aktiv: 'ok', ruhig: 'amber', inaktiv: 'red' };
   const rows = (adminData.users || [])
     .map(
-      (u) => `<tr><td>${esc(u.email || '')}<br>${u.ist_admin || !u.user_id ? '<span class="muted small">Admin</span>' : `<button class="ghost adm-del" data-act="admin-del" data-id="${esc(u.user_id)}" data-mail="${esc(u.email || '')}">Löschen</button>`}</td><td><span class="chip ${tone[u.aktivitaet] || ''}">${esc(u.aktivitaet || '')}</span></td><td>${esc(Number(u.einheiten_erledigt) || 0)}</td><td>${u.test_watt ? esc(Number(u.test_watt)) : '–'}</td><td>${esc(Number(u.meldungen) || 0)}</td><td>${esc(admWhen(u.zuletzt_gespeichert))}</td><td>${esc(admWhen(u.letzte_anmeldung))}</td><td>${u.bestaetigt ? 'ja' : 'nein'}</td></tr>`,
+      (u) => `<tr><td>${esc(u.email || '')}</td><td><span class="chip ${tone[u.aktivitaet] || ''}">${esc(u.aktivitaet || '')}</span></td><td>${esc(Number(u.einheiten_erledigt) || 0)}</td><td>${u.test_watt ? esc(Number(u.test_watt)) : '–'}</td><td>${esc(Number(u.meldungen) || 0)}</td><td>${esc(admWhen(u.zuletzt_gespeichert))}</td><td>${esc(admWhen(u.letzte_anmeldung))}</td><td>${u.bestaetigt ? 'ja' : 'nein'}</td><td class="adm-act">${u.ist_admin || !u.user_id ? '<span class="muted small">Admin</span>' : `<button class="ghost adm-del" data-act="admin-del" data-id="${esc(u.user_id)}" data-mail="${esc(u.email || '')}">Löschen</button>`}</td></tr>`,
     )
     .join('');
   return `<p class="muted">Von ${n('konten_gesamt')} Konten sind ${n('bestaetigt')} bestätigt. In den letzten 7 Tagen waren ${n('aktiv_7_tage')} aktiv, insgesamt sind ${n('einheiten_gesamt')} Einheiten erledigt.</p>
@@ -698,7 +698,7 @@ function adminHtml() {
     ${tile('Mit Test-Watt', n('mit_test_watt'), `Einrichtung fertig ${n('einrichtung_fertig')}`)}
   </div>
   <h2>Alle Testuser</h2>
-  <div class="adm-scroll"><table class="adm-table"><thead><tr><th>E-Mail</th><th>Status</th><th>Einheiten</th><th>Test-Watt</th><th>Meldungen</th><th>Zuletzt gespeichert</th><th>Letzte Anmeldung</th><th>Bestätigt</th></tr></thead><tbody>${rows || '<tr><td colspan="8">Noch keine Konten.</td></tr>'}</tbody></table></div>
+  <div class="adm-scroll"><table class="adm-table"><thead><tr><th>E-Mail</th><th>Status</th><th>Einheiten</th><th>Test-Watt</th><th>Meldungen</th><th>Zuletzt gespeichert</th><th>Letzte Anmeldung</th><th>Bestätigt</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="9">Noch keine Konten.</td></tr>'}</tbody></table></div>
   <button class="ghost block" style="margin-top:14px" data-act="admin-refresh">Aktualisieren</button>
   <details class="muted small" style="margin-top:14px"><summary>Was bedeutet der Status?</summary>
     <p><b>aktiv</b>: in den letzten 3 Tagen etwas gespeichert. <b>ruhig</b>: bis 14 Tage her. <b>inaktiv</b>: länger her. <b>nie genutzt</b>: Konto ohne gespeicherte Daten.</p>
@@ -2658,7 +2658,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 83;
+const APP_BUILD = 84;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
