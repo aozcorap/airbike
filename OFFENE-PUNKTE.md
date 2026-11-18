@@ -74,6 +74,18 @@ Stand: 17.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 - Zusammenhang mit Punkt „Rechtlich 1“: Verkauf setzt geklärte Rechte am Programm voraus.
 - Preis für Minderjährige: Vertragsabschluss nur mit Eltern (siehe Punkt „Rechtlich 3“).
 
+**Möglichkeiten zum Geldverdienen (Stand 18.11., Einschätzung der KI, keine Erlösprognose, nicht entschieden):**
+1. **Kampfpaket (Einmalkauf pro Kampf).** Passt zum 10-Wochen-Plan bis zum Kampf. Einfach zu verstehen, aber keine laufenden Einnahmen.
+2. **Abo (monatlich/jährlich).** Planbar, passt aber schlecht, weil man den Plan nur wenige Wochen vor einem Kampf braucht. Nur sinnvoll mit zusätzlichen Inhalten (z. B. Plan für die Zeit zwischen Kämpfen).
+3. **Freemium.** Fitness-Test und erste Woche kostenlos, voller Plan kostenpflichtig. Senkt die Hürde, besonders ohne App Store.
+4. **Trainer-Lizenzen für Vereine und Studios.** Ein Trainer verwaltet mehrere Boxer, Preis pro Platz oder pauschal. Nach Einschätzung der KI die stärkste Option, weil ein Kunde mehrere Nutzer bringt und der Betreiber selbst Boxtrainer ist. Braucht eine Trainer-Ansicht in der App (die Admin-Ansicht ist nur für den Betreiber).
+5. **Persönliche Beratung als Aufpreis.** Betreiber prüft und passt den Plan an. Hoher Preis, aber verkauft Zeit statt App.
+6. **Partnerschaften und Werbung** (Airbike-Hersteller, Studios). Schwierig bei Minderjährigen und Datenschutz, kleine Reichweite.
+
+**Empfehlung der KI:** Zuerst Freemium plus Kampfpaket über die Webseite, parallel Trainer-Lizenzen bei Vereinen testen. **Voraussetzungen vor jedem Verkauf:** Rechte am Plan aus dem gekauften PDF (Rechtlich 1), Verträge mit Minderjährigen (Rechtlich 3), Zahlungsanbieter, Umsatzsteuer, Widerrufsrecht bei digitalen Inhalten, Rechnung. In der App-Store-Fassung gilt Apples Kaufweg mit 15 bis 30 % Provision (siehe Technik 14).
+
+**Marktgröße (belegt, soweit gefunden):** Schweiz 745 lizenzierte Boxer 2024 (Swiss Boxing, Protokoll DV 2025), Österreich nur ein alter Wert von 2003 (56 Vereine, 3.005 Mitglieder), Deutschland keine Zahl gefunden (DOSB-Bestandserhebung, Zeile „Boxen“ nachschlagen oder beim Deutschen Boxsport-Verband fragen). Nicht erfasst sind Leute, die nur Boxtraining oder Fitness-Boxen machen. Für die App zählt vor allem die kleinere Gruppe der Wettkampf-Boxer mit festem Kampftermin.
+
 ## Empfehlung für live
 
 Zuerst die Rechte am Plan und den Datenschutz klären (Rechtlich 1 und 2), danach die Kinderfrage (Rechtlich 3, Fachlich 1) und das neue Video. Der Rest ist Aufräumen.
