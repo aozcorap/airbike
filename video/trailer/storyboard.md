@@ -6,8 +6,14 @@ Länge ca. 58 Sekunden. Formate: 16:9 (Webseite), später 9:16 (Instagram, TikTo
 Musik: Herzschlag in Szene 1–6, ab Szene 7 treibend und dramatisch, Szene 9 siegreich (eigene Musik, keine bestehenden Filmthemen).
 Erstellung: Boxer-Szenen mit Higgsfield, App-Szenen als echte Bildschirmaufnahme, Text und Sprecher im Schnitt.
 
-**Besetzung:**
-- **Ahmet (Betreiber, Boxtrainer):** kurzer Auftritt am Anfang (Szene 1), optional ein zweiter am Ende (Szene 9). Dafür 2–3 eigene Fotos als Referenz. Nur Fotos von Ahmet selbst.
+**Aktuelle Entscheidungen (haben Vorrang vor der Tabelle unten):**
+- **Ahmet tritt im Trailer nicht auf**, weder als Trainer noch als Boxer. Der Trailer beginnt mit dem Helden in der Umkleide, der Herzschlag ist laut und klar zu hören.
+- **Aufbau:** Story-Teil (ca. 30 s) mit einem einzigen Higgsfield-Prompt (siehe `higgsfield-prompts.md`, „Ein-Prompt-Fassung"), danach der **App-Teil (ca. 30 s, echte Aufnahmen, Deutsch)** und zum Schluss Logo und Adresse.
+- **App-Teil (6 Punkte, bestätigt):** 1. Kampftermin und Rundenzahl, 2. Fitness-Test mit drei Sprints und Test-Watt, 3. Plan mit 10 Wochen bis zum Kampf, 4. Anpassung an Alter und Level, 5. Timer mit großer Watt-Zahl, 6. Kalender-Export und Fortschritt.
+- **Sprache:** zuerst Englisch erzeugen, die deutsche Fassung mit dem Modell „Dubbing". Einblendungen im App-Teil auf Deutsch. Untertitel entstehen im Schnitt, nicht in Higgsfield.
+
+**Besetzung (ältere Fassung, Punkt Ahmet gilt nicht mehr):**
+- ~~**Ahmet (Betreiber, Boxtrainer):** kurzer Auftritt am Anfang (Szene 1)~~ entfällt.
 - **Held:** erfundene Figur (Boxer, Ende 20, kurze dunkle Haare, Stoppelbart), in Szene 2, 4, 5, 7, 8, 9 immer dieselbe Figur wie in Szene 2 (Standbild aus Szene 2 als Referenz). Er trainiert auf dem Airbike und **gewinnt am Ende** (Szene 9).
 - **Gegner:** erfundene Figur, glatzköpfig, groß, muskulös, Gesicht immer im Schatten oder abgewandt (Szene 3). Er darf **nicht** der Held sein und nicht auf dem Airbike trainieren. In Szene 9 verliert er gegen den Helden.
 
