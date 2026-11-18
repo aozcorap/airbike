@@ -23,14 +23,14 @@ References: reference image 1 is the exact stationary air bike (large black fan 
 
 0-3.5 s: Black screen with three loud heartbeats, then the quiet locker room fades in, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is very loud and clear. Narrator: "Fight night is coming."
 3.5-6.5 s: Dark empty boxing gym at night. The bald, extremely muscular opponent from reference image 3, backlit, hammers a heavy bag with brutal, machine-like power, the bag jerking on its chain with every punch, sweat flying, steam and dust in a single beam of light, face in deep shadow, terrifying and unstoppable. Narrator: "He trains like a machine."
-6.5-10 s: The hero on the air bike from reference image 1 in a dark gym, preparing for the fight, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine. The air bike."
+6.5-10 s: The hero from reference image 2 on the air bike from reference image 1 in a dark gym, preparing for the fight, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine. The air bike."
 
 10-20 s, APP: Three slow vertical full-frame shots of a phone screen, about 3 seconds each. Each shows the given reference image EXACTLY and UNCHANGED, sharp and fully readable, no redrawn or invented text, no changed numbers, only a very slow push-in and a thin glow on the edges.
 10-13 s: reference image 4 (fitness test). Narrator: "Three sprints show where you stand."
 13-16 s: reference image 6 (training plan with days until the fight). Narrator: "Your plan, week by week, to your fight date."
 16-20 s: reference image 5 (timer with large watt target). Narrator: "Every interval in watts. Built for your age."
 
-20-25 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
+20-25 s: Final round in the ring. Both boxers wear full boxing gloves: the hero from reference image 2 wears black boxing gloves, the bald opponent from reference image 3 wears red boxing gloves, no logos on the gloves. The hero, strong and composed, lands fast clean combinations with his black gloves, the bald opponent is exhausted and stumbles back. The hero stands upright with his black gloves raised in victory, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
 
 Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, hero exhausted on the ropes, bare fists in the ring, only hand wraps in the ring, quiet or faint heartbeat, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
 ```
