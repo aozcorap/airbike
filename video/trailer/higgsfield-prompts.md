@@ -17,11 +17,11 @@ Referenzbilder in dieser Reihenfolge: 1 Airbike (Foto), 2 Held (Gesicht aus der 
 ```
 Cinematic 25-second boxing trailer, vertical 9:16, photorealistic, real humans, natural skin with pores, 35mm film grain, dark low-key lighting, strong rim light, desaturated teal and steel tones with warm orange highlights. No subtitles, no logos, no watermark, no added text in the story shots.
 
-Sound design: a deep, slow, clearly audible heartbeat, loud and prominent in the mix, especially in the first scene, rising in tension. A deep male narrator speaks the lines below, calm and intense. Driving cinematic music builds from the second scene on.
+Sound design: the film opens on a black screen with three very loud, deep, heavy heartbeats (thump-thump, thump-thump, thump-thump) in the first 2 seconds that grab the viewer immediately, felt in the chest with deep sub-bass. Then the locker room image fades in while the heartbeat continues at full volume, dominant over everything else in the first scene, louder than the narrator, rising in tension. A deep male narrator speaks the lines below, calm and intense. Driving cinematic music builds from the second scene on.
 
 References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, extremely muscular, bald, shaved head, brutal and terrifying, face mostly in shadow. Reference images 4, 5 and 6 are screenshots of a mobile app, in German.
 
-0-3.5 s: Quiet locker room, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear. Narrator: "Fight night is coming."
+0-3.5 s: Black screen with three loud heartbeats, then the quiet locker room fades in, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is very loud and clear. Narrator: "Fight night is coming."
 3.5-6.5 s: Dark empty boxing gym at night. The bald, extremely muscular opponent from reference image 3, backlit, hammers a heavy bag with brutal, machine-like power, the bag jerking on its chain with every punch, sweat flying, steam and dust in a single beam of light, face in deep shadow, terrifying and unstoppable. Narrator: "He trains like a machine."
 6.5-10 s: The hero on the air bike from reference image 1 in a dark gym, preparing for the fight, all-out maximum effort, face contorted with pain, sweat spraying sideways from the spinning fan wheel, embers and orange backlight. Narrator: "Beat a machine with a machine. The air bike."
 
@@ -32,7 +32,7 @@ References: reference image 1 is the exact stationary air bike (large black fan 
 
 20-25 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
 
-Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, hero exhausted on the ropes, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
+Only one dark-haired hero in the film. The bald man is always the opponent and always loses. Avoid: bicycle, road bike, different faces, two heroes, bald hero, hero exhausted on the ropes, bare fists in the ring, only hand wraps in the ring, quiet or faint heartbeat, cartoon, illustration, 3D render, animation, comic style, plastic skin, garbled text, changed app text, invented screens, subtitles, logos, watermark.
 ```
 
 ## Einzelszenen-Fassung (alt, nur noch als Reserve)
@@ -136,3 +136,13 @@ Optional (2–3 s): Ahmet am Ende, ruhig im warmen Licht, leichtes Nicken in die
 - Kein „im Stil von Rocky" oder Namen von Filmen und Schauspielern in den Prompts.
 - Higgsfield-Clips sind kurz. Wenn eine Szene länger sein muss, zwei Clips mit unterschiedlichen Einstellungen schneiden.
 - Marke auf dem Airbike: nicht im Prompt verlangen, sondern bei Bedarf im Schnitt einblenden. Rechte an Herstellerfotos und Markenname nicht geprüft.
+
+## Deutsche Sprechzeilen (für Dubbing oder Neuaufnahme)
+
+1. „Der Kampftag kommt."
+2. „Er trainiert wie eine Maschine."
+3. „Schlage eine Maschine mit einer Maschine. Das Airbike."
+4. „Drei Sprints zeigen, wo du stehst."
+5. „Dein Plan, Woche für Woche, bis zu deinem Kampf."
+6. „Jedes Intervall in Watt. Zugeschnitten auf dein Alter."
+7. „So gehst du in die letzte Runde."
