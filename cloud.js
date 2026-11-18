@@ -40,6 +40,8 @@ export const isAdmin = async () => {
   }
 };
 export const adminOverview = () => client.rpc('admin_overview');
+// Konto eines Nutzers löschen (die Datenbank erlaubt es nur Admins und nie für sich selbst oder andere Admins)
+export const adminDeleteUser = (target) => client.rpc('admin_delete_user', { target });
 
 export async function pullState(userId) {
   const { data, error } = await client.from('user_state').select('state, updated_at').eq('user_id', userId).maybeSingle();

@@ -246,6 +246,7 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 .adm-table th, .adm-table td { text-align: left; white-space: nowrap; padding: 10px 12px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .adm-table th { font-size: 12px; color: var(--muted); font-weight: 700; }
 .adm-table tr:last-child td { border-bottom: 0; }
+.adm-del { margin-top: 6px; padding: 6px 12px; min-height: 36px; font-size: 13px; color: #ff8a8a; border-color: rgba(255, 138, 138, .5); }
 .adm-table th:first-child, .adm-table td:first-child { position: sticky; left: 0; background: var(--surface); max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .back { display: inline-flex; align-items: center; min-height: 44px; font-size: 18px; font-weight: 600; text-decoration: none; color: var(--text); padding: 6px 0; }
 
