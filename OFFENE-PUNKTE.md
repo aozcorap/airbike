@@ -57,15 +57,17 @@ Stand: 17.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 11. **Test-Konto `t@y.de`:** Durch einen Test der KI wurde eine Anmeldemail ausgelöst, das Konto liegt unbestätigt in Supabase. Löschen nur auf Anweisung des Betreibers (siehe auch Punkt 2).
 12. **Zwei-Faktor** bei GitHub und Supabase einschalten (Empfehlung, nur der Betreiber kann das). Die Admin-Ansicht ist nur so sicher wie das Admin-Konto.
 13. **Altes Dashboard-Artifact** (`claude.ai/artifact/Ftx8Voas4KtMhWAJNkSNva`) wird nicht mehr gebraucht, ersetzt durch die Admin-Ansicht in der App. Kann gelöscht werden.
+14. **Installation ohne App Store (Wunsch des Betreibers, noch nicht gebaut).** Die App ist eine Web-App. Nutzer sollen sie wie aus einem App Store mit einem Knopf „Jetzt installieren" auf den Home-Bildschirm bekommen. Stand der Prüfung (aus Wissen, nicht live geprüft): **Android (Chrome)** kann einen echten Installieren-Knopf (`beforeinstallprompt`), das ist in der App noch nicht eingebaut. **iPhone (Safari)** erlaubt das nicht automatisch, der Nutzer muss „Teilen, Zum Home-Bildschirm" selbst tippen. Umsetzungsvorschlag: Android-Knopf plus geführte Anleitung nur auf dem iPhone (Pfeil, 3 Schritte), dazu QR-Code und Kurz-GIF im Trailer-Abspann. Nur in der EU gibt es alternative App-Marktplätze (aufwendig, mit Gebühren). Eine Provision an Apple oder Google entfällt nach meiner Kenntnis, wenn man über die Webseite bezahlen lässt. Rechtliche Lage nicht geprüft.
+15. **Landingpage mit „Jetzt installieren"** (Wortlaut des Betreibers: „die Seite entsprechend bauen"). Gemeint ist vermutlich die Webseite, auf die der Trailer verweist. Webadresse ist noch nicht festgelegt. Vor dem Bauen mit dem Betreiber klären, was genau drauf soll.
 
 ### Video
 1. **Video komplett neu aufbauen.** Das Intro in der App (`video/start.mp4`) zeigt den alten Ablauf (Max-Watt, Trainingsstand, 7 statt 4 Einführungsschritte). Der Name „Last Round“ ist nur per Überblendung durch „Nonstop Boxing“ ersetzt. Es läuft bei jedem Start ohne Anmeldung (5 MB) und ist offline nicht verfügbar. Für live neu rendern, die Videoquelle liegt nicht im Repo.
-2. **Trailer** (`video/trailer/`): Webadresse für Szene 9 fehlt. Siehe dort auch die offenen Punkte.
+2. **Trailer** (`video/trailer/`): Der Story-Teil (25 s) ist in Higgsfield als Entwurf erzeugt. Alles zum Weiterarbeiten steht in `video/trailer/STAND.md`. Offen: Herzschlag in CapCut lauter machen, deutsche Stimme, Abspann mit Webadresse (fehlt), Untertitel, Musik-Rechte, **die drei App-Bilder (Fitness-Test, Plan, Timer) sind nicht scharf genug und müssen höher aufgelöst neu aufgenommen werden**.
 
 ### Geschäftsmodell
 **Preis- und Abo-Modell ist nicht entschieden und nicht gebaut.** Es gibt weder Preise noch Bezahlfunktion noch Abo-Logik. Zu klären:
 - Was ist kostenlos, was kostet? (z. B. Einzelpreis, Monats-/Jahresabo, Test-Zeitraum)
-- Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores)
+- Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores). Nach meinem Wissen, nicht live geprüft: Apple Developer Program 99 € bzw. 99 US-Dollar pro Jahr, Provision 30 % (15 % im Small Business Program), Google Play ca. 25 Dollar einmalig und meist 15 %. Der Betreiber will **nicht** über den App Store gehen. Siehe Technik 14.
 - Rechnung, Umsatzsteuer, Widerrufsrecht, Kündigung (rechtlich prüfen)
 - Freischaltung im Konto (Supabase: Zahlstatus pro Nutzer, Ablaufdatum)
 - Preise und Bedingungen in Datenschutz, Impressum und AGB aufnehmen
@@ -78,6 +80,6 @@ Zuerst die Rechte am Plan und den Datenschutz klären (Rechtlich 1 und 2), danac
 
 ## Zuletzt erledigt (16./17.11.2026)
 
-Admin-Ansicht in der App, Wattzahl im Timer deutlich größer und hervorgehoben (Version 78).
+Admin-Ansicht in der App, Wattzahl im Timer deutlich größer und hervorgehoben (Version 78), Eingabefelder nach dem Test zentriert (80), Sprint-Wert direkt in der Pause eintragen (81), Wattwerte für Erwachsene nach Alter (82), Konto direkt in der Admin-Ansicht löschen (83).
 
 Anmeldung per Code statt Passwort, Impressum und Datenschutz-Verantwortlicher eingetragen, Datenschutz-Text an das Verhalten angepasst, Sicherung ohne Datenverlust bei gleichzeitigen Änderungen, Import von Sicherungsdateien geprüft, Jugend-Sperre und Trainer-Freigabe entfernt, eigene Klasse für Kinder bis 14, Altersklasse mit Rückfall, Eingaben geprüft, Plan-Randfälle (Kampf in unter einer Woche, Kampftermin entfernen, Trainingstage), Timer-Rückfrage, Update-Hinweis über Intro und Timer, Kontowechsel mit ungesicherten Daten fragt nach, Rückfragen beim Anmelden ohne Zeitlimit, Test-Watt auf der Einheit nur noch als Link, Zeitfeld für iOS, Kalender-Export mit echter Dauer, Kleinigkeiten (noscript, Manifest, Vorschau-Tags, toter Code, Erinnerung nach dem Abhaken), Offline-Dateien, einheitliche Zählung, Content-Security-Policy, Konto löschen nur mit Code aus der E-Mail (die Mail dazu heißt „Anmelde-Code“, Vorlage 4), Timer merkt sich den Stand und bietet nach Neuladen oder Schließen das Fortsetzen an, kleine Bildschirme geprüft.

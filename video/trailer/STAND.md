@@ -60,6 +60,12 @@ Liegen in `app-bilder/` (`b1_kampftermin`, `b2_fitnesstest`, `b3_plan`, `b4_alte
 6. **Musik:** Wenn die KI-Musik im Video bleibt, Nutzungsrechte klären. Bei eigener Musik Lizenz prüfen.
 7. **Rechtliches vor Veröffentlichung:** Rechte am Plan aus dem gekauften PDF, Marke „Nonstop Boxing", Airbike-Foto und Herstellermarke (nur eigene Fotos, nichts aus Händlershops), KI-Kennzeichnung des Videos prüfen.
 
+## Zusätzlich für morgen (vom Betreiber, 18.11. abends)
+
+- **App-Bilder neu aufnehmen, schärfer.** Die drei verwendeten Bilder (Fitness-Test, Plan, Timer) sind in der Auflösung nicht scharf genug. Neu aufnehmen mit höherer Auflösung, z. B. Seitenverhältnis 9:16 bei mindestens 1440×2560 (im Skript `app-bilder/aufnehmen.js` den Wert `deviceScaleFactor` von 3 auf 4 erhöhen oder größeres Fenster nehmen), danach in Higgsfield als Referenzbilder 4 bis 6 ersetzen. Der Prompt bleibt gleich.
+- **„Die Seite entsprechend bauen"** (Wortlaut des Betreibers): Gemeint ist vermutlich die **Webseite mit dem Knopf „Jetzt installieren"** (Landingpage) für den Trailer. Beim Start morgen kurz bestätigen, was genau gemeint ist, bevor gebaut wird.
+- **Installation ohne App Store:** Auf Android ein echter Installieren-Knopf, auf dem iPhone eine geführte Anleitung (Teilen, Zum Home-Bildschirm). Siehe `OFFENE-PUNKTE.md`, Abschnitt Geschäftsmodell und Technik.
+
 ## Prompt in Kurzform (Quelle: `higgsfield-prompts.md`)
 
 Der vollständige, gültige Prompt steht dort im Abschnitt „EIN-PROMPT-FASSUNG". Er enthält Sound-Design mit lautem Herzschlag, die drei Figuren-Beschreibungen (Airbike, Held, Gegner), die Szenen mit Zeiten und Sprechertext (Englisch), die App-Beats und die Liste „Avoid".
