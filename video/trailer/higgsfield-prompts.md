@@ -12,14 +12,14 @@
 **Nicht im Trailer:** Ahmet. Keine Szene „Runde 3, Held erschöpft an den Seilen" (Betreiber hat sie ausdrücklich gestrichen).
 Modell: Seedance 2.5, Modus „Omni Reference", 9:16, **25 Sekunden**, Ton an, zuerst Entwurf (480p). Deutsche Fassung später mit „Dubbing".
 App-Bilder: `b2_fitnesstest`, `b3_plan`, `b5_timer` (echte Aufnahmen, 1080×1920). Die Startseite wird nicht verwendet (iStock-Wasserzeichen).
-Referenzbilder in dieser Reihenfolge: 1 Airbike (Foto), 2 Held (Gesicht aus der Umkleide-Szene), 3 Gegner (Standbild Sandsack), 4 Fitness-Test, 5 Plan, 6 Timer.
+Referenzbilder in dieser Reihenfolge: 1 Airbike (Foto), 2 Held (Gesicht aus der Umkleide-Szene), 3 Gegner (Standbild Sandsack), 4 Fitness-Test, 5 Timer, 6 Plan. Die Nummern im Prompt müssen zur Reihenfolge in Higgsfield passen.
 
 ```
 Cinematic 25-second boxing trailer, vertical 9:16, photorealistic, real humans, natural skin with pores, 35mm film grain, dark low-key lighting, strong rim light, desaturated teal and steel tones with warm orange highlights. No subtitles, no logos, no watermark, no added text in the story shots.
 
 Sound design: a deep, slow, clearly audible heartbeat, loud and prominent in the mix, especially in the first scene, rising in tension. A deep male narrator speaks the lines below, calm and intense. Driving cinematic music builds from the second scene on.
 
-References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, extremely muscular, bald, shaved head, brutal and terrifying, face mostly in shadow. Reference images 4 to 6 are screenshots of a mobile app, in German.
+References: reference image 1 is the exact stationary air bike (large black fan wheel with metal blades in a cage, two long push-pull handles, small console, heavy steel frame, not a bicycle). Reference image 2 is the hero boxer: keep his face identical in every shot, short dark hair, short stubble, strong jaw, lean athletic build, white hand wraps. Reference image 3 is the opponent: tall, extremely muscular, bald, shaved head, brutal and terrifying, face mostly in shadow. Reference images 4, 5 and 6 are screenshots of a mobile app, in German.
 
 0-3.5 s: Quiet locker room, flickering fluorescent light. The hero from reference image 2 sits on a bench and slowly wraps his hands with white tape, sweat on his skin, close-up on his hands, then slow tilt up to his focused, tense face. In the blurred background the bald opponent stands in the doorway as a dark silhouette. The heartbeat is loud and clear. Narrator: "Fight night is coming."
 3.5-6.5 s: Dark empty boxing gym at night. The bald, extremely muscular opponent from reference image 3, backlit, hammers a heavy bag with brutal, machine-like power, the bag jerking on its chain with every punch, sweat flying, steam and dust in a single beam of light, face in deep shadow, terrifying and unstoppable. Narrator: "He trains like a machine."
@@ -27,8 +27,8 @@ References: reference image 1 is the exact stationary air bike (large black fan 
 
 10-20 s, APP: Three slow vertical full-frame shots of a phone screen, about 3 seconds each. Each shows the given reference image EXACTLY and UNCHANGED, sharp and fully readable, no redrawn or invented text, no changed numbers, only a very slow push-in and a thin glow on the edges.
 10-13 s: reference image 4 (fitness test). Narrator: "Three sprints show where you stand."
-13-16 s: reference image 5 (training plan with days until the fight). Narrator: "Your plan, week by week, to your fight date."
-16-20 s: reference image 6 (timer with large watt target). Narrator: "Every interval in watts. Built for your age."
+13-16 s: reference image 6 (training plan with days until the fight). Narrator: "Your plan, week by week, to your fight date."
+16-20 s: reference image 5 (timer with large watt target). Narrator: "Every interval in watts. Built for your age."
 
 20-25 s: Final round in the ring. The hero, strong and composed, lands fast clean combinations, the bald opponent is exhausted and stumbles back. The hero stands upright with arms raised, golden light, dust in the air, epic slow motion. Narrator: "That's how you walk into the last round."
 
