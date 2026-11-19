@@ -20,6 +20,13 @@ Die Web-App wird mit Capacitor in eine iPhone-App verpackt. Die App selbst bleib
 
 Nach jeder Änderung an der App: `npm run sync` und in Xcode neu starten.
 
+## Stand der Tests (19.11.2026)
+
+- **Läuft im Simulator** (iPhone 18 Pro, iOS 27.2, Xcode 27.2): Das Intro-Video mit „Ton an“ und „Überspringen“ erscheint, danach die Anmeldeseite mit „Code senden“, Datenschutz und Impressum. Bis dahin nichts weiter geprüft.
+- Beim ersten Start des Simulators stürzten zwei Systemprogramme ab (MobileCal, WidgetRenderer). Das lag am langsamen Erststart des Simulators und betrifft die App nicht.
+- Die Warnung zum Signing („Your team has no devices“) betrifft nur echte iPhones und blockiert den Simulator nicht. Für den Test auf einem echten iPhone muss das iPhone angeschlossen und registriert werden.
+- Alles weitere aus der Liste unten ist noch offen.
+
 ## Was beim Testen im Simulator zu prüfen ist
 
 - Start, Intro-Video, Anmeldung per Code (braucht echte E-Mail, vorher klären, siehe Arbeitsweise in `EINSTIEG.md`)
