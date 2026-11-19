@@ -94,6 +94,15 @@ Stand: 18.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 5. **Persönliche Beratung als Aufpreis.** Betreiber prüft und passt den Plan an. Hoher Preis, aber verkauft Zeit statt App.
 6. **Partnerschaften und Werbung** (Airbike-Hersteller, Studios). Schwierig bei Minderjährigen und Datenschutz, kleine Reichweite.
 
+**Werbung als Einnahme (Gespräch vom 19.11., nicht entschieden, nichts gebaut):**
+- **Ziel des Betreibers:** Die laufenden Kosten (Apple, Google) decken, kein Minusgeschäft, sonst Hobby. Idee: kostenlose Nutzung, vor einer Einheit wird Werbung gezeigt.
+- **Annahmen des Betreibers:** etwa 500 Nutzer im ersten Jahr, jeder trainiert vermutlich 1 bis 2-mal pro Woche (nicht gemessen).
+- **Rechnung der KI (Vermutung, nicht geprüft):** 500 × 1–2 Einheiten × 4,3 Wochen = etwa 2.200 bis 4.300 Werbeansichten pro Monat. Bei 0,3 bis 1 Cent pro Ansicht sind das etwa 6 bis 43 € im Monat, also grob 80 bis 500 € im Jahr. Das ist die Obergrenze, wenn alle Nutzer aktiv bleiben. Realistisch weniger, weil der Plan nur 10 Wochen bis zum Kampf läuft. Die Kosten liegen bei Apple 99 US-Dollar pro Jahr und Google 25 US-Dollar einmalig (geprüft am 19.11.). Ob die Werbung das deckt, ist offen und knapp.
+- **Die Cent-Werte sind Schätzungen aus dem Wissen der KI.** Echte Zahlen gibt es erst mit einem Werbekonto und echten Nutzern (Werbekonto anlegen, Testwerbung, eigene Auswertung nach einigen Wochen).
+- **Widerspruch klären:** Der Betreiber will nicht über den App Store. Die Kosten für Apple fallen aber nur bei einer Store-Version an. Für die reine Web-App entfallen sie.
+- **Hürden bei Werbung:** Cookie-Einwilligung (Banner), Datenschutz erweitern, Content-Security-Policy in `index.html` öffnen, **Minderjährige ohne Mindestalter** (personalisierte Werbung bei Minderjährigen in der EU stark eingeschränkt, rechtlich klären). Ob Werbung vor einer Einheit in einer Web-App technisch und nach den Regeln der Werbenetzwerke möglich ist, ist ungeprüft.
+- **Einschätzung der KI:** Werbung allein trägt kaum mehr als die Kontogebühren. Freemium oder Kampfpaket bringt pro Nutzer mehr.
+
 **Empfehlung der KI:** Zuerst Freemium plus Kampfpaket über die Webseite, parallel Trainer-Lizenzen bei Vereinen testen. **Voraussetzungen vor jedem Verkauf:** Rechte am Plan aus dem gekauften PDF (Rechtlich 1), Verträge mit Minderjährigen (Rechtlich 3), Zahlungsanbieter, Umsatzsteuer, Widerrufsrecht bei digitalen Inhalten, Rechnung. In der App-Store-Fassung gilt Apples Kaufweg mit 15 bis 30 % Provision (siehe Technik 14).
 
 **Marktgröße (belegt, soweit gefunden):** Schweiz 745 lizenzierte Boxer 2024 (Swiss Boxing, Protokoll DV 2025), Österreich nur ein alter Wert von 2003 (56 Vereine, 3.005 Mitglieder), Deutschland keine Zahl gefunden (DOSB-Bestandserhebung, Zeile „Boxen“ nachschlagen oder beim Deutschen Boxsport-Verband fragen). Nicht erfasst sind Leute, die nur Boxtraining oder Fitness-Boxen machen. Für die App zählt vor allem die kleinere Gruppe der Wettkampf-Boxer mit festem Kampftermin.
