@@ -3,7 +3,7 @@ const S = process.argv[2] + '/app';
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 (async () => {
   const b = await chromium.launch();
-  const ctx = await b.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 3, locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+  const ctx = await b.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 4, locale: 'de-DE', timezoneId: 'Europe/Berlin' });
   const p = await ctx.newPage(); const errs=[]; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
   const fd = new Date(); fd.setDate(fd.getDate()+63);
   const start = new Date(); start.setDate(start.getDate()-7);
