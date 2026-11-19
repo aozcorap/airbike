@@ -79,7 +79,7 @@ Stand: 18.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 ### Geschäftsmodell
 **Preis- und Abo-Modell ist nicht entschieden und nicht gebaut.** Es gibt weder Preise noch Bezahlfunktion noch Abo-Logik. Zu klären:
 - Was ist kostenlos, was kostet? (z. B. Einzelpreis, Monats-/Jahresabo, Test-Zeitraum)
-- Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores). Nach meinem Wissen, nicht live geprüft: Apple Developer Program 99 € bzw. 99 US-Dollar pro Jahr, Provision 30 % (15 % im Small Business Program), Google Play ca. 25 Dollar einmalig und meist 15 %. Der Betreiber will **nicht** über den App Store gehen. Siehe Technik 14.
+- Zahlungsweg (Web-App: z. B. Stripe oder Paddle; App-Store: Gebühr 15 bis 30 %, Pflicht zur Kauf-Funktion des Stores). **Kontogebühren (am 19.11. auf den Seiten der Anbieter geprüft):** Apple Developer Program **99 US-Dollar pro Jahr** (in Euro bei der Anmeldung angezeigt, verlängert sich automatisch), Google Play **einmalig 25 US-Dollar, keine Jahresgebühr** (daneben eine gebührenfreie „Limited distribution" für höchstens 20 Geräte, für eine öffentliche App nicht geeignet). **Provisionen (nur aus Wissen, nicht geprüft):** Apple 30 % (15 % im Small Business Program), Google meist 15 %. Der Betreiber will **nicht** über den App Store gehen. Siehe Technik 14.
 - Rechnung, Umsatzsteuer, Widerrufsrecht, Kündigung (rechtlich prüfen)
 - Freischaltung im Konto (Supabase: Zahlstatus pro Nutzer, Ablaufdatum)
 - Preise und Bedingungen in Datenschutz, Impressum und AGB aufnehmen
