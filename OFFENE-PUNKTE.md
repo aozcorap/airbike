@@ -104,7 +104,7 @@ Stand: 18.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 - **Einschätzung der KI:** Werbung allein trägt kaum mehr als die Kontogebühren. Freemium oder Kampfpaket bringt pro Nutzer mehr.
 
 **Werbemodell des Betreibers (Gespräch vom 19.11., Stand: beschrieben, nicht gebaut, nicht rechtlich geprüft):**
-- **Vertrieb:** App aus dem App Store und Google Play Store. Das widerspricht der früheren Aussage „nicht über den App Store“ (Technik 14). Noch zu klären: Gilt jetzt der Store-Weg, oder bleibt die Web-App zusätzlich?
+- **Vertrieb:** App aus dem App Store und Google Play Store. **Entscheidung des Betreibers (19.11.): Der Store-Weg wird gegangen, als Test über ein Jahr, die Investition (Kontogebühren) ist bereitgestellt.** Das ersetzt die frühere Aussage „nicht über den App Store“ (Technik 14). Begründung: Der kleine Tester-Kreis sagt nichts über den Markt aus. Offen: ob die Web-App zusätzlich bleibt.
 - **Ablauf:** Nutzer meldet sich an und stellt alles ein. Vor jeder Einheit muss er ein **Video bis zum Ende ansehen** (Format: Rewarded-Werbung). Bei Abbruch, Schließen oder Neustart der App startet die Einheit nicht.
 - **Bezahlen statt Werbung:** Einmalzahlung (Beispiel 10 € oder 10 $, Preis und Währung offen) blendet die Werbung aus. Muss in den Stores über den Kaufweg von Apple bzw. Google laufen (Provision, siehe oben).
 - **Offline (Entscheidung des Betreibers):** Training ohne Netz ist erlaubt. Das Video wird **beim nächsten Öffnen mit Netz nachgeholt**. Solange ein Video offen ist, ist **alles gesperrt**, auch Ergebnisse und Plan.

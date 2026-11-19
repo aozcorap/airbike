@@ -68,7 +68,7 @@ Liegen in `app-bilder/` (`b1_kampftermin`, `b2_fitnesstest`, `b3_plan`, `b4_alte
 - **Was der Nutzer im Store tut:** Per Link landet er auf der Store-Seite und tippt „Laden“ bzw. „Installieren“. Wer nur das Video sieht, sucht nach dem Namen. Im Abspann deshalb **„Nonstop Boxing“** und das App-Symbol groß zeigen, dazu ein kurzer Satz wie „Jetzt im App Store und bei Google Play“.
 - **Voraussetzungen:** Die App muss in beiden Stores veröffentlicht sein (bei Apple offen, Hauptrisiko Regel 4.2). Es dürfen nur die offiziellen Abzeichen von Apple und Google nach deren Vorgaben genutzt werden (Vorgaben nicht geprüft). Bis dahin zeigt der Abspann nur „Jetzt starten“ mit der Web-Adresse.
 - **Risiko Suche (Vermutung):** Der Name „Nonstop Boxing“ ist nicht auf Marke und Store-Konflikte geprüft (`OFFENE-PUNKTE.md`, Rechtlich 5). Eine ähnlich benannte App könnte die Suche stören.
-- **Offene Frage:** Gilt jetzt der Store-Weg (siehe Werbemodell in `OFFENE-PUNKTE.md`)? Davon hängt ab, ob der Abspann die Abzeichen zeigen kann.
+- **Entschieden (19.11.):** Der Store-Weg gilt (Test über ein Jahr, siehe Werbemodell in `OFFENE-PUNKTE.md`). Für den Trailer wird angenommen, dass Name und Stores verfügbar sind, damit das Gesamtpaket gezeigt werden kann. Abzeichen nur intern nutzen, bis die App wirklich in den Stores steht.
 
 ## Zusätzlich für morgen (vom Betreiber, 18.11. abends)
 
