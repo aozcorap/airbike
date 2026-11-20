@@ -1028,42 +1028,49 @@ function beep(freq, ms, vol = 0.5) {
     /* kein Ton möglich */
   }
 }
-// Holzklopfen: drei kurze, dumpfe Schläge (tiefer Ton, der schnell abfällt, plus ein kurzes Rauschen für den harten Anschlag)
-function knock3() {
+// Holzklopfen: ein Schlag wie mit den Knöcheln auf Holz. Mehrere Töne (Körper des Holzes) mit schnellem Abklingen plus ein kurzer, heller Anschlag.
+// Die Zahlen lassen sich nach Gehör anpassen: Frequenz (Hz), Abklingzeit (s), Lautstärke.
+const KNOCK_PARTIALS = [
+  [520, 0.09, 1],
+  [1180, 0.055, 0.55],
+  [2100, 0.035, 0.3],
+];
+function knock() {
   if (!actx) return;
   try {
-    const t0 = actx.currentTime + 0.02;
-    [0, 0.34, 0.68].forEach((dt) => {
-      const t = t0 + dt;
+    const t = actx.currentTime + 0.005;
+    const master = actx.createGain();
+    master.gain.value = 0.9;
+    master.connect(actx.destination);
+    KNOCK_PARTIALS.forEach(([hz, decay, vol]) => {
       const o = actx.createOscillator();
       const g = actx.createGain();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(380, t);
-      o.frequency.exponentialRampToValueAtTime(130, t + 0.07);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(hz * 1.04, t);
+      o.frequency.exponentialRampToValueAtTime(hz, t + 0.01);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(1, t + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
       o.connect(g);
-      g.connect(actx.destination);
+      g.connect(master);
       o.start(t);
-      o.stop(t + 0.18);
-      const len = Math.floor(actx.sampleRate * 0.03);
-      const buf = actx.createBuffer(1, len, actx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / len);
-      const n = actx.createBufferSource();
-      n.buffer = buf;
-      const f = actx.createBiquadFilter();
-      f.type = 'bandpass';
-      f.frequency.value = 1800;
-      f.Q.value = 0.8;
-      const ng = actx.createGain();
-      ng.gain.value = 0.7;
-      n.connect(f);
-      f.connect(ng);
-      ng.connect(actx.destination);
-      n.start(t);
+      o.stop(t + decay + 0.02);
     });
+    const len = Math.floor(actx.sampleRate * 0.012);
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / len);
+    const n = actx.createBufferSource();
+    n.buffer = buf;
+    const f = actx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 2500;
+    const ng = actx.createGain();
+    ng.gain.value = 1;
+    n.connect(f);
+    f.connect(ng);
+    ng.connect(master);
+    n.start(t);
   } catch {
     /* kein Ton möglich */
   }
@@ -1155,7 +1162,7 @@ function runView(id) {
   let finished = false;
   let lastShownSec = -1;
   let beepedAt = -1;
-  let knockedAt = -1; // Nummer der Pause, für die das Klopfen schon kam
+  let knocked = new Set(); // Sekunden (10, 9, 8), zu denen in dieser Pause schon geklopft wurde
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   function cue(seg) {
@@ -1246,7 +1253,7 @@ function runView(id) {
     el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
-    knockedAt = -1;
+    knocked = new Set();
     if (entry) {
       if (seg.kind === 'rest' && i > 0 && segs[i - 1].label === 'Test-Sprint') showEntry(sprintNo(i - 1));
       else hideEntry();
@@ -1261,12 +1268,12 @@ function runView(id) {
       lastShownSec = remain;
       el.time.textContent = fmt(remain);
       if (!finished) writeRun({ id, i, elapsed: Math.round(elapsed), t: Date.now() }); // Stand merken, einmal pro Sekunde
-      // Dreimaliges Klopfen 10 s vor Ende einer Pause (wie im Boxen das Zeichen für die nächste Runde), nur bei Pausen über 10 s.
-      // Toleranz von 2 s, falls der Takt eine Sekunde auslässt; beim Fortsetzen kurz vor Ende kommt es nicht mehr.
-      if (seg.kind === 'rest' && seg.secs > 10 && remain <= 10 && remain >= 8 && knockedAt !== i && !paused) {
-        knockedAt = i;
-        knock3();
-        vib([60, 90, 60, 90, 60]);
+      // Dreimaliges Klopfen, je ein Schlag pro Sekunde (bei 10, 9 und 8 Sekunden Rest einer Pause), wie im Boxen das Zeichen für die nächste Runde.
+      // Nur bei Pausen über 10 s, nicht bei angehaltenem Timer, jeder Schlag nur einmal pro Pause.
+      if (seg.kind === 'rest' && seg.secs > 10 && remain <= 10 && remain >= 8 && !knocked.has(remain) && !paused) {
+        knocked.add(remain);
+        knock();
+        vib([50]);
       }
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
         beepedAt = remain;
@@ -2803,7 +2810,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 89;
+const APP_BUILD = 90;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
