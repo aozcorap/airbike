@@ -24,6 +24,10 @@ Stand: 18.11.2026. Nächster Schritt: Rückmeldungen der Tester abwarten, dann e
 - Das Intro-Video zeigt den alten Ablauf und bleibt, bis es für live neu gebaut wird
 - Annahme: Im Prototyp testen nur Erwachsene. Das spart die Datenbank-Änderung für Minderjährige, die Elternzustimmung und die Trainerprüfung der Kinderwerte.
 
+## Wichtig (Wunsch des Betreibers, 20.11.): Ablage ordnen
+
+**Einer der wichtigsten offenen Punkte, Umsetzung an einem anderen Tag, nicht vergessen.** Alle Dateien zum Projekt liegen verstreut auf dem Mac des Betreibers (Trailer in den Downloads, App-Bilder in `~/trailer-bilder`, Xcode-Dateien, Belege, Audio, Schnittprojekte). Er will alles an einer zentralen Stelle haben, nach Themen geordnet (Trainingsplan-Original, Trailer, Apple App Store, Google Play, Recht und Geld, Archiv). **Vorschlag und laufendes Verzeichnis:** `docs/ORDNUNG.md` (Zielstruktur, was ins öffentliche Repo darf und was nicht, Liste aller bekannten Dateien mit „behalten, verschieben oder löschen“). Die KI pflegt das Verzeichnis bei jeder neuen Datei und jedem neuen Ordner mit, damit am Projektende klar ist, was weggeworfen werden kann und was wohin gehört. **Vier Entscheidungen des Betreibers stehen noch aus** (Ort des Zentralordners, Umzug des Projekts oder Verweis, Sicherung, Store-Texte im Repo), dann erst Umsetzung. Hinweis: Das Repo ist öffentlich, Passwörter, Rechnungen und das gekaufte PDF gehören nie hinein.
+
 ## B. Für live offen
 
 ### Rechtlich

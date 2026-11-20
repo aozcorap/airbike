@@ -7,6 +7,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 1. `OFFENE-PUNKTE.md`: alle offenen Punkte, Entscheidungen und Annahmen (Prototyp und „live").
 2. `video/trailer/STAND.md`: Arbeitsstand des Werbetrailers (Prompts, Einstellungen, was morgen offen ist). Die Prompts selbst: `video/trailer/higgsfield-prompts.md`, der Ablauf: `video/trailer/storyboard.md`.
 3. `CLAUDE.md`: Regeln für Änderungen an der App.
+4. `docs/ORDNUNG.md`: Wo liegen die Dateien des Projekts, Vorschlag für eine zentrale Ablage, Liste „behalten, verschieben oder löschen“. **Bei jeder neuen Datei oder jedem neuen Ordner (Mac, Repo, Higgsfield, Stores) dort mitpflegen.**
 
 ## Arbeitsweise (Wunsch des Betreibers)
 
