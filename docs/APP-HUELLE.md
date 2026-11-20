@@ -10,7 +10,7 @@ Die Web-App wird mit Capacitor in eine iPhone-App verpackt. Die App selbst bleib
 
 ## Schritte auf dem Mac (Terminal im Projektordner)
 
-1. Branch holen: `git fetch origin claude/laughing-cerf-c9m1eu` und `git checkout claude/laughing-cerf-c9m1eu`
+1. Stand holen: `git checkout main` und `git pull` (die Hülle ist seit Version 85 in `main`)
 2. Node prüfen: `node -v` (mindestens 22)
 3. `npm install`
 4. `npx cap add ios` (legt den Ordner `ios/` an)
