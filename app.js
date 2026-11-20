@@ -1507,9 +1507,17 @@ async function enableNativeNotif() {
     save();
     scheduleReminder();
     route();
+    // Schon abgelehnt: gleich nach dem Tippen ein Fenster, das zu den Einstellungen der App führt (so machen es auch andere iPhone-Apps)
+    if (!state.notify && confirm('Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das iPhone fragt nur einmal. Jetzt die Einstellungen öffnen und Mitteilungen einschalten?')) openAppSettings();
   } catch {
     alert('Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden. Bitte versuche es noch einmal.');
   }
+}
+function openAppSettings() {
+  // springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten)
+  nativePlugin('App')
+    ?.openUrl({ url: 'app-settings:' })
+    .catch(() => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.'));
 }
 async function recheckNotifPermission() {
   if (!awaitingNotif) return;
@@ -2704,10 +2712,7 @@ document.addEventListener('click', (e) => {
       }
       break;
     case 'open-settings':
-      // iPhone-App: springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten)
-      nativePlugin('App')
-        ?.openUrl({ url: 'app-settings:' })
-        .catch(() => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.'));
+      openAppSettings();
       break;
     case 'export':
       download(`nonstop-boxing-sicherung-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(state, null, 2), 'application/json');
@@ -2848,7 +2853,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 92;
+const APP_BUILD = 93;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
