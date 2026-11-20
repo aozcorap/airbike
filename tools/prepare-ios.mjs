@@ -51,7 +51,16 @@ try {
     plist = plist.replace(/<\/dict>\s*<\/plist>\s*$/, '\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n</dict>\n</plist>\n');
     say('Verschlüsselungsangabe ergänzt (ITSAppUsesNonExemptEncryption = false)');
   }
-  const portrait = '<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
+  // 2b. Werbung (AdMob): App-ID und Googles Kennung für die Zuordnung von Anzeigen. Ohne die App-ID stürzt die Werbe-Bibliothek beim Start ab.
+  // Hier steht Googles Beispiel-ID für Test-Anzeigen. Vor der Veröffentlichung durch die eigene AdMob-App-ID ersetzen (auch AD_REWARDED_ID in app.js).
+  if (!plist.includes('GADApplicationIdentifier')) {
+    plist = plist.replace(
+      /<\/dict>\s*<\/plist>\s*$/,
+      '\t<key>GADApplicationIdentifier</key>\n\t<string>ca-app-pub-3940256099942544~1458002511</string>\n\t<key>SKAdNetworkItems</key>\n\t<array>\n\t\t<dict>\n\t\t\t<key>SKAdNetworkIdentifier</key>\n\t\t\t<string>cstr6suwn9.skadnetwork</string>\n\t\t</dict>\n\t</array>\n</dict>\n</plist>\n'
+    );
+    say('Werbung vorbereitet (GADApplicationIdentifier mit Googles Test-App-ID, SKAdNetworkItems)');
+  }
+  const portrait ='<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
   const re = /<key>UISupportedInterfaceOrientations<\/key>\s*<array>[\s\S]*?<\/array>/;
   const found = plist.match(re);
   if (found && /Landscape/.test(found[0])) {
