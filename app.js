@@ -1095,6 +1095,9 @@ function unlockScreen() {
 // Vor der ersten Anzeige fragt die App die Einwilligung (Googles UMP, Nachricht „Nonstop Boxing EU“ in AdMob) und danach die Tracking-Abfrage von Apple (ATT) ab.
 // Noch nicht eingebaut: Knopf zum nachträglichen Ändern der Einwilligung, Sperre bei dauerhaft fehlender Werbung. Ist keine Werbung verfügbar, startet die Einheit trotzdem.
 const AD_REWARDED_ID = 'ca-app-pub-6801495414031100/2952160370';
+// AD_ENABLED = false: Die Werbung ist ganz abgeschaltet (Version 1.0 im App Store, Entscheidung des Betreibers 20.11.2026). Der Datenschutztext passt sich an.
+// Erst auf true stellen, wenn echte Werbung kommt: App im Store, in AdMob den Shop hinzugefügt, Google hat die App geprüft, AD_TESTING dann auf false. Auch img/datenschutz.html von Hand anpassen.
+const AD_ENABLED = false;
 const AD_TESTING = true;
 let adInit = null;
 // Einwilligung, Tracking-Abfrage und Start der Werbe-Bibliothek, einmal pro App-Start. Ergebnis: true = Anzeigen dürfen angefragt werden.
@@ -1118,7 +1121,7 @@ async function adSetup(ad) {
 }
 // Ergebnis: 'ok' (Video gesehen oder keine Werbung verfügbar) oder 'abbruch' (Video vorzeitig geschlossen)
 async function playStartAd() {
-  const ad = nativePlugin('AdMob');
+  const ad = AD_ENABLED ? nativePlugin('AdMob') : null;
   if (!ad) return 'ok';
   try {
     if (!adInit) adInit = adSetup(ad);
@@ -1202,7 +1205,7 @@ function runView(id) {
   let i = resumeAt ? resumeAt.i : 0;
   let elapsed = resumeAt ? Math.max(0, Math.min(Number(resumeAt.elapsed) || 0, segs[i].secs * 1000)) : 0; // ms im aktuellen Segment
   let last = Date.now();
-  let adGate = !resumeAt && Boolean(nativePlugin('AdMob')); // neue Einheit in der iPhone-App: erst das Video
+  let adGate = AD_ENABLED && !resumeAt && Boolean(nativePlugin('AdMob')); // neue Einheit in der iPhone-App: erst das Video
   let adBusy = false;
   let paused = !actx || Boolean(resumeAt) || adGate; // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
   let finished = false;
@@ -2533,10 +2536,10 @@ function legalPrivacy() {
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. [Mail-Anbieter ergänzen]</li></ul>
-  <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. In der Web-Version gibt es keine Werbung und keine Auswertung deines Verhaltens durch Dritte. <b>In der iPhone-App</b> läuft vor einer neuen Einheit ein Werbevideo (Google AdMob). Dafür kann Google Geräte- und Nutzungsdaten verarbeiten, zum Beispiel deine IP-Adresse, Kennungen deines Geräts und Angaben dazu, welche Anzeige gezeigt und angesehen wurde. Ob personalisierte Werbung erlaubt ist, entscheidest du in der Abfrage der App. [Einwilligung und Abfrage noch nicht eingebaut, Werbeanbieter und Rechtsgrundlage prüfen lassen]</p>
+  <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. ${AD_ENABLED ? 'In der Web-Version gibt es keine Werbung und keine Auswertung deines Verhaltens durch Dritte. <b>In der iPhone-App</b> läuft vor einer neuen Einheit ein Werbevideo (Google AdMob). Dafür kann Google Geräte- und Nutzungsdaten verarbeiten, zum Beispiel deine IP-Adresse, Kennungen deines Geräts und Angaben dazu, welche Anzeige gezeigt und angesehen wurde. Ob personalisierte Werbung erlaubt ist, entscheidest du in der Abfrage der App. [Werbeanbieter und Rechtsgrundlage prüfen lassen]' : 'Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.'}</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO). [Prüfen lassen]</p>
   <h2>Alter</h2><p>Dein Geburtsjahr bestimmt deine Altersklasse und damit den Umfang deines Plans. Es gibt kein Mindestalter und keine Einwilligung der Eltern, das Alter wird nicht nachgewiesen. [Rechtlich prüfen lassen: Einwilligung Minderjähriger]</p>
-  <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Meldungen laufen über Supabase zu GitHub. In der iPhone-App erhält außerdem Google (AdMob) die Daten für die Werbung, siehe oben. Wenn du unter „Meine Meldungen“ den Stand abrufst, verbindet sich dein Gerät direkt mit GitHub, das dabei deine IP-Adresse verarbeitet. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
+  <h2>Wer erhält die Daten?</h2><p>Konto und Trainingsdaten liegen bei Supabase (Datenbank in Frankfurt am Main). Die Seite selbst wird über GitHub Pages ausgeliefert. Meldungen laufen über Supabase zu GitHub.${AD_ENABLED ? ' In der iPhone-App erhält außerdem Google (AdMob) die Daten für die Werbung, siehe oben.' : ''} Wenn du unter „Meine Meldungen“ den Stand abrufst, verbindet sich dein Gerät direkt mit GitHub, das dabei deine IP-Adresse verarbeitet. Mit beiden Anbietern sind Auftragsverarbeitungsverträge zu prüfen und die Frage einer Übermittlung in Drittländer zu klären. [Prüfen lassen]</p>
   <h2>Speicherung auf deinem Gerät</h2><p>Die App speichert Einstellungen, Fortschritt und dein Anmelde-Token zusätzlich in deinem Browser (lokaler Speicher), damit sie auch offline funktioniert und du angemeldet bleibst. Beim Abmelden werden diese Daten auf dem Gerät gelöscht.</p>
   <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten in der Datenbank gelöscht. Sicherungskopien und Protokolle des Anbieters können noch eine begrenzte Zeit weiter bestehen. [Fristen prüfen und ergänzen]</p>
   <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
@@ -2945,7 +2948,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 102;
+const APP_BUILD = 103;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
