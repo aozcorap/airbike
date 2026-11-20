@@ -235,7 +235,7 @@ function stepCard(b, no, isRec) {
   const rows = typeof b.steps === 'function' ? blockTargets(b) : [];
   return `<section class="step ${type}">
     <div class="step-head"><span class="step-no">${no}</span><h3>${esc(b.title)}</h3><span class="badge">${badge}</span></div>
-    <div class="pills">${b.repeat > 1 ? `<span class="rep">${b.repeat}×</span>` : ''}${stepPills(steps)}</div>
+    <div class="pills"><span class="rep">${b.repeat}×</span>${stepPills(steps)}</div>
     ${rows.length ? `<table class="targets"><tbody>${rows.join('')}</tbody></table>` : ''}
     ${b.note ? `<div class="note">${esc(b.note)}</div>` : ''}
   </section>`;
@@ -2678,7 +2678,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 86;
+const APP_BUILD = 87;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

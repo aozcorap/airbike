@@ -36,7 +36,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 
 ## Aktueller Stand in einem Satz
 
-Die App (Version 85: Maximalsprints sind seit dem 20.11. altersunabhängig, im Timer nur „MAXIMAL“ ohne Wattzahl) wird jetzt für den **App Store (Apple) und Google Play** vorbereitet, als Test über ein Jahr. Der Apple-Entwicklerzugang (Privatperson) ist aktiv, der App-Eintrag „Nonstop Boxing“ mit Bundle-ID `de.ozcorapci.nonstopboxing` ist angelegt, die App-Hülle läuft im iOS-Simulator (Intro und Anmeldeseite sichtbar, mehr noch nicht geprüft). Google steht noch aus.
+Die App (Version 87, Stand 20.11.: Maximalsprints altersunabhängig, im Timer nur „MAXIMAL“ ohne Wattzahl (85); Plan eingefroren, der Planstart wird gespeichert und der Plan wandert nicht mehr (86, siehe `OFFENE-PUNKTE.md` Technik 20); Wiederholung „1×“ auch bei einmaligen Blöcken (87)) wird jetzt für den **App Store (Apple) und Google Play** vorbereitet, als Test über ein Jahr. Der Apple-Entwicklerzugang (Privatperson) ist aktiv, der App-Eintrag „Nonstop Boxing“ mit Bundle-ID `de.ozcorapci.nonstopboxing` ist angelegt, die App-Hülle läuft im iOS-Simulator (Intro und Anmeldeseite sichtbar, mehr noch nicht geprüft). Google steht noch aus.
 
 ## Stand vom 19.11.2026 (Gespräch mit dem Betreiber)
 
