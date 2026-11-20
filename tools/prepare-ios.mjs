@@ -52,13 +52,18 @@ try {
     say('Verschlüsselungsangabe ergänzt (ITSAppUsesNonExemptEncryption = false)');
   }
   // 2b. Werbung (AdMob): App-ID und Googles Kennung für die Zuordnung von Anzeigen. Ohne die App-ID stürzt die Werbe-Bibliothek beim Start ab.
-  // Hier steht Googles Beispiel-ID für Test-Anzeigen. Vor der Veröffentlichung durch die eigene AdMob-App-ID ersetzen (auch AD_REWARDED_ID in app.js).
+  // Hier steht die eigene AdMob-App-ID des Betreibers (AdMob, Apps, Nonstop Boxing). Der Werbeblock steht als AD_REWARDED_ID in app.js.
+  const ADMOB_APP_ID = 'ca-app-pub-6801495414031100~1462772700';
   if (!plist.includes('GADApplicationIdentifier')) {
     plist = plist.replace(
       /<\/dict>\s*<\/plist>\s*$/,
-      '\t<key>GADApplicationIdentifier</key>\n\t<string>ca-app-pub-3940256099942544~1458002511</string>\n\t<key>SKAdNetworkItems</key>\n\t<array>\n\t\t<dict>\n\t\t\t<key>SKAdNetworkIdentifier</key>\n\t\t\t<string>cstr6suwn9.skadnetwork</string>\n\t\t</dict>\n\t</array>\n</dict>\n</plist>\n'
+      `\t<key>GADApplicationIdentifier</key>\n\t<string>${ADMOB_APP_ID}</string>\n\t<key>SKAdNetworkItems</key>\n\t<array>\n\t\t<dict>\n\t\t\t<key>SKAdNetworkIdentifier</key>\n\t\t\t<string>cstr6suwn9.skadnetwork</string>\n\t\t</dict>\n\t</array>\n</dict>\n</plist>\n`
     );
-    say('Werbung vorbereitet (GADApplicationIdentifier mit Googles Test-App-ID, SKAdNetworkItems)');
+    say('Werbung vorbereitet (GADApplicationIdentifier, SKAdNetworkItems)');
+  } else if (!plist.includes(`<string>${ADMOB_APP_ID}</string>`)) {
+    // Ein früherer Lauf hat eine andere App-ID eingetragen (z. B. Googles Test-ID): ersetzen
+    plist = plist.replace(/(<key>GADApplicationIdentifier<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${ADMOB_APP_ID}$2`);
+    say('AdMob-App-ID in der Info.plist aktualisiert');
   }
   const portrait ='<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
   const re = /<key>UISupportedInterfaceOrientations<\/key>\s*<array>[\s\S]*?<\/array>/;
