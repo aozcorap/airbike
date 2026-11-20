@@ -2298,6 +2298,7 @@ function authMessage() {
 function authError(err) {
   const m = String((err && (err.message || err.code)) || '');
   if (/otp|token has expired|token.*invalid|expired/i.test(m)) return 'Der Code stimmt nicht oder ist abgelaufen. Prüfe die Zahl oder fordere einen neuen Code an.';
+  if (/invalid login credentials|invalid_credentials/i.test(m)) return 'E-Mail oder Passwort stimmt nicht.';
   if (/not confirmed|email_not_confirmed/i.test(m)) return 'Bitte bestätige zuerst deine E-Mail. Schau auch im Spam-Ordner nach.';
   if (/rate limit|too many|over_email_send_rate_limit|over_request_rate_limit/i.test(m)) return 'Zu viele Versuche. Bitte warte kurz und versuche es später noch einmal.';
   if (/database error|saving new user|unexpected_failure/i.test(m)) return 'Die Registrierung ist nicht möglich. Bitte prüfe Alter und Einwilligung.';
@@ -2337,7 +2338,15 @@ function renderAuth(view = 'login') {
       <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Damit meldest du dich an.</p>
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <button class="primary block" style="margin-top:16px" data-act="auth-code">Code senden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="pw">Anmeldung mit Passwort (App-Prüfung)</button>
 ${legalLinks()}`;
+  } else if (view === 'pw') {
+    body = `${authBrand()}${authTabs('login')}${authMessage()}
+      <p class="muted" style="margin:0 0 4px">Nur für die Prüfung der App bei Apple. Alle anderen melden sich mit dem Code an.</p>
+      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="none" value="${em}">
+      <label for="aPw">Passwort</label><input id="aPw" type="password" autocomplete="current-password">
+      <button class="primary block" style="margin-top:16px" data-act="auth-pw">Anmelden</button>
+      <button class="linkbtn" data-act="auth-view" data-v="login">Zurück zur Anmeldung mit Code</button>${legalLinks()}`;
   } else if (view === 'register') {
     body = `${authBrand()}${authTabs('register')}${authMessage()}
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
@@ -2432,6 +2441,25 @@ async function doVerify(btn) {
     if (error || !data?.session?.user) {
       authMsg = authError(error);
       return renderAuth('confirm');
+    }
+    authMsg = '';
+    await startSession(data.session.user);
+  });
+}
+// Anmeldung mit Passwort: nur für das Demo-Konto der App-Prüfung bei Apple
+async function doPassword(btn) {
+  const email = document.getElementById('aEmail').value.trim();
+  const pw = document.getElementById('aPw').value;
+  authEmail = email;
+  if (!/^\S+@\S+\.\S+$/.test(email) || !pw) {
+    authMsg = 'Bitte gib E-Mail-Adresse und Passwort ein.';
+    return renderAuth('pw');
+  }
+  await withBusy(btn, async () => {
+    const { data, error } = await cloud.signInPassword(email, pw);
+    if (error || !data?.session?.user) {
+      authMsg = authError(error);
+      return renderAuth('pw');
     }
     authMsg = '';
     await startSession(data.session.user);
@@ -2582,6 +2610,9 @@ document.addEventListener('click', (e) => {
       break;
     case 'auth-code':
       doCode(t);
+      break;
+    case 'auth-pw':
+      doPassword(t);
       break;
     case 'auth-resend':
       doResend(t);
@@ -2948,7 +2979,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 103;
+const APP_BUILD = 104;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

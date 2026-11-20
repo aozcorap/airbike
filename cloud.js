@@ -28,6 +28,8 @@ export async function currentUser() {
 export const signOut = () => client.auth.signOut();
 export const sendCode = (email, create, data) => client.auth.signInWithOtp({ email, options: { shouldCreateUser: create, ...(data ? { data } : {}) } });
 export const verifyCode = (email, token, type) => client.auth.verifyOtp({ email, token, type });
+// Anmeldung mit Passwort: nur für das Demo-Konto der App-Prüfung bei Apple (alle anderen melden sich mit dem Code an)
+export const signInPassword = (email, password) => client.auth.signInWithPassword({ email, password });
 export const onAuth = (cb) => client.auth.onAuthStateChange(cb);
 
 // Admin-Ansicht: Wer Daten bekommt, entscheidet die Datenbank (Funktionen is_admin und admin_overview, siehe docs/DB-ADMIN.sql)
