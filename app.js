@@ -1091,22 +1091,37 @@ function unlockScreen() {
 // Werbung (nur iPhone-App): Vor jeder neuen Einheit läuft ein Video bis zum Ende.
 // AD_REWARDED_ID ist der eigene Anzeigenblock des Betreibers in AdMob (die App-ID steht in tools/prepare-ios.mjs).
 // AD_TESTING = true: Das Paket nimmt dann Googles Test-Anzeigen und ignoriert die eigene ID (keine echte Werbung, kein Geld, keine ungültigen Klicks auf eigene Anzeigen).
-// Erst auf false stellen, wenn echte Werbung laufen soll (AdMob-Konto genehmigt, Einwilligung und Tracking-Abfrage eingebaut).
-// Noch nicht eingebaut: Einwilligung (EU), Tracking-Abfrage, Sperre bei dauerhaft fehlender Werbung. Ist keine Werbung verfügbar, startet die Einheit trotzdem.
+// Erst auf false stellen, wenn echte Werbung laufen soll (AdMob-Konto von Google genehmigt).
+// Vor der ersten Anzeige fragt die App die Einwilligung (Googles UMP, Nachricht „Nonstop Boxing EU“ in AdMob) und danach die Tracking-Abfrage von Apple (ATT) ab.
+// Noch nicht eingebaut: Knopf zum nachträglichen Ändern der Einwilligung, Sperre bei dauerhaft fehlender Werbung. Ist keine Werbung verfügbar, startet die Einheit trotzdem.
 const AD_REWARDED_ID = 'ca-app-pub-6801495414031100/2952160370';
 const AD_TESTING = true;
 let adInit = null;
+// Einwilligung, Tracking-Abfrage und Start der Werbe-Bibliothek, einmal pro App-Start. Ergebnis: true = Anzeigen dürfen angefragt werden.
+async function adSetup(ad) {
+  let info = await withTimeout(ad.requestConsentInfo(), 10000);
+  if (info.isConsentFormAvailable) info = await ad.showConsentForm(); // zeigt das Fenster nur, wenn eine Einwilligung nötig ist, und wartet auf die Antwort des Nutzers
+  if (!info.canRequestAds) return false;
+  const att = await ad.trackingAuthorizationStatus();
+  if (att && att.status === 'notDetermined') await ad.requestTrackingAuthorization(); // Apple-Fenster, nur einmal
+  await withTimeout(ad.initialize(), 10000);
+  return true;
+}
 // Ergebnis: 'ok' (Video gesehen oder keine Werbung verfügbar) oder 'abbruch' (Video vorzeitig geschlossen)
 async function playStartAd() {
   const ad = nativePlugin('AdMob');
   if (!ad) return 'ok';
   try {
-    if (!adInit) adInit = ad.initialize();
-    await withTimeout(adInit, 8000);
+    if (!adInit) adInit = adSetup(ad);
+    const ready = await adInit;
+    if (!ready) {
+      adInit = null; // ohne Einwilligung keine Anzeige, beim nächsten Mal wieder fragen
+      return 'ok';
+    }
     await withTimeout(ad.prepareRewardVideoAd({ adId: AD_REWARDED_ID, isTesting: AD_TESTING }), 10000);
   } catch {
     adInit = null;
-    return 'ok'; // keine Werbung verfügbar (kein Netz, keine Anzeige): die Einheit nicht sperren
+    return 'ok'; // keine Werbung verfügbar (kein Netz, keine Anzeige, Einwilligung nicht abrufbar): die Einheit nicht sperren
   }
   try {
     await ad.showRewardVideoAd();
@@ -2917,7 +2932,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 98;
+const APP_BUILD = 99;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
