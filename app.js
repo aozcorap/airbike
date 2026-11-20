@@ -1370,7 +1370,7 @@ function runView(id) {
     adBusy = true;
     paused = true;
     el.play.disabled = true;
-    el.play.textContent = 'Werbung …';
+    el.play.textContent = 'Start'; // grau und gesperrt, solange das Video läuft
     const r = await playStartAd();
     adBusy = false;
     if (!document.body.contains(el.play)) return; // Einheit inzwischen verlassen
@@ -2914,7 +2914,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 95;
+const APP_BUILD = 96;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
