@@ -38,9 +38,15 @@ Ursache: Neue Entwicklerkonten brauchen mindestens ein eingetragenes Gerät, dam
 4. Falls das iPhone fragt: Einstellungen, Allgemein, VPN & Geräteverwaltung, Entwicklerprofil, Vertrauen.
 5. Danach den TestFlight-Block noch einmal ausführen.
 
-## Zweiter bekannter Fehler: Upload scheitert mit „Invalid Signature“ (20.11.2026)
+## Zweiter bekannter Fehler: Upload scheitert mit „Invalid Signature“ (20.11.2026, gelöst)
 
-`exportArchive Invalid Signature. ... Cordova.framework ... is not properly signed ... distribution certificate` und `EXPORT FAILED`. Das Archiv selbst ist fertig (`ARCHIVE SUCCEEDED`), nur der automatische Upload nimmt die falsche Signatur. Weg: `open ~/airbike/build/App.xcarchive` öffnet das Archiv im Xcode-Organizer, dort Distribute App, App Store Connect, Distribute, mit „Automatically manage signing“. Fehlt ein Distribution-Zertifikat, lässt man es von Xcode erstellen. Das Skript öffnet den Organizer bei diesem Fehler selbst.
+`exportArchive Invalid Signature. ... Cordova.framework ... is not properly signed ... distribution certificate` und `EXPORT FAILED`. Das Archiv selbst war fertig (`ARCHIVE SUCCEEDED`), nur der Upload scheiterte.
+
+**Ursache (gesichert):** Auf dem Mac gab es nur das Zertifikat „Apple Development“, aber kein „Apple Distribution“. `xcodebuild -exportArchive` legt es nicht selbst an.
+
+**Lösung (gesichert):** Das Zertifikat „Apple Distribution“ für das Team `TMD2LP9S88` anlegen (Xcode, Einstellungen, Konten, Zertifikate verwalten, Plus, Apple Distribution). Danach `npm run ios:testflight` noch einmal ausführen. Am 20.11.2026 um 14:39 lief der Upload damit ohne Fehler durch (`EXPORT SUCCEEDED`, Build 2611201438). Ob ein Zertifikat vorhanden ist, zeigt `security find-identity -v -p codesigning` (es müssen „Apple Development“ und „Apple Distribution“ erscheinen).
+
+Der Weg über den Xcode-Organizer (`open ~/airbike/build/App.xcarchive`, Distribute App) bleibt als Ausweg, falls der Upload später wieder scheitert. Das Skript öffnet den Organizer bei einem Fehler selbst.
 
 ## Wenn etwas nicht klappt
 
