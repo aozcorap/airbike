@@ -22,7 +22,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 ## Technik
 
 - Repo `aozcorap/airbike`, Hosting GitHub Pages: https://aozcorap.github.io/airbike/ . Konto-System: Supabase-Projekt `last-round`.
-- **Branch der Sitzung vom 19.11.: `claude/laughing-cerf-c9m1eu`** (alles gepusht, **nicht in `main` gemergt, kein Pull Request**). Dort liegen Werbemodell, Store-Entscheidungen, App-Hülle (Capacitor) und Trailer-Stand. Neue Sitzungen bekommen oft einen eigenen Branch zugewiesen, dann zuerst den Stand dieses Branchs holen (`git fetch origin claude/laughing-cerf-c9m1eu` und per Merge übernehmen). Älterer Branch: `claude/determined-curie-eu51fq`. Nach jedem Merge den Branch auf `origin/main` zurücksetzen und mit `--force-with-lease` pushen, sonst gibt es nach Squash-Merges Konflikte.
+- **Alles aus der Sitzung vom 19./20.11. ist in `main`** (Pull Request 97, Squash-Merge, Version 85): Werbemodell, Store-Entscheidungen, App-Hülle (Capacitor), Trailer-Stand. Neue Sitzungen bekommen meist einen eigenen Branch zugewiesen, der auf diesem Stand aufbaut (falls nicht, zuerst `main` holen). Branch der letzten Sitzung: `claude/laughing-cerf-c9m1eu`. Älterer Branch: `claude/determined-curie-eu51fq`. Ein Zurücksetzen mit Force-Push wurde von der Berechtigungsprüfung blockiert, stattdessen `main` normal in den Branch mergen. Sonst nach jedem Merge den Branch auf `origin/main` zurücksetzen und mit `--force-with-lease` pushen, sonst gibt es nach Squash-Merges Konflikte.
 - **Sicherheits-Hook:** Bash-Befehle, die `app.js` oder `index.html` lesen oder kopieren, werden blockiert (dort steht die E-Mail-Adresse des Betreibers im Impressum). Dann mit Read, Grep und Edit arbeiten und den Hook nicht umgehen.
 - **Datenbank:** Admin-Funktionen (`is_admin`, `admin_overview`, `admin_delete_user`) sind live in Supabase eingespielt, die Skripte stehen in `docs/DB-ADMIN.sql`. Änderungen an der Datenbank brauchen eine Freigabe in der Oberfläche des Betreibers.
 - **Higgsfield-Anschluss** kann nur lesen (Guthaben, Modelle, fertige Clips). Er erzeugt nichts. Die Clip-Adressen sind in der Sitzung vom Netzwerk gesperrt, geprüft wird über Bildschirmfotos.
@@ -36,7 +36,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 
 ## Aktueller Stand in einem Satz
 
-Die App (Version 84, unverändert) wird jetzt für den **App Store (Apple) und Google Play** vorbereitet, als Test über ein Jahr. Der Apple-Entwicklerzugang (Privatperson) ist aktiv, der App-Eintrag „Nonstop Boxing“ mit Bundle-ID `de.ozcorapci.nonstopboxing` ist angelegt, die App-Hülle läuft im iOS-Simulator (Intro und Anmeldeseite sichtbar, mehr noch nicht geprüft). Google steht noch aus.
+Die App (Version 85: Maximalsprints sind seit dem 20.11. altersunabhängig, im Timer nur „MAXIMAL“ ohne Wattzahl) wird jetzt für den **App Store (Apple) und Google Play** vorbereitet, als Test über ein Jahr. Der Apple-Entwicklerzugang (Privatperson) ist aktiv, der App-Eintrag „Nonstop Boxing“ mit Bundle-ID `de.ozcorapci.nonstopboxing` ist angelegt, die App-Hülle läuft im iOS-Simulator (Intro und Anmeldeseite sichtbar, mehr noch nicht geprüft). Google steht noch aus.
 
 ## Stand vom 19.11.2026 (Gespräch mit dem Betreiber)
 
