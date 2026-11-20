@@ -26,6 +26,18 @@ Dauert einige Minuten. Beim ersten Mal fragt macOS eventuell nach dem Passwort f
 3. Unter **Interne Tests** eine Gruppe anlegen und das eigene Konto hinzufügen. Interne Tester brauchen nach meinem Wissen keine Prüfung durch Apple (nicht bestätigt).
 4. Auf dem iPhone die App **TestFlight** installieren, mit derselben Apple-ID anmelden, „Nonstop Boxing“ installieren.
 
+## Bekannter Fehler beim ersten Mal (am 20.11.2026 aufgetreten)
+
+`Communication with Apple failed: Your team has no devices from which to generate a provisioning profile` und `No profiles for 'de.ozcorapci.nonstopboxing' were found`, danach `ARCHIVE FAILED`.
+
+Ursache: Neue Entwicklerkonten brauchen mindestens ein eingetragenes Gerät, damit Xcode ein Signaturprofil erzeugen darf. Lösung: das echte iPhone einmal anschließen und die App aus Xcode auf dem iPhone starten.
+
+1. iPhone per Kabel anschließen, entsperren, „Diesem Computer vertrauen“ bestätigen.
+2. Am iPhone Entwicklermodus einschalten (Einstellungen, Datenschutz & Sicherheit, Entwicklermodus, danach Neustart). Der Eintrag erscheint erst, wenn das iPhone einmal mit Xcode verbunden war.
+3. In Xcode (`npx cap open ios`) oben das iPhone als Ziel wählen, Start drücken. Xcode trägt das Gerät ein.
+4. Falls das iPhone fragt: Einstellungen, Allgemein, VPN & Geräteverwaltung, Entwicklerprofil, Vertrauen.
+5. Danach den TestFlight-Block noch einmal ausführen.
+
 ## Wenn etwas nicht klappt
 
 - **Fehler beim Bauen oder Hochladen:** die letzten 20 Zeilen der Ausgabe weitergeben.
