@@ -1008,6 +1008,7 @@ function ensureAudio() {
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state !== 'running') actx.resume().catch(() => {}); // auch „interrupted“ (iOS nach Sperre oder Anruf)
+    loadKnocks();
   } catch {
     actx = null;
   }
@@ -1028,49 +1029,35 @@ function beep(freq, ms, vol = 0.5) {
     /* kein Ton möglich */
   }
 }
-// Holzklopfen: ein Schlag wie mit den Knöcheln auf Holz. Mehrere Töne (Körper des Holzes) mit schnellem Abklingen plus ein kurzer, heller Anschlag.
-// Die Zahlen lassen sich nach Gehör anpassen: Frequenz (Hz), Abklingzeit (s), Lautstärke.
-const KNOCK_PARTIALS = [
-  [520, 0.09, 1],
-  [1180, 0.055, 0.55],
-  [2100, 0.035, 0.3],
-];
-function knock() {
-  if (!actx) return;
-  try {
-    const t = actx.currentTime + 0.005;
-    const master = actx.createGain();
-    master.gain.value = 0.9;
-    master.connect(actx.destination);
-    KNOCK_PARTIALS.forEach(([hz, decay, vol]) => {
-      const o = actx.createOscillator();
-      const g = actx.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(hz * 1.04, t);
-      o.frequency.exponentialRampToValueAtTime(hz, t + 0.01);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.002);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-      o.connect(g);
-      g.connect(master);
-      o.start(t);
-      o.stop(t + decay + 0.02);
+// Holzklopfen vor dem Ende einer Pause: drei echte Aufnahmen (Knöchel an der Tür, vom Betreiber aufgenommen), je eine pro Sekunde.
+// Die Dateien werden beim ersten Audio-Start geladen. Solange sie fehlen, kommt ersatzweise ein kurzer Ton.
+const KNOCK_FILES = ['img/ton/klopf1.wav', 'img/ton/klopf2.wav', 'img/ton/klopf3.wav'];
+let knockBuffers = null;
+let knockLoading = false;
+function loadKnocks() {
+  if (knockBuffers || knockLoading || !actx) return;
+  knockLoading = true;
+  const decode = (data) => new Promise((resolve, reject) => actx.decodeAudioData(data, resolve, reject)); // mit Rückruf, damit es auch auf älteren iPhones geht
+  Promise.all(KNOCK_FILES.map((f) => fetch(f).then((r) => r.arrayBuffer()).then(decode)))
+    .then((bufs) => {
+      knockBuffers = bufs;
+    })
+    .catch(() => {
+      knockLoading = false; // beim nächsten Start noch einmal versuchen
     });
-    const len = Math.floor(actx.sampleRate * 0.012);
-    const buf = actx.createBuffer(1, len, actx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / len);
-    const n = actx.createBufferSource();
-    n.buffer = buf;
-    const f = actx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 2500;
-    const ng = actx.createGain();
-    ng.gain.value = 1;
-    n.connect(f);
-    f.connect(ng);
-    ng.connect(master);
-    n.start(t);
+}
+function knock(nr) {
+  if (!actx) return;
+  const buf = knockBuffers && knockBuffers[nr % KNOCK_FILES.length];
+  if (!buf) {
+    beep(420, 80, 0.7);
+    return;
+  }
+  try {
+    const s = actx.createBufferSource();
+    s.buffer = buf;
+    s.connect(actx.destination);
+    s.start();
   } catch {
     /* kein Ton möglich */
   }
@@ -1272,7 +1259,7 @@ function runView(id) {
       // Nur bei Pausen über 10 s, nicht bei angehaltenem Timer, jeder Schlag nur einmal pro Pause.
       if (seg.kind === 'rest' && seg.secs > 10 && remain <= 10 && remain >= 8 && !knocked.has(remain) && !paused) {
         knocked.add(remain);
-        knock();
+        knock(10 - remain);
         vib([50]);
       }
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
@@ -2810,7 +2797,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 90;
+const APP_BUILD = 91;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
