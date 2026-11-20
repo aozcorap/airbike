@@ -1,6 +1,6 @@
 import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, ageBand, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 import * as cloud from './cloud.js';
-import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, DAY } from './plan.js';
+import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, mondayOf, planStartMonday, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
 const KEY = 'redline.v1';
@@ -8,6 +8,7 @@ const DEFAULTS = {
   maxW: 0,
   startDate: '',
   fightDate: '',
+  planBase: '', // eingefrorener Planstart (Montag als Datum), damit der Plan nicht jeden Tag wandert
   freq: 3,
   maxWDate: '',
   sprints: [],
@@ -99,11 +100,25 @@ const userFreq = () => Math.max(1, Math.min(Number(state.freq) || 3, 3)); // Ein
 const effFreq = () => Math.min(userFreq(), profile().hardPerWeek || 3); // davon harte Einheiten
 const wochen = (n) => `${n} ${n === 1 ? 'Woche' : 'Wochen'}`;
 let planCache = { key: '', value: null };
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Plan einfrieren: Der Plan beginnt an dem Montag, an dem er angelegt wurde, und wandert danach nicht mehr
+function freezePlan() {
+  state.planBase = state.fightDate ? ymd(planStartMonday(new Date())) : '';
+}
 function plan() {
-  const key = [state.fightDate, state.startDate, effFreq(), userFreq(), new Date().toDateString()].join('|');
+  // Konten ohne gespeicherten Planstart (vor Version 86): Der Plan bleibt so, wie er in dieser Woche ist (Montag der laufenden Woche)
+  if (state.fightDate && !parseDay(state.planBase)) {
+    state.planBase = ymd(mondayOf(startOfDay(new Date())));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch {
+      /* Speicher blockiert */
+    }
+  }
+  const key = [state.fightDate, state.startDate, state.planBase, effFreq(), userFreq(), new Date().toDateString()].join('|');
   if (planCache.key !== key) {
     dayKeyOf.clear();
-    planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq() }) };
+    planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq(), base: state.fightDate ? state.planBase : '' }) };
   }
   return planCache.value;
 }
@@ -1602,6 +1617,7 @@ function obNext(noDate = false) {
     if (noDate) {
       const n = new Date();
       state.fightDate = '';
+      state.planBase = '';
       state.startDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
       ob.fightDraft = undefined;
     } else {
@@ -1614,6 +1630,7 @@ function obNext(noDate = false) {
         }
         state.fightDate = v;
         state.startDate = '';
+        freezePlan();
         ob.fightDraft = undefined;
       } else if (!state.fightDate && !state.startDate) {
         alert('Trage deinen Kampftermin ein oder wähle „Ich habe noch keinen Termin“.');
@@ -1712,6 +1729,7 @@ function sanitizeImport(obj) {
   c.sprints = Array.isArray(obj.sprints) ? obj.sprints.slice(0, 3).map((v) => num(v, 100, 3000, 0)).filter(Boolean) : [];
   c.startDate = isDayStr(obj.startDate) ? obj.startDate : '';
   c.fightDate = isDayStr(obj.fightDate) ? obj.fightDate : '';
+  c.planBase = c.fightDate && isDayStr(obj.planBase) ? obj.planBase : '';
   c.freq = num(obj.freq, 1, 3, DEFAULTS.freq);
   c.rounds = num(obj.rounds, 3, 12, DEFAULTS.rounds);
   c.roundMin = [0, 2, 3].includes(Number(obj.roundMin)) ? Number(obj.roundMin) : 0;
@@ -2492,6 +2510,7 @@ document.addEventListener('click', (e) => {
       if (confirm('Kampftermin entfernen? Der Plan läuft dann über 10 Wochen ab heute.')) {
         const n = new Date();
         state.fightDate = '';
+        state.planBase = '';
         state.startDate = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
         save();
         scheduleReminder();
@@ -2583,6 +2602,7 @@ document.addEventListener('change', (e) => {
       }
     }
     state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Math.round(Number(t.value)) || 0 : t.value;
+    if (k === 'fightDate') freezePlan();
     if (k === 'maxW') { state.sprints = []; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
     if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
     save();
@@ -2658,7 +2678,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 85;
+const APP_BUILD = 86;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

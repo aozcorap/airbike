@@ -87,7 +87,16 @@ export function tooCloseToFight(date, fight) {
   return Boolean(date && fight && date > addDays(fight, -FIGHT_GAP_DAYS));
 }
 
-export function buildPlan({ today, fightDate, startDate, freq }) {
+// Montag, an dem ein Plan beginnt, der heute angelegt wird. Ab Freitag zählt die laufende Woche nicht mehr, dann ist es der nächste Montag.
+export function planStartMonday(today) {
+  const t0 = startOfDay(today);
+  const thisMon = mondayOf(t0);
+  return (t0.getDay() + 6) % 7 >= 4 ? addDays(thisMon, 7) : thisMon;
+}
+
+// `base` ist der eingefrorene Planstart (Tag als Text, wird auf den Montag der Woche gerundet). Mit `base` bleibt der Plan,
+// wie er beim Eintragen des Kampftermins war, auch wenn Wochen vergehen. Ohne `base` startet er immer ab heute (alte Regel).
+export function buildPlan({ today, fightDate, startDate, freq, base }) {
   const t0 = startOfDay(today);
   const f = Number(freq) || 3;
   let tplNums = templateWeeksFor(MAX_WEEKS);
@@ -102,8 +111,8 @@ export function buildPlan({ today, fightDate, startDate, freq }) {
     if (fight < t0) return { status: 'past', mode, weeks: [], fight, avail: 0, compressed: false, startsIn: 0 };
     const fightMon = mondayOf(fight);
     // Annahme: Ab Freitag zählt die laufende Woche nicht mehr, der Plan beginnt am nächsten Montag (außer der Kampf liegt noch in dieser Woche).
-    const thisMon = mondayOf(t0);
-    const startMon = (t0.getDay() + 6) % 7 >= 4 ? addDays(thisMon, 7) : thisMon;
+    const baseDay = parseDay(base);
+    const startMon = baseDay ? mondayOf(baseDay) : planStartMonday(t0);
     avail = Math.max(1, Math.round((fightMon - startMon) / (7 * DAY)) + 1);
     tplNums = templateWeeksFor(avail);
     mode = 'fight';
