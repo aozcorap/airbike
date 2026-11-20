@@ -1088,6 +1088,31 @@ function unlockScreen() {
   wakeLock = null;
 }
 
+// Test-Werbung (nur iPhone-App): Vor jeder neuen Einheit läuft ein Video bis zum Ende. Es sind Googles Test-Anzeigen, keine echte Werbung und kein Geld.
+// Die IDs sind Googles Platzhalter. Vor der Veröffentlichung durch die eigenen AdMob-IDs ersetzen (App-ID auch in tools/prepare-ios.mjs).
+// Noch nicht eingebaut: Einwilligung (EU), Tracking-Abfrage, Sperre bei dauerhaft fehlender Werbung. Ist keine Werbung verfügbar, startet die Einheit trotzdem.
+const AD_REWARDED_ID = 'ca-app-pub-3940256099942544/1712485313';
+let adInit = null;
+// Ergebnis: 'ok' (Video gesehen oder keine Werbung verfügbar) oder 'abbruch' (Video vorzeitig geschlossen)
+async function playStartAd() {
+  const ad = nativePlugin('AdMob');
+  if (!ad) return 'ok';
+  try {
+    if (!adInit) adInit = ad.initialize();
+    await withTimeout(adInit, 8000);
+    await withTimeout(ad.prepareRewardVideoAd({ adId: AD_REWARDED_ID, isTesting: true }), 10000);
+  } catch {
+    adInit = null;
+    return 'ok'; // keine Werbung verfügbar (kein Netz, keine Anzeige): die Einheit nicht sperren
+  }
+  try {
+    await ad.showRewardVideoAd();
+    return 'ok';
+  } catch (e) {
+    return e && e.code === 'REWARDED_AD_CANCELLED' ? 'abbruch' : 'ok';
+  }
+}
+
 function runView(id) {
   const found = findInPlan(id);
   if (!found) {
@@ -1146,7 +1171,9 @@ function runView(id) {
   let i = resumeAt ? resumeAt.i : 0;
   let elapsed = resumeAt ? Math.max(0, Math.min(Number(resumeAt.elapsed) || 0, segs[i].secs * 1000)) : 0; // ms im aktuellen Segment
   let last = Date.now();
-  let paused = !actx || Boolean(resumeAt); // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
+  let adGate = !resumeAt && Boolean(nativePlugin('AdMob')); // neue Einheit in der iPhone-App: erst das Video
+  let adBusy = false;
+  let paused = !actx || Boolean(resumeAt) || adGate; // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
   let finished = false;
   let lastShownSec = -1;
   let beepedAt = -1;
@@ -1337,9 +1364,34 @@ function runView(id) {
     paintTime();
   }
 
+  // Video vor der Einheit. Danach wartet der Timer auf „Start“ (das Tippen weckt auch den Ton nach dem Video wieder auf).
+  async function runAd() {
+    if (adBusy) return;
+    adBusy = true;
+    paused = true;
+    el.play.disabled = true;
+    el.play.textContent = 'Werbung …';
+    const r = await playStartAd();
+    adBusy = false;
+    if (!document.body.contains(el.play)) return; // Einheit inzwischen verlassen
+    el.play.disabled = false;
+    last = Date.now();
+    if (r === 'abbruch') {
+      el.play.textContent = 'Video ansehen';
+      toast('Bitte sieh das Video bis zum Ende an, dann startet die Einheit.');
+      return;
+    }
+    adGate = false;
+    el.play.textContent = 'Start';
+  }
+
   // Steuerung über globale Delegation (siehe unten)
   runCtl = {
     toggle() {
+      if (adGate) {
+        runAd();
+        return;
+      }
       ensureAudio();
       paused = !paused;
       last = Date.now();
@@ -1347,11 +1399,11 @@ function runView(id) {
       if (!paused) lockScreen();
     },
     prev() {
-      if (finished) return;
+      if (finished || adGate) return;
       goto(elapsed > 2000 ? i : i - 1);
     },
     next() {
-      if (finished) return;
+      if (finished || adGate) return;
       goto(i + 1);
     },
     entryOk: () => entry && entryOk(),
@@ -1365,6 +1417,7 @@ function runView(id) {
     lockScreen();
     last = Date.now();
   }
+  if (adGate) runAd();
   const timer = setInterval(tick, 100);
   const onVis = () => {
     if (document.visibilityState === 'visible' && !paused && !finished) {
@@ -2861,7 +2914,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 94;
+const APP_BUILD = 95;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
