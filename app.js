@@ -697,7 +697,7 @@ let adminState = 'idle'; // idle, loading, ok, denied, error
 const admWhen = (ts) => {
   if (!ts) return '–';
   const d = new Date(String(ts));
-  return Number.isNaN(d.getTime()) ? '–' : d.toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? '–' : d.toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 function adminHtml() {
   if (adminState === 'denied') return '<div class="notice">Kein Zugriff. Diese Ansicht ist nur für Admins.</div>';
@@ -2945,7 +2945,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 101;
+const APP_BUILD = 102;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
