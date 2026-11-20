@@ -1098,9 +1098,17 @@ const AD_REWARDED_ID = 'ca-app-pub-6801495414031100/2952160370';
 const AD_TESTING = true;
 let adInit = null;
 // Einwilligung, Tracking-Abfrage und Start der Werbe-Bibliothek, einmal pro App-Start. Ergebnis: true = Anzeigen dürfen angefragt werden.
+let adNote = ''; // Diagnose für den Testmodus: was Googles Einwilligung gemeldet hat
+const adFail = (why) => {
+  if (AD_TESTING) alert(`Werbung (Test): ${why}${adNote ? `\n${adNote}` : ''}`); // nur im Testmodus, damit man sieht, warum kein Video kommt
+};
 async function adSetup(ad) {
   let info = await withTimeout(ad.requestConsentInfo(), 10000);
-  if (info.isConsentFormAvailable) info = await ad.showConsentForm(); // zeigt das Fenster nur, wenn eine Einwilligung nötig ist, und wartet auf die Antwort des Nutzers
+  adNote = `Einwilligung: Status ${info.status}, Fenster ${info.isConsentFormAvailable ? 'ja' : 'nein'}, Anzeigen erlaubt ${info.canRequestAds ? 'ja' : 'nein'}`;
+  if (info.isConsentFormAvailable) {
+    info = await ad.showConsentForm(); // zeigt das Fenster nur, wenn eine Einwilligung nötig ist, und wartet auf die Antwort des Nutzers
+    adNote += ` | danach: Status ${info.status}, Anzeigen erlaubt ${info.canRequestAds ? 'ja' : 'nein'}`;
+  }
   if (!info.canRequestAds) return false;
   const att = await ad.trackingAuthorizationStatus();
   if (att && att.status === 'notDetermined') await ad.requestTrackingAuthorization(); // Apple-Fenster, nur einmal
@@ -1116,18 +1124,22 @@ async function playStartAd() {
     const ready = await adInit;
     if (!ready) {
       adInit = null; // ohne Einwilligung keine Anzeige, beim nächsten Mal wieder fragen
+      adFail('keine Anzeige, weil die Einwilligung fehlt.');
       return 'ok';
     }
     await withTimeout(ad.prepareRewardVideoAd({ adId: AD_REWARDED_ID, isTesting: AD_TESTING }), 10000);
-  } catch {
+  } catch (e) {
     adInit = null;
+    adFail(`Fehler bei Einwilligung oder Laden: ${String((e && (e.message || e.code)) || e).slice(0, 120)}`);
     return 'ok'; // keine Werbung verfügbar (kein Netz, keine Anzeige, Einwilligung nicht abrufbar): die Einheit nicht sperren
   }
   try {
     await ad.showRewardVideoAd();
     return 'ok';
   } catch (e) {
-    return e && e.code === 'REWARDED_AD_CANCELLED' ? 'abbruch' : 'ok';
+    if (e && e.code === 'REWARDED_AD_CANCELLED') return 'abbruch';
+    adFail(`Video konnte nicht gezeigt werden: ${String((e && (e.message || e.code)) || e).slice(0, 120)}`);
+    return 'ok';
   }
 }
 
@@ -2932,7 +2944,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 99;
+const APP_BUILD = 100;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
