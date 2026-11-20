@@ -65,6 +65,14 @@ try {
     plist = plist.replace(/(<key>GADApplicationIdentifier<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${ADMOB_APP_ID}$2`);
     say('AdMob-App-ID in der Info.plist aktualisiert');
   }
+  // 2c. Text für Apples Tracking-Abfrage (App Tracking Transparency), Pflicht, sobald die App danach fragt (Werbung)
+  if (!plist.includes('NSUserTrackingUsageDescription')) {
+    plist = plist.replace(
+      /<\/dict>\s*<\/plist>\s*$/,
+      '\t<key>NSUserTrackingUsageDescription</key>\n\t<string>Mit deiner Erlaubnis zeigt dir die App Werbung, die besser zu dir passt. Ohne Erlaubnis läuft trotzdem Werbung, nur nicht auf dich zugeschnitten.</string>\n</dict>\n</plist>\n'
+    );
+    say('Text für die Tracking-Abfrage ergänzt (NSUserTrackingUsageDescription)');
+  }
   const portrait ='<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
   const re = /<key>UISupportedInterfaceOrientations<\/key>\s*<array>[\s\S]*?<\/array>/;
   const found = plist.match(re);
