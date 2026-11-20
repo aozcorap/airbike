@@ -38,6 +38,10 @@ Ursache: Neue Entwicklerkonten brauchen mindestens ein eingetragenes Gerät, dam
 4. Falls das iPhone fragt: Einstellungen, Allgemein, VPN & Geräteverwaltung, Entwicklerprofil, Vertrauen.
 5. Danach den TestFlight-Block noch einmal ausführen.
 
+## Zweiter bekannter Fehler: Upload scheitert mit „Invalid Signature“ (20.11.2026)
+
+`exportArchive Invalid Signature. ... Cordova.framework ... is not properly signed ... distribution certificate` und `EXPORT FAILED`. Das Archiv selbst ist fertig (`ARCHIVE SUCCEEDED`), nur der automatische Upload nimmt die falsche Signatur. Weg: `open ~/airbike/build/App.xcarchive` öffnet das Archiv im Xcode-Organizer, dort Distribute App, App Store Connect, Distribute, mit „Automatically manage signing“. Fehlt ein Distribution-Zertifikat, lässt man es von Xcode erstellen. Das Skript öffnet den Organizer bei diesem Fehler selbst.
+
 ## Wenn etwas nicht klappt
 
 - **Fehler beim Bauen oder Hochladen:** die letzten 20 Zeilen der Ausgabe weitergeben.

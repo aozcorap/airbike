@@ -15,6 +15,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 - **Immer nur eine Sache auf einmal.** Keine Aufgabenflut, keine langen To-do-Listen an den Betreiber.
 - **Nach der Freigabe bei App-Änderungen:** Version erhöhen, auf Handyformat prüfen, Pull Request erstellen, mergen und kurz berichten. Das hat der Betreiber bisher meist ausdrücklich verlangt. Im Zweifel kurz fragen.
 - **Texte für Nutzer** auf Deutsch, kurz, ohne Fachsprache.
+- **Der Betreiber will nicht jeden Schritt selbst testen.** Bei iPhone-Funktionen die Aufrufe der Capacitor-Pakete gegen die **echten Typdefinitionen** prüfen (Paket in einem Scratch-Ordner installieren, `definitions.d.ts` und den Swift-Code lesen), nicht gegen selbst gebaute Nachbildungen. Am 20.11. kam ein Fehler, weil ein Test eine erfundene Methode (`App.openUrl`) nachgebildet hatte. Erst nach der eigenen Prüfung den Betreiber bitten, eine Sache auf dem iPhone zu testen, und dann nur noch einen Befehlsblock und eine klare Frage.
 - **Begriffe:** „Prototyp" = geschlossener Tester-Kreis, persönlich eingeladen, nur Erwachsene, kein Geld, keine Werbung. „Live" = öffentlich, mit Werbung, Verkauf oder Kindern.
 - **Entscheidungen des Betreibers nicht eigenmächtig ändern.** Beispiele: Ablauf des Trailers, keine Elternzustimmung, Altersklassen bleiben.
 - **Keine echten E-Mails oder Test-Konten auslösen** ohne Rückfrage (ein früherer Test hat ein Konto in der Datenbank hinterlassen).

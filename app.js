@@ -47,6 +47,15 @@ function save(localOnly = false) {
   }
 }
 
+// App-Hülle (iPhone-App): Dort fehlen Web-Funktionen wie Datei-Download und Benachrichtigung, sie laufen über Capacitor-Pakete.
+// In der Web-Version ist window.Capacitor nicht vorhanden, dann bleibt alles wie bisher.
+function isNativeApp() {
+  return Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+}
+function nativePlugin(name) {
+  return (isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
+}
+
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const DAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 // Kennen wir das Geburtsjahr (noch) nicht, gilt die vorsichtigste Klasse, damit niemand versehentlich einen zu harten Plan bekommt
@@ -859,7 +868,8 @@ function viewSettings() {
   const age = accAge || Number(state.age);
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-  const notifSupported = 'Notification' in window;
+  const nativeNotif = Boolean(nativePlugin('LocalNotifications'));
+  const notifSupported = 'Notification' in window || nativeNotif;
   return `<a href="#/more" class="back">← Mehr</a><h1>Einstellungen</h1>
 
   <h2>Dein Kampf</h2>
@@ -901,7 +911,8 @@ function viewSettings() {
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
-         <p class="muted small">Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.</p>`
+         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : 'Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.'}</p>
+         ${nativeNotif && notifHint ? '<div class="notice" role="alert">Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das Fenster zum Erlauben zeigt das iPhone nur einmal. Tippe auf „Einstellungen öffnen“, wähle dort <b>Mitteilungen</b> und schalte sie ein. Danach kommst du zurück zur App, die Erinnerungen gehen dann von selbst an.<div class="btn-row"><button class="primary" data-act="open-settings">Einstellungen öffnen</button></div></div>' : ''}`
       : ''
   }
 
@@ -998,6 +1009,7 @@ function ensureAudio() {
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state !== 'running') actx.resume().catch(() => {}); // auch „interrupted“ (iOS nach Sperre oder Anruf)
+    loadKnocks();
   } catch {
     actx = null;
   }
@@ -1014,6 +1026,39 @@ function beep(freq, ms, vol = 0.5) {
     g.connect(actx.destination);
     o.start();
     o.stop(actx.currentTime + ms / 1000);
+  } catch {
+    /* kein Ton möglich */
+  }
+}
+// Holzklopfen vor dem Ende einer Pause: drei echte Aufnahmen (Knöchel an der Tür, vom Betreiber aufgenommen), je eine pro Sekunde.
+// Die Dateien werden beim ersten Audio-Start geladen. Solange sie fehlen, kommt ersatzweise ein kurzer Ton.
+const KNOCK_FILES = ['img/ton/klopf1.wav', 'img/ton/klopf2.wav', 'img/ton/klopf3.wav'];
+let knockBuffers = null;
+let knockLoading = false;
+function loadKnocks() {
+  if (knockBuffers || knockLoading || !actx) return;
+  knockLoading = true;
+  const decode = (data) => new Promise((resolve, reject) => actx.decodeAudioData(data, resolve, reject)); // mit Rückruf, damit es auch auf älteren iPhones geht
+  Promise.all(KNOCK_FILES.map((f) => fetch(f).then((r) => r.arrayBuffer()).then(decode)))
+    .then((bufs) => {
+      knockBuffers = bufs;
+    })
+    .catch(() => {
+      knockLoading = false; // beim nächsten Start noch einmal versuchen
+    });
+}
+function knock(nr) {
+  if (!actx) return;
+  const buf = knockBuffers && knockBuffers[nr % KNOCK_FILES.length];
+  if (!buf) {
+    beep(420, 80, 0.7);
+    return;
+  }
+  try {
+    const s = actx.createBufferSource();
+    s.buffer = buf;
+    s.connect(actx.destination);
+    s.start();
   } catch {
     /* kein Ton möglich */
   }
@@ -1105,6 +1150,7 @@ function runView(id) {
   let finished = false;
   let lastShownSec = -1;
   let beepedAt = -1;
+  let knocked = new Set(); // Sekunden (10, 9, 8), zu denen in dieser Pause schon geklopft wurde
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   function cue(seg) {
@@ -1122,7 +1168,14 @@ function runView(id) {
     const t = el.target;
     t.style.fontSize = '';
     let size = parseFloat(getComputedStyle(t).fontSize);
-    for (let n = 0; n < 40 && t.scrollWidth > t.clientWidth + 1 && size > 24; n++) {
+    // Breite des Textes samt Innenabstand links und rechts gegen die Box messen (scrollWidth zählt den rechten Abstand je nach Browser nicht mit)
+    const range = document.createRange();
+    const fits = () => {
+      const cs = getComputedStyle(t);
+      range.selectNodeContents(t);
+      return range.getBoundingClientRect().width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) <= t.clientWidth + 1 && t.scrollWidth <= t.clientWidth + 1;
+    };
+    for (let n = 0; n < 60 && !fits() && size > 24; n++) {
       size *= 0.94;
       t.style.fontSize = `${size}px`;
     }
@@ -1188,6 +1241,7 @@ function runView(id) {
     el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
+    knocked = new Set();
     if (entry) {
       if (seg.kind === 'rest' && i > 0 && segs[i - 1].label === 'Test-Sprint') showEntry(sprintNo(i - 1));
       else hideEntry();
@@ -1202,6 +1256,13 @@ function runView(id) {
       lastShownSec = remain;
       el.time.textContent = fmt(remain);
       if (!finished) writeRun({ id, i, elapsed: Math.round(elapsed), t: Date.now() }); // Stand merken, einmal pro Sekunde
+      // Dreimaliges Klopfen, je ein Schlag pro Sekunde (bei 10, 9 und 8 Sekunden Rest einer Pause), wie im Boxen das Zeichen für die nächste Runde.
+      // Nur bei Pausen über 10 s, nicht bei angehaltenem Timer, jeder Schlag nur einmal pro Pause.
+      if (seg.kind === 'rest' && seg.secs > 10 && remain <= 10 && remain >= 8 && !knocked.has(remain) && !paused) {
+        knocked.add(remain);
+        knock(10 - remain);
+        vib([50]);
+      }
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
         beepedAt = remain;
         beep(820, 90, 0.35);
@@ -1395,7 +1456,19 @@ function buildICS() {
   lines.push('END:VCALENDAR');
   return lines.join('\r\n') + '\r\n'; // die Datei muss mit einem Zeilenumbruch enden
 }
-function download(name, text, type) {
+async function download(name, text, type) {
+  // iPhone-App: Datei in den Zwischenspeicher schreiben und das Teilen-Menü öffnen (dort „In Dateien sichern“, „Kalender“ usw.)
+  const fs = nativePlugin('Filesystem');
+  const share = nativePlugin('Share');
+  if (fs && share) {
+    try {
+      const f = await fs.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+      await share.share({ title: name, url: f.uri });
+    } catch (e) {
+      if (!/cancel/i.test(String((e && e.message) || e))) alert('Die Datei konnte nicht gespeichert werden. Bitte versuche es noch einmal.');
+    }
+    return;
+  }
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
   a.href = url;
@@ -1408,8 +1481,112 @@ function download(name, text, type) {
 
 /* ---------------- In-App-Hinweis ---------------- */
 let reminderTimer = null;
+// iPhone-App: Das Apple-Fenster „Mitteilungen erlauben?“ zeigt iOS nur ein einziges Mal. Wurde es abgelehnt, hilft nur der Weg über die iPhone-Einstellungen.
+// Dann zeigen wir einen Hinweis mit Knopf „Einstellungen öffnen“ und schalten die Erinnerungen von selbst ein, sobald man mit Erlaubnis zurückkommt.
+let notifHint = false;
+let awaitingNotif = false;
+async function enableNativeNotif() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    let st = await ln.checkPermissions();
+    let disp = st && st.display;
+    if (disp === 'prompt' || disp === 'prompt-with-rationale') {
+      st = await ln.requestPermissions();
+      disp = st && st.display;
+    }
+    if (disp === 'granted') {
+      state.notify = true;
+      notifHint = false;
+      awaitingNotif = false;
+    } else {
+      state.notify = false;
+      notifHint = true;
+      awaitingNotif = true;
+    }
+    save();
+    scheduleReminder();
+    route();
+    // Schon abgelehnt: gleich nach dem Tippen ein Fenster, das zu den Einstellungen der App führt (so machen es auch andere iPhone-Apps)
+    if (!state.notify && confirm('Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das iPhone fragt nur einmal. Jetzt die Einstellungen öffnen und Mitteilungen einschalten?')) openAppSettings();
+  } catch (e) {
+    alert(`Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden. Bitte versuche es noch einmal. (${String((e && e.message) || e).slice(0, 80)})`);
+  }
+}
+function openAppSettings() {
+  // springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten); Capacitor-Paket @capacitor/app-launcher, Methode openUrl
+  const hand = () => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.');
+  const launcher = nativePlugin('AppLauncher');
+  if (!launcher || typeof launcher.openUrl !== 'function') {
+    hand();
+    return;
+  }
+  try {
+    launcher.openUrl({ url: 'app-settings:' }).catch(hand);
+  } catch {
+    hand();
+  }
+}
+async function recheckNotifPermission() {
+  if (!awaitingNotif) return;
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    const st = await ln.checkPermissions();
+    if (st && st.display === 'granted') {
+      awaitingNotif = false;
+      notifHint = false;
+      state.notify = true;
+      save();
+      scheduleReminder();
+      route();
+      toast('Erinnerungen sind an');
+    }
+  } catch {
+    /* später noch einmal */
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') recheckNotifPermission();
+});
+window.addEventListener('focus', recheckNotifPermission);
+// iPhone-App: Erinnerungen als echte Mitteilungen des Geräts, auch bei geschlossener App. Geplant werden die nächsten offenen Einheiten.
+let nativeReminderRun = Promise.resolve();
+function scheduleNativeReminders() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  nativeReminderRun = nativeReminderRun.then(async () => {
+    try {
+      const pending = await ln.getPending();
+      if (pending && pending.notifications && pending.notifications.length) await ln.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+      if (!state.notify) return;
+      const [hh, mm] = (state.time || '18:00').split(':').map(Number);
+      const list = [];
+      for (const w of plan().weeks) {
+        if (!w.monday) continue;
+        for (const s of weekOrder(w)) {
+          if (isDone(s.id)) continue;
+          const d = sessionDate(w, dayOf(s));
+          if (!d || tooCloseToFight(d, plan().fight)) continue;
+          const at = new Date(d);
+          at.setHours(hh, mm, 0, 0);
+          if (at.getTime() > Date.now()) list.push({ at, body: `Heute: ${s.title}` });
+        }
+      }
+      list.sort((a, b) => a.at - b.at);
+      const notifications = list.slice(0, 30).map((n, i) => ({ id: i + 1, title: 'Nonstop Boxing', body: n.body, schedule: { at: n.at } }));
+      if (notifications.length) await ln.schedule({ notifications });
+    } catch {
+      /* Erinnerungen nicht möglich, die App läuft trotzdem weiter */
+    }
+  });
+}
 function scheduleReminder() {
   clearTimeout(reminderTimer);
+  if (nativePlugin('LocalNotifications')) {
+    scheduleNativeReminders();
+    return;
+  }
   if (!state.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
   const cw = currentWeek();
   if (!cw) return;
@@ -2529,7 +2706,10 @@ document.addEventListener('click', (e) => {
       if (state.notify) {
         state.notify = false;
         save();
+        scheduleReminder();
         route();
+      } else if (nativePlugin('LocalNotifications')) {
+        enableNativeNotif();
       } else if ('Notification' in window) {
         Notification.requestPermission().then((p) => {
           state.notify = p === 'granted';
@@ -2538,6 +2718,9 @@ document.addEventListener('click', (e) => {
           route();
         });
       }
+      break;
+    case 'open-settings':
+      openAppSettings();
       break;
     case 'export':
       download(`nonstop-boxing-sicherung-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(state, null, 2), 'application/json');
@@ -2678,7 +2861,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 87;
+const APP_BUILD = 94;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });

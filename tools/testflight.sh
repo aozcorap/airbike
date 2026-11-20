@@ -21,7 +21,14 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
   CURRENT_PROJECT_VERSION="$BUILD" -allowProvisioningUpdates archive
 
 echo "== Zu App Store Connect hochladen"
-xcodebuild -exportArchive -archivePath build/App.xcarchive \
-  -exportOptionsPlist tools/ExportOptions.plist -allowProvisioningUpdates
+if ! xcodebuild -exportArchive -archivePath build/App.xcarchive \
+  -exportOptionsPlist tools/ExportOptions.plist -allowProvisioningUpdates; then
+  echo ""
+  echo "== Der automatische Upload ist gescheitert (am 20.11.2026: 'Invalid Signature', App nicht mit Distribution-Zertifikat signiert)."
+  echo "== Das Archiv ist fertig und wird jetzt im Xcode-Organizer geöffnet."
+  echo "== Dort: Archiv wählen, Distribute App, App Store Connect, Distribute. Ein fehlendes Distribution-Zertifikat von Xcode erstellen lassen."
+  open build/App.xcarchive
+  exit 1
+fi
 
 echo "== Fertig. In App Store Connect unter TestFlight erscheint der Build nach der Verarbeitung (einige Minuten)."
