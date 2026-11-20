@@ -1028,6 +1028,46 @@ function beep(freq, ms, vol = 0.5) {
     /* kein Ton möglich */
   }
 }
+// Holzklopfen: drei kurze, dumpfe Schläge (tiefer Ton, der schnell abfällt, plus ein kurzes Rauschen für den harten Anschlag)
+function knock3() {
+  if (!actx) return;
+  try {
+    const t0 = actx.currentTime + 0.02;
+    [0, 0.34, 0.68].forEach((dt) => {
+      const t = t0 + dt;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(380, t);
+      o.frequency.exponentialRampToValueAtTime(130, t + 0.07);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(1, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      o.connect(g);
+      g.connect(actx.destination);
+      o.start(t);
+      o.stop(t + 0.18);
+      const len = Math.floor(actx.sampleRate * 0.03);
+      const buf = actx.createBuffer(1, len, actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let k = 0; k < len; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / len);
+      const n = actx.createBufferSource();
+      n.buffer = buf;
+      const f = actx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 1800;
+      f.Q.value = 0.8;
+      const ng = actx.createGain();
+      ng.gain.value = 0.7;
+      n.connect(f);
+      f.connect(ng);
+      ng.connect(actx.destination);
+      n.start(t);
+    });
+  } catch {
+    /* kein Ton möglich */
+  }
+}
 const vib = (p) => {
   try {
     navigator.vibrate?.(p);
@@ -1115,6 +1155,7 @@ function runView(id) {
   let finished = false;
   let lastShownSec = -1;
   let beepedAt = -1;
+  let knockedAt = -1; // Nummer der Pause, für die das Klopfen schon kam
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   function cue(seg) {
@@ -1132,7 +1173,14 @@ function runView(id) {
     const t = el.target;
     t.style.fontSize = '';
     let size = parseFloat(getComputedStyle(t).fontSize);
-    for (let n = 0; n < 40 && t.scrollWidth > t.clientWidth + 1 && size > 24; n++) {
+    // Breite des Textes samt Innenabstand links und rechts gegen die Box messen (scrollWidth zählt den rechten Abstand je nach Browser nicht mit)
+    const range = document.createRange();
+    const fits = () => {
+      const cs = getComputedStyle(t);
+      range.selectNodeContents(t);
+      return range.getBoundingClientRect().width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) <= t.clientWidth + 1 && t.scrollWidth <= t.clientWidth + 1;
+    };
+    for (let n = 0; n < 60 && !fits() && size > 24; n++) {
       size *= 0.94;
       t.style.fontSize = `${size}px`;
     }
@@ -1198,6 +1246,7 @@ function runView(id) {
     el.next.textContent = nx ? (nx.kind === 'rest' ? `Danach: Pause · ${fmtSecs(nx.secs)}` : `Danach: ${nx.label.replace(/^\d+(?:[.,]\d+)?\s*(?:s|min)\s+/i, '')} · ${fmtSecs(nx.secs)} · ${nx.target.main.replace(/ W$/, '\u00A0W')}`) : 'Letztes Intervall';
     lastShownSec = -1;
     beepedAt = -1;
+    knockedAt = -1;
     if (entry) {
       if (seg.kind === 'rest' && i > 0 && segs[i - 1].label === 'Test-Sprint') showEntry(sprintNo(i - 1));
       else hideEntry();
@@ -1212,6 +1261,13 @@ function runView(id) {
       lastShownSec = remain;
       el.time.textContent = fmt(remain);
       if (!finished) writeRun({ id, i, elapsed: Math.round(elapsed), t: Date.now() }); // Stand merken, einmal pro Sekunde
+      // Dreimaliges Klopfen 10 s vor Ende einer Pause (wie im Boxen das Zeichen für die nächste Runde), nur bei Pausen über 10 s.
+      // Toleranz von 2 s, falls der Takt eine Sekunde auslässt; beim Fortsetzen kurz vor Ende kommt es nicht mehr.
+      if (seg.kind === 'rest' && seg.secs > 10 && remain <= 10 && remain >= 8 && knockedAt !== i && !paused) {
+        knockedAt = i;
+        knock3();
+        vib([60, 90, 60, 90, 60]);
+      }
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
         beepedAt = remain;
         beep(820, 90, 0.35);
@@ -2747,7 +2803,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 88;
+const APP_BUILD = 89;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
