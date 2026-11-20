@@ -60,9 +60,20 @@ Liegen in `app-bilder/` (`b1_kampftermin`, `b2_fitnesstest`, `b3_plan`, `b4_alte
 6. **Musik:** Wenn die KI-Musik im Video bleibt, Nutzungsrechte klären. Bei eigener Musik Lizenz prüfen.
 7. **Rechtliches vor Veröffentlichung:** Rechte am Plan aus dem gekauften PDF, Marke „Nonstop Boxing", Airbike-Foto und Herstellermarke (nur eigene Fotos, nichts aus Händlershops), KI-Kennzeichnung des Videos prüfen.
 
+## Abspann: „Download now“ und Store-Hinweis (Gespräch vom 19.11., nicht entschieden, nichts gebaut)
+
+- **Wunsch des Betreibers:** Im Abspann soll ein „Download now“ stehen, mit Hinweis auf App Store und Google Play.
+- **Links:** Im Video selbst gibt es keinen klickbaren Link. Klickbar wird es nur über die Plattform: Beschreibung, Profil (Instagram, TikTok) oder Knopf bei bezahlter Werbung. Ein QR-Code hilft nur, wenn das Video auf einem anderen Bildschirm läuft (Fernseher, PC), auf dem Handy nicht. Auf dem Handy braucht es die kurze Adresse im Bild und den Link in der Beschreibung.
+- **Ein Link statt zwei (Vorschlag):** Eine Seite, die das Gerät erkennt: iPhone zum App Store, Android zu Google Play, sonst zur Web-App. Das ist die Landingpage aus `OFFENE-PUNKTE.md` (Technik 15), noch nicht gebaut, die Webadresse fehlt.
+- **Was der Nutzer im Store tut:** Per Link landet er auf der Store-Seite und tippt „Laden“ bzw. „Installieren“. Wer nur das Video sieht, sucht nach dem Namen. Im Abspann deshalb **„Nonstop Boxing“** und das App-Symbol groß zeigen, dazu ein kurzer Satz wie „Jetzt im App Store und bei Google Play“.
+- **Voraussetzungen:** Die App muss in beiden Stores veröffentlicht sein (bei Apple offen, Hauptrisiko Regel 4.2). Es dürfen nur die offiziellen Abzeichen von Apple und Google nach deren Vorgaben genutzt werden (Vorgaben nicht geprüft). Bis dahin zeigt der Abspann nur „Jetzt starten“ mit der Web-Adresse.
+- **Risiko Suche (Vermutung):** Der Name „Nonstop Boxing“ ist nicht auf Marke und Store-Konflikte geprüft (`OFFENE-PUNKTE.md`, Rechtlich 5). Eine ähnlich benannte App könnte die Suche stören.
+- **Entschieden (19.11.):** Der Store-Weg gilt (Test über ein Jahr, siehe Werbemodell in `OFFENE-PUNKTE.md`). Für den Trailer wird angenommen, dass Name und Stores verfügbar sind, damit das Gesamtpaket gezeigt werden kann. Abzeichen nur intern nutzen, bis die App wirklich in den Stores steht.
+
 ## Zusätzlich für morgen (vom Betreiber, 18.11. abends)
 
-- **App-Bilder neu aufnehmen, schärfer.** Die drei verwendeten Bilder (Fitness-Test, Plan, Timer) sind in der Auflösung nicht scharf genug. Neu aufnehmen mit höherer Auflösung, z. B. Seitenverhältnis 9:16 bei mindestens 1440×2560 (im Skript `app-bilder/aufnehmen.js` den Wert `deviceScaleFactor` von 3 auf 4 erhöhen oder größeres Fenster nehmen), danach in Higgsfield als Referenzbilder 4 bis 6 ersetzen. Der Prompt bleibt gleich.
+- **ERLEDIGT am 19.11.: App-Bilder neu aufgenommen, 1440×2560** (Skript auf `deviceScaleFactor: 4`, vom Betreiber auf seinem Mac aufgenommen, Fitness-Test, Plan und Timer geprüft und für gut befunden). Das Timer-Bild zeigt „Erweitertes Warm-up, Runde 1 von 4“ mit 540–810 W, bewusst so gelassen. Die neuen Dateien liegen auf dem Mac des Betreibers (`~/trailer-bilder/app`), nicht im Repo (die Bilder in `app-bilder/` sind noch die alten). Noch offen: in Higgsfield die Referenzbilder 4 bis 6 ersetzen (Fitness-Test, Timer, Plan).
+- *(Ursprünglicher Auftrag, erledigt)* **App-Bilder neu aufnehmen, schärfer.** Die drei verwendeten Bilder (Fitness-Test, Plan, Timer) sind in der Auflösung nicht scharf genug. Neu aufnehmen mit höherer Auflösung, z. B. Seitenverhältnis 9:16 bei mindestens 1440×2560 (im Skript `app-bilder/aufnehmen.js` den Wert `deviceScaleFactor` von 3 auf 4 erhöhen oder größeres Fenster nehmen), danach in Higgsfield als Referenzbilder 4 bis 6 ersetzen. Der Prompt bleibt gleich.
 - **„Die Seite entsprechend bauen"** (Wortlaut des Betreibers): Gemeint ist vermutlich die **Webseite mit dem Knopf „Jetzt installieren"** (Landingpage) für den Trailer. Beim Start morgen kurz bestätigen, was genau gemeint ist, bevor gebaut wird.
 - **Installation ohne App Store:** Auf Android ein echter Installieren-Knopf, auf dem iPhone eine geführte Anleitung (Teilen, Zum Home-Bildschirm). Siehe `OFFENE-PUNKTE.md`, Abschnitt Geschäftsmodell und Technik.
 

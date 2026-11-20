@@ -390,7 +390,7 @@ export function fmtSecs(s) {
 }
 
 export function resolveTarget(step, ctx) {
-  // Alter: Alle Watt-Ziele sind ein Anteil des Test-Watts (ageFactor 0,75 bis 1)
+  // Alter: Watt-Bereiche des Plans sind ein Anteil des Test-Watts (ageFactor 0,75 bis 1). Maximalsprints sind davon ausgenommen (siehe unten).
   const f = ctx.ageFactor > 0 && ctx.ageFactor < 1 ? ctx.ageFactor : 1;
   const maxW = (ctx.maxW || 0) * f;
   let aged = false;
@@ -404,18 +404,27 @@ export function resolveTarget(step, ctx) {
   if (step.kind === 'rest') {
     return { main: 'PAUSE', sub: step.txt || 'Vollständige Erholung, nicht weitertreten' };
   }
-  if (step.maxEffort) {
-    if (maxW && step.within) {
-      const top = capW || (f < 1 ? r5(maxW) : maxW);
+  // Maximalsprints (im Plan „maximal“) sind altersunabhängig: nur „MAXIMAL“, kein Wattbereich, keine Alters-Kürzung.
+  // Der Test-Watt ist schon die eigene Höchstleistung. Nur die Obergrenze für Kinder und Jugend (cap) bleibt.
+  const maxStep = step.maxEffort || (step.pct === 100 && step.hold !== undefined && !cap);
+  if (maxStep) {
+    if (maxW && step.within && capW) {
+      const top = capW;
       main = `${r5(top * (1 - step.within / 100))}–${top} W`;
-      sub.push(`Maximal. Halte mindestens ${r5(top * (1 - step.within / 100))} W (${f < 1 ? 'Richtwert für dein Alter' : 'Test-Watt'} ${top} W)`);
+      sub.push(`Maximal. Halte mindestens ${r5(top * (1 - step.within / 100))} W (Test-Watt ${top} W)`);
     } else if (capW) {
       main = `bis ${capW} W`;
       sub.push(`Obergrenze ${cap} % deines Test-Watt`);
     } else {
       main = 'MAXIMAL';
-      sub.push(maxW ? `Dein Test-Watt: ${ctx.maxW} W` : cap ? `höchstens ${cap} % deines Test-Watt` : 'Alles geben');
-      if (step.within) sub.push(`höchstens ${step.within} % unter deinem Test-Watt`);
+      if (!cap && step.hold) {
+        sub.push(`Leistung höchstens ${step.hold} % abfallen lassen`);
+      } else if (!cap && step.within) {
+        sub.push(`höchstens ${step.within} % unter deinem Test-Watt`);
+      } else {
+        sub.push(maxW ? `Dein Test-Watt: ${ctx.maxW} W` : cap ? `höchstens ${cap} % deines Test-Watt` : 'Alles geben');
+        if (step.within) sub.push(`höchstens ${step.within} % unter deinem Test-Watt`);
+      }
     }
   } else if (step.pct !== undefined) {
     const raw = Array.isArray(step.pct) ? step.pct : [step.pct, step.pct];
@@ -438,11 +447,7 @@ export function resolveTarget(step, ctx) {
       if (step.hold) {
         const floor = r5(((maxW * arr[0]) / 100) * (1 - step.hold / 100));
         main = `${floor}–${top} W`;
-        sub.push(
-          raw[0] === 100 && !cap && f === 1
-            ? `Maximal starten (${maxW} W), nicht unter ${floor} W fallen`
-            : `${lbl} von deinem Test-Watt starten, nicht unter ${floor} W fallen`,
-        );
+        sub.push(`${lbl} von deinem Test-Watt starten, nicht unter ${floor} W fallen`);
       } else {
         main = low === top ? `${low} W` : `${low}–${top} W`;
         sub.push(floored || `${lbl} von deinem Test-Watt`);

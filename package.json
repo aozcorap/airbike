@@ -1,0 +1,17 @@
+{
+  "name": "nonstop-boxing-huelle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App-Hülle (Capacitor) für Nonstop Boxing. Die App selbst liegt im Hauptordner (index.html, app.js, ...).",
+  "scripts": {
+    "www": "node tools/build-www.mjs",
+    "sync": "node tools/build-www.mjs && cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}
