@@ -1109,6 +1109,7 @@ async function adSetup(ad) {
     info = await ad.showConsentForm(); // zeigt das Fenster nur, wenn eine Einwilligung nötig ist, und wartet auf die Antwort des Nutzers
     adNote += ` | danach: Status ${info.status}, Anzeigen erlaubt ${info.canRequestAds ? 'ja' : 'nein'}`;
   }
+  if (AD_TESTING) alert(`Werbung (Test), Diagnose:\n${adNote}`); // nur im Testmodus, einmal pro App-Start
   if (!info.canRequestAds) return false;
   const att = await ad.trackingAuthorizationStatus();
   if (att && att.status === 'notDetermined') await ad.requestTrackingAuthorization(); // Apple-Fenster, nur einmal
@@ -2944,7 +2945,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 100;
+const APP_BUILD = 101;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
