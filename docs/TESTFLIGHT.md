@@ -1,6 +1,14 @@
-# TestFlight: Nonstop Boxing auf das iPhone bringen (Stand 20.11.2026, nicht auf dem Mac getestet)
+# TestFlight: Nonstop Boxing auf das iPhone bringen (Stand 20.11.2026)
 
-Ziel: Die App läuft auf dem echten iPhone, ohne den Simulator. Der Simulator des Betreibers erreicht Supabase nicht (Zertifikatswarnung, Ursache auf dem Mac oder im Netz), das iPhone schon.
+**Überholt (Entscheidung des Betreibers, 20.11.2026 abends): TestFlight wird nicht weiter genutzt.** Der Betreiber hat sich aus der internen Gruppe genommen und will keine Tester darüber. Die App kommt direkt aufs iPhone mit:
+
+```bash
+cd ~/airbike && git checkout main && git pull && npm install && npm run ios:iphone
+```
+
+Das Skript `tools/iphone.sh` sucht das gekoppelte iPhone, kopiert die App (`npm run sync`), bereitet das Projekt vor, baut für das Gerät, installiert (`xcrun devicectl device install app`) und startet die App. Das iPhone muss entsperrt und per Kabel oder im selben WLAN erreichbar sein. Der Aufruf ist unabhängig von App Store Connect. Am 20.11.2026 lief es auf dem Mac des Betreibers einmal durch (`BUILD SUCCEEDED`, App installiert und gestartet, Version 95), siehe Abschnitt „Direkt aufs iPhone“ am Ende. Der Rest dieser Datei beschreibt den früheren TestFlight-Weg (Upload mit `npm run ios:testflight`), der weiter funktioniert, falls er später wieder gebraucht wird, und die dabei gefundenen Fehler.
+
+Ziel (früherer Weg): Die App läuft auf dem echten iPhone, ohne den Simulator. Der Simulator des Betreibers erreicht Supabase nicht (Zertifikatswarnung, Ursache auf dem Mac oder im Netz), das iPhone schon.
 
 ## Was vorbereitet ist
 
@@ -60,3 +68,12 @@ Der Weg über den Xcode-Organizer (`open ~/airbike/build/App.xcarchive`, Distrib
 Anmeldung per Code, Plan (Woche 1 ab 16.11., eingefroren), Timer mit Ton, Einheit abhaken, Speichern und Offline, Tastatur, Sicherung und Kalender-Export (vermutlich Probleme, siehe `docs/APP-HUELLE.md`), Erinnerungen (vermutlich Probleme).
 
 Hinweis: Das Hero-Foto mit iStock-Wasserzeichen ist im Build enthalten. Für den internen Test egal, nicht für den Store.
+
+## Direkt aufs iPhone (seit 20.11.2026, ohne TestFlight)
+
+`npm run ios:iphone` (Skript `tools/iphone.sh`). Das Skript nimmt das erste gekoppelte echte iPhone aus `xcrun devicectl list devices`, kopiert die App (`npm run sync`), führt `tools/prepare-ios.mjs` aus, baut mit `xcodebuild` (Debug, Ziel `id=<UDID>`, Ausgabe in `build/iphone`), installiert mit `xcrun devicectl device install app` und startet mit `xcrun devicectl device process launch`.
+
+- **Geprüft (20.11.2026, auf dem Mac des Betreibers, von der KI gestartet):** Der Lauf endete mit `BUILD SUCCEEDED`, `App installed` und `Launched application`, Version 95 mit dem Google-Werbe-Paket. Das iPhone war als „available (paired)“ gelistet.
+- **Nicht geprüft:** ob der gelbe TestFlight-Punkt am Symbol verschwindet, und der Ablauf der Test-Werbung auf dem iPhone.
+- **Wenn kein iPhone gefunden wird:** iPhone entsperren, per Kabel anschließen, „Diesem Computer vertrauen“ bestätigen.
+- **Bei Signierfehlern:** wie oben (Xcode, Konten, Zertifikate). Für diesen Weg reicht das Zertifikat „Apple Development“.
