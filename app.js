@@ -911,7 +911,8 @@ function viewSettings() {
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
-         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : 'Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.'}</p>`
+         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : 'Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.'}</p>
+         ${nativeNotif && notifHint ? '<div class="notice" role="alert">Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das Fenster zum Erlauben zeigt das iPhone nur einmal. Tippe auf „Einstellungen öffnen“, wähle dort <b>Mitteilungen</b> und schalte sie ein. Danach kommst du zurück zur App, die Erinnerungen gehen dann von selbst an.<div class="btn-row"><button class="primary" data-act="open-settings">Einstellungen öffnen</button></div></div>' : ''}`
       : ''
   }
 
@@ -1480,6 +1481,59 @@ async function download(name, text, type) {
 
 /* ---------------- In-App-Hinweis ---------------- */
 let reminderTimer = null;
+// iPhone-App: Das Apple-Fenster „Mitteilungen erlauben?“ zeigt iOS nur ein einziges Mal. Wurde es abgelehnt, hilft nur der Weg über die iPhone-Einstellungen.
+// Dann zeigen wir einen Hinweis mit Knopf „Einstellungen öffnen“ und schalten die Erinnerungen von selbst ein, sobald man mit Erlaubnis zurückkommt.
+let notifHint = false;
+let awaitingNotif = false;
+async function enableNativeNotif() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    let st = await ln.checkPermissions();
+    let disp = st && st.display;
+    if (disp === 'prompt' || disp === 'prompt-with-rationale') {
+      st = await ln.requestPermissions();
+      disp = st && st.display;
+    }
+    if (disp === 'granted') {
+      state.notify = true;
+      notifHint = false;
+      awaitingNotif = false;
+    } else {
+      state.notify = false;
+      notifHint = true;
+      awaitingNotif = true;
+    }
+    save();
+    scheduleReminder();
+    route();
+  } catch {
+    alert('Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden. Bitte versuche es noch einmal.');
+  }
+}
+async function recheckNotifPermission() {
+  if (!awaitingNotif) return;
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    const st = await ln.checkPermissions();
+    if (st && st.display === 'granted') {
+      awaitingNotif = false;
+      notifHint = false;
+      state.notify = true;
+      save();
+      scheduleReminder();
+      route();
+      toast('Erinnerungen sind an');
+    }
+  } catch {
+    /* später noch einmal */
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') recheckNotifPermission();
+});
+window.addEventListener('focus', recheckNotifPermission);
 // iPhone-App: Erinnerungen als echte Mitteilungen des Geräts, auch bei geschlossener App. Geplant werden die nächsten offenen Einheiten.
 let nativeReminderRun = Promise.resolve();
 function scheduleNativeReminders() {
@@ -2639,16 +2693,7 @@ document.addEventListener('click', (e) => {
         scheduleReminder();
         route();
       } else if (nativePlugin('LocalNotifications')) {
-        nativePlugin('LocalNotifications')
-          .requestPermissions()
-          .then((r) => {
-            state.notify = Boolean(r && r.display === 'granted');
-            save();
-            scheduleReminder();
-            route();
-            if (!state.notify) toast('Mitteilungen sind ausgeschaltet. Erlaube sie in den iPhone-Einstellungen für Nonstop Boxing.');
-          })
-          .catch(() => alert('Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden.'));
+        enableNativeNotif();
       } else if ('Notification' in window) {
         Notification.requestPermission().then((p) => {
           state.notify = p === 'granted';
@@ -2657,6 +2702,12 @@ document.addEventListener('click', (e) => {
           route();
         });
       }
+      break;
+    case 'open-settings':
+      // iPhone-App: springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten)
+      nativePlugin('App')
+        ?.openUrl({ url: 'app-settings:' })
+        .catch(() => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.'));
       break;
     case 'export':
       download(`nonstop-boxing-sicherung-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(state, null, 2), 'application/json');
@@ -2797,7 +2848,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 91;
+const APP_BUILD = 92;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
