@@ -25,7 +25,10 @@ Nach jeder Änderung an der App: `npm run sync` und in Xcode neu starten.
 - **Läuft im Simulator** (iPhone 18 Pro, iOS 27.2, Xcode 27.2): Das Intro-Video mit „Ton an“ und „Überspringen“ erscheint, danach die Anmeldeseite mit „Code senden“, Datenschutz und Impressum. Bis dahin nichts weiter geprüft.
 - Beim ersten Start des Simulators stürzten zwei Systemprogramme ab (MobileCal, WidgetRenderer). Das lag am langsamen Erststart des Simulators und betrifft die App nicht.
 - Die Warnung zum Signing („Your team has no devices“) betrifft nur echte iPhones und blockiert den Simulator nicht. Für den Test auf einem echten iPhone muss das iPhone angeschlossen und registriert werden.
-- Alles weitere aus der Liste unten ist noch offen.
+- **Der Simulator des Betreibers erreicht Supabase nicht** (Zertifikatswarnung im Simulator-Safari, Ursache am Mac oder Netz). Deshalb Test auf dem echten iPhone.
+- **Test auf dem echten iPhone (iPhone 14 Pro, aus Xcode gestartet, 20.11.2026):** Anmeldung per Code geht, der Stand kommt aus dem Konto (gleich wie in der Web-Version), Plan und aktueller Lauf stimmen, Timer läuft, Ton kommt (online und offline), Offline-Betrieb funktioniert.
+- **Funktioniert in der Hülle nicht (vom Betreiber bestätigt, in der Web-Version geht es):** Sicherung als Datei: Beim Tippen auf „Sichern“ passiert nichts, in der Web-Version geht es. Wiederherstellen aus einer Datei geht in beiden. Erinnerungen: Der Knopf „Hinweise in der App aktivieren“ fehlt in der Hülle, in der Web-Version ist er da. Beides liegt an fehlenden Web-Funktionen in der Hülle (Datei-Download, Benachrichtigung). Lösung wären Capacitor-Pakete (Dateien/Teilen, Local Notifications), nicht eingebaut. Der Kalender-Export wurde noch nicht geprüft.
+- Weitere Punkte aus der Liste unten sind noch offen (Tastatur im Zeitfeld, Kalender-Export).
 
 ## Was beim Testen im Simulator zu prüfen ist
 
