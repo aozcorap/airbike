@@ -47,6 +47,15 @@ function save(localOnly = false) {
   }
 }
 
+// App-Hülle (iPhone-App): Dort fehlen Web-Funktionen wie Datei-Download und Benachrichtigung, sie laufen über Capacitor-Pakete.
+// In der Web-Version ist window.Capacitor nicht vorhanden, dann bleibt alles wie bisher.
+function isNativeApp() {
+  return Boolean(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+}
+function nativePlugin(name) {
+  return (isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
+}
+
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const DAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 // Kennen wir das Geburtsjahr (noch) nicht, gilt die vorsichtigste Klasse, damit niemand versehentlich einen zu harten Plan bekommt
@@ -859,7 +868,8 @@ function viewSettings() {
   const age = accAge || Number(state.age);
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-  const notifSupported = 'Notification' in window;
+  const nativeNotif = Boolean(nativePlugin('LocalNotifications'));
+  const notifSupported = 'Notification' in window || nativeNotif;
   return `<a href="#/more" class="back">← Mehr</a><h1>Einstellungen</h1>
 
   <h2>Dein Kampf</h2>
@@ -901,7 +911,7 @@ function viewSettings() {
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
-         <p class="muted small">Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.</p>`
+         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : 'Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.'}</p>`
       : ''
   }
 
@@ -1395,7 +1405,19 @@ function buildICS() {
   lines.push('END:VCALENDAR');
   return lines.join('\r\n') + '\r\n'; // die Datei muss mit einem Zeilenumbruch enden
 }
-function download(name, text, type) {
+async function download(name, text, type) {
+  // iPhone-App: Datei in den Zwischenspeicher schreiben und das Teilen-Menü öffnen (dort „In Dateien sichern“, „Kalender“ usw.)
+  const fs = nativePlugin('Filesystem');
+  const share = nativePlugin('Share');
+  if (fs && share) {
+    try {
+      const f = await fs.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+      await share.share({ title: name, url: f.uri });
+    } catch (e) {
+      if (!/cancel/i.test(String((e && e.message) || e))) alert('Die Datei konnte nicht gespeichert werden. Bitte versuche es noch einmal.');
+    }
+    return;
+  }
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
   a.href = url;
@@ -1408,8 +1430,43 @@ function download(name, text, type) {
 
 /* ---------------- In-App-Hinweis ---------------- */
 let reminderTimer = null;
+// iPhone-App: Erinnerungen als echte Mitteilungen des Geräts, auch bei geschlossener App. Geplant werden die nächsten offenen Einheiten.
+let nativeReminderRun = Promise.resolve();
+function scheduleNativeReminders() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  nativeReminderRun = nativeReminderRun.then(async () => {
+    try {
+      const pending = await ln.getPending();
+      if (pending && pending.notifications && pending.notifications.length) await ln.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+      if (!state.notify) return;
+      const [hh, mm] = (state.time || '18:00').split(':').map(Number);
+      const list = [];
+      for (const w of plan().weeks) {
+        if (!w.monday) continue;
+        for (const s of weekOrder(w)) {
+          if (isDone(s.id)) continue;
+          const d = sessionDate(w, dayOf(s));
+          if (!d || tooCloseToFight(d, plan().fight)) continue;
+          const at = new Date(d);
+          at.setHours(hh, mm, 0, 0);
+          if (at.getTime() > Date.now()) list.push({ at, body: `Heute: ${s.title}` });
+        }
+      }
+      list.sort((a, b) => a.at - b.at);
+      const notifications = list.slice(0, 30).map((n, i) => ({ id: i + 1, title: 'Nonstop Boxing', body: n.body, schedule: { at: n.at } }));
+      if (notifications.length) await ln.schedule({ notifications });
+    } catch {
+      /* Erinnerungen nicht möglich, die App läuft trotzdem weiter */
+    }
+  });
+}
 function scheduleReminder() {
   clearTimeout(reminderTimer);
+  if (nativePlugin('LocalNotifications')) {
+    scheduleNativeReminders();
+    return;
+  }
   if (!state.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
   const cw = currentWeek();
   if (!cw) return;
@@ -2529,7 +2586,19 @@ document.addEventListener('click', (e) => {
       if (state.notify) {
         state.notify = false;
         save();
+        scheduleReminder();
         route();
+      } else if (nativePlugin('LocalNotifications')) {
+        nativePlugin('LocalNotifications')
+          .requestPermissions()
+          .then((r) => {
+            state.notify = Boolean(r && r.display === 'granted');
+            save();
+            scheduleReminder();
+            route();
+            if (!state.notify) toast('Mitteilungen sind ausgeschaltet. Erlaube sie in den iPhone-Einstellungen für Nonstop Boxing.');
+          })
+          .catch(() => alert('Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden.'));
       } else if ('Notification' in window) {
         Notification.requestPermission().then((p) => {
           state.notify = p === 'granted';
@@ -2678,7 +2747,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 87;
+const APP_BUILD = 88;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
