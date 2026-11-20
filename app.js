@@ -1509,15 +1509,23 @@ async function enableNativeNotif() {
     route();
     // Schon abgelehnt: gleich nach dem Tippen ein Fenster, das zu den Einstellungen der App führt (so machen es auch andere iPhone-Apps)
     if (!state.notify && confirm('Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das iPhone fragt nur einmal. Jetzt die Einstellungen öffnen und Mitteilungen einschalten?')) openAppSettings();
-  } catch {
-    alert('Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden. Bitte versuche es noch einmal.');
+  } catch (e) {
+    alert(`Die Erlaubnis für Mitteilungen konnte nicht abgefragt werden. Bitte versuche es noch einmal. (${String((e && e.message) || e).slice(0, 80)})`);
   }
 }
 function openAppSettings() {
-  // springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten)
-  nativePlugin('App')
-    ?.openUrl({ url: 'app-settings:' })
-    .catch(() => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.'));
+  // springt direkt zu den Einstellungen dieser App (dort Mitteilungen einschalten); Capacitor-Paket @capacitor/app-launcher, Methode openUrl
+  const hand = () => alert('Öffne bitte die iPhone-Einstellungen, wähle Nonstop Boxing und schalte Mitteilungen ein.');
+  const launcher = nativePlugin('AppLauncher');
+  if (!launcher || typeof launcher.openUrl !== 'function') {
+    hand();
+    return;
+  }
+  try {
+    launcher.openUrl({ url: 'app-settings:' }).catch(hand);
+  } catch {
+    hand();
+  }
 }
 async function recheckNotifPermission() {
   if (!awaitingNotif) return;
@@ -2853,7 +2861,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 93;
+const APP_BUILD = 94;
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
