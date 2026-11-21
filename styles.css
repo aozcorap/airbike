@@ -17,6 +17,8 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Zweimal schnell tippen soll nicht hineinzoomen (Tippen, Scrollen und Zwei-Finger-Zoom bleiben möglich) */
+html, body, #app, button, a, input, select, textarea, label { touch-action: manipulation; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
 body {
   font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
