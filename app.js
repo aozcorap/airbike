@@ -439,7 +439,7 @@ function viewHome() {
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
   ${ageUnknown() ? '<div class="notice"><b>Dein Alter konnte nicht geladen werden.</b> Bis es geladen ist, gilt der vorsichtigste Plan (U13–U14 und jünger). Prüfe deine Verbindung und öffne die App neu.</div>' : ''}${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
-  ${runHtml}${setupCard() || maxWatNotice()}${todayHtml}${nextHtml}${list}`;
+  ${runHtml}${setupCard() || maxWatNotice()}${clubHomeHtml()}${todayHtml}${nextHtml}${list}`;
 }
 
 function viewTest() {
@@ -834,6 +834,7 @@ async function loadGym() {
     gym.data = g.data || null;
     gym.access = a.data || null;
     gym.state = 'ok';
+    clubInfo = { loaded: true, access: gym.access, trainer: Boolean(gym.data) }; // Startseite zeigt den gleichen Stand
   } catch {
     gym.state = 'error';
   }
@@ -1813,9 +1814,78 @@ document.addEventListener('visibilitychange', () => {
 });
 // Einmalige Frage, ob die App erinnern darf (das iPhone zeigt sein eigenes Fenster nur ein einziges Mal, deshalb erst unsere Frage)
 const NOTIFASK_KEY = 'redline.notifask';
+/* ---------------- Vereinscode: Frage nach der Einrichtung und Hinweis auf der Startseite ---------------- */
+const CLUBASK_KEY = 'redline.clubask';
+const CLUBHIDE_KEY = 'redline.clubhide';
+let clubInfo = { loaded: false, access: null, trainer: false };
+async function loadClubInfo() {
+  if (!account) return;
+  try {
+    const [g, a] = await withTimeout(Promise.all([cloud.gymLoad(), cloud.gymAccess()]), 8000);
+    if (g.error || a.error) return;
+    clubInfo = { loaded: true, access: a.data || null, trainer: Boolean(g.data) };
+    if (['', '#', '#/'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
+  } catch {
+    /* ohne Verbindung bleibt der Hinweis einfach weg */
+  }
+}
+function clubHomeHtml() {
+  if (!clubInfo.loaded || clubInfo.trainer) return '';
+  if (clubInfo.access) return `<a class="card link row" href="#/verein"><span class="grow"><span class="chip ok">Dein Verein</span> <b>${esc(clubInfo.access.verein)}</b><br><span class="muted small">Du trainierst ohne Werbung.</span></span><span class="chev" aria-hidden="true">›</span></a>`;
+  let hidden = false;
+  try {
+    hidden = Boolean(localStorage.getItem(CLUBHIDE_KEY));
+  } catch {
+    /* Speicher nicht verfügbar */
+  }
+  if (hidden) return '';
+  return `<div class="card"><b>Du hast einen Vereinscode?</b><p class="muted small" style="margin:6px 0 0">Dein Trainer gibt ihn dir. Dann trainierst du über deinen Verein, ohne Werbung.</p><div class="btn-row"><a class="btn primary" href="#/verein">Code eingeben</a><button class="ghost" data-act="club-hide">Ausblenden</button></div></div>`;
+}
+async function maybeAskClub() {
+  if (!account || document.getElementById('clubask') || document.getElementById('onboard') || document.body.classList.contains('running')) return maybeAskNotif();
+  try {
+    if (localStorage.getItem(CLUBASK_KEY)) return maybeAskNotif();
+    localStorage.setItem(CLUBASK_KEY, '1');
+  } catch {
+    return maybeAskNotif();
+  }
+  if (!clubInfo.loaded) await loadClubInfo();
+  if (clubInfo.access || clubInfo.trainer) return maybeAskNotif();
+  const box = document.createElement('div');
+  box.id = 'clubask';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Vereinscode');
+  box.innerHTML = `<b>Hast du einen Vereinscode?</b><p class="muted small">Dein Trainer gibt dir den Code. Dann trainierst du über deinen Verein, ohne Werbung. Ohne Code geht es einfach weiter.</p><label for="clubCode" class="small" style="margin:0 0 4px">Vereinscode</label><input id="clubCode" type="text" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><p id="clubMsg" class="small" role="alert" style="color:#ff8b99;margin:8px 0 0" hidden></p><div class="btn-row"><button class="primary" data-act="club-ask-go">Code einlösen</button><button class="ghost" data-act="club-ask-later">Ich habe keinen Code</button></div>`;
+  document.body.appendChild(box);
+}
+async function clubAskGo() {
+  const el = document.getElementById('clubCode');
+  const msg = document.getElementById('clubMsg');
+  if (!el || !msg || el.disabled) return;
+  el.disabled = true;
+  msg.hidden = true;
+  try {
+    const { error } = await withTimeout(cloud.gymRedeem(el.value), 12000);
+    if (error) {
+      msg.textContent = gymErr(error);
+      msg.hidden = false;
+      el.disabled = false;
+      return;
+    }
+    document.getElementById('clubask')?.remove();
+    toast('Code eingelöst');
+    clubInfo = { loaded: false, access: null, trainer: false };
+    await loadClubInfo();
+    setTimeout(maybeAskNotif, 600);
+  } catch {
+    msg.textContent = gymErr(null);
+    msg.hidden = false;
+    el.disabled = false;
+  }
+}
 function maybeAskNotif() {
   if (!nativePlugin('LocalNotifications') || !state.onboarded || state.notify) return;
-  if (document.getElementById('notifask') || document.body.classList.contains('running') || document.getElementById('onboard')) return;
+  if (document.getElementById('notifask') || document.getElementById('clubask') || document.body.classList.contains('running') || document.getElementById('onboard')) return;
   try {
     if (localStorage.getItem(NOTIFASK_KEY)) return;
     localStorage.setItem(NOTIFASK_KEY, '1');
@@ -2352,6 +2422,7 @@ async function startSession(user, quick = false) {
   closeAuth();
   route();
   setTimeout(checkReports, 3000);
+  setTimeout(loadClubInfo, 1500);
   cloud.isAdmin().then((v) => {
     if (!account) return;
     account.isAdmin = v;
@@ -2830,7 +2901,22 @@ document.addEventListener('click', (e) => {
     case 'ob-finish':
       closeOnboarding();
       location.hash = '#/';
-      setTimeout(maybeAskNotif, 800);
+      setTimeout(maybeAskClub, 800);
+      break;
+    case 'club-ask-go':
+      clubAskGo();
+      break;
+    case 'club-ask-later':
+      document.getElementById('clubask')?.remove();
+      setTimeout(maybeAskNotif, 300);
+      break;
+    case 'club-hide':
+      try {
+        localStorage.setItem(CLUBHIDE_KEY, '1');
+      } catch {
+        /* Speicher nicht verfügbar */
+      }
+      route();
       break;
     case 'ob-replay':
       startOnboarding(0);
@@ -3190,12 +3276,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 110;
+const APP_BUILD = 111;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code.','Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
