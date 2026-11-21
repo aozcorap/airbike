@@ -2800,6 +2800,15 @@ document.addEventListener('click', (e) => {
     case 'notifask-no':
       document.getElementById('notifask')?.remove();
       break;
+    case 'oldver-store': {
+      const launcher = nativePlugin('AppLauncher');
+      if (launcher && typeof launcher.openUrl === 'function') launcher.openUrl({ url: STORE_URL }).catch(() => {});
+      else window.open(STORE_URL, '_blank');
+      break;
+    }
+    case 'oldver-close':
+      document.getElementById('oldver')?.remove();
+      break;
     case 'news-close':
       document.getElementById('newsnote')?.remove();
       break;
@@ -3073,12 +3082,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 108;
+const APP_BUILD = 109;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
@@ -3110,6 +3119,44 @@ function showNewsNote() {
   document.body.appendChild(bar);
 }
 setTimeout(showNewsNote, 2500);
+// Hinweis für zu alte Versionen (nur iPhone-App): Die App fragt eine kleine Datei im Web (img/mindestversion.json), welche Version mindestens nötig ist.
+// Ist die eigene Version älter, kommt ein Hinweis mit Knopf zum App Store. Zum Auslösen in der Datei "min" erhöhen, z. B. auf "1.2".
+const MINVER_URL = 'https://aozcorap.github.io/airbike/img/mindestversion.json';
+const STORE_URL = 'https://apps.apple.com/app/id6836837991';
+const verParts = (v) => String(v || '0').split('.').map((n) => Number(n) || 0);
+function verLess(a, b) {
+  const x = verParts(a);
+  const y = verParts(b);
+  for (let i = 0; i < 3; i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0);
+  }
+  return false;
+}
+async function checkMinVersion() {
+  if (!isNativeApp()) return;
+  try {
+    const r = await fetch(`${MINVER_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j || typeof j.min !== 'string' || !verLess(APP_VERSION, j.min)) return;
+    showOldVersionNote(typeof j.text === 'string' ? j.text.slice(0, 160) : '');
+  } catch {
+    /* offline oder Datei fehlt: kein Hinweis */
+  }
+}
+function showOldVersionNote(text) {
+  if (document.getElementById('oldver') || document.body.classList.contains('running')) return;
+  const bar = document.createElement('div');
+  bar.id = 'oldver';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = '<span><b>Bitte aktualisiere die App.</b> <span class="oldtxt"></span></span><button class="primary" data-act="oldver-store">Zum App Store</button><button class="ghost" data-act="oldver-close">Später</button>';
+  bar.querySelector('.oldtxt').textContent = text || 'Es gibt eine neue Version im App Store.';
+  document.body.appendChild(bar);
+}
+setTimeout(checkMinVersion, 3000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkMinVersion();
+});
 setInterval(checkForUpdate, 2 * 60 * 1000);
 window.addEventListener('focus', checkForUpdate);
 document.addEventListener('visibilitychange', () => {
