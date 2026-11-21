@@ -65,13 +65,17 @@ try {
     plist = plist.replace(/(<key>GADApplicationIdentifier<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${ADMOB_APP_ID}$2`);
     say('AdMob-App-ID in der Info.plist aktualisiert');
   }
-  // 2c. Text für Apples Tracking-Abfrage (App Tracking Transparency), Pflicht, sobald die App danach fragt (Werbung)
-  if (!plist.includes('NSUserTrackingUsageDescription')) {
-    plist = plist.replace(
-      /<\/dict>\s*<\/plist>\s*$/,
-      '\t<key>NSUserTrackingUsageDescription</key>\n\t<string>Mit deiner Erlaubnis zeigt dir die App Werbung, die besser zu dir passt. Ohne Erlaubnis läuft trotzdem Werbung, nur nicht auf dich zugeschnitten.</string>\n</dict>\n</plist>\n'
-    );
+  // 2c. Tracking-Abfrage (App Tracking Transparency): Version 1.0 hat keine Werbung und fragt nicht nach Tracking.
+  // Der Schlüssel NSUserTrackingUsageDescription verlangt bei App Store Connect eine Tracking-Angabe im App-Datenschutz (sonst scheitert das Einreichen).
+  // Deshalb wird er entfernt, solange ATT_AKTIV false ist. Für Version 1.1 mit Werbung (AD_ENABLED = true in app.js) hier auf true setzen.
+  const ATT_AKTIV = false;
+  const ATT_TEXT = 'Mit deiner Erlaubnis zeigt dir die App Werbung, die besser zu dir passt. Ohne Erlaubnis läuft trotzdem Werbung, nur nicht auf dich zugeschnitten.';
+  if (ATT_AKTIV && !plist.includes('NSUserTrackingUsageDescription')) {
+    plist = plist.replace(/<\/dict>\s*<\/plist>\s*$/, `\t<key>NSUserTrackingUsageDescription</key>\n\t<string>${ATT_TEXT}</string>\n</dict>\n</plist>\n`);
     say('Text für die Tracking-Abfrage ergänzt (NSUserTrackingUsageDescription)');
+  } else if (!ATT_AKTIV && plist.includes('NSUserTrackingUsageDescription')) {
+    plist = plist.replace(/\s*<key>NSUserTrackingUsageDescription<\/key>\s*<string>[^<]*<\/string>/, '');
+    say('Text für die Tracking-Abfrage entfernt (Version ohne Werbung)');
   }
   const portrait ='<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
   const re = /<key>UISupportedInterfaceOrientations<\/key>\s*<array>[\s\S]*?<\/array>/;
