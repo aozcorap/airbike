@@ -774,6 +774,92 @@ async function loadAdmin() {
   }
 }
 
+/* ---------------- Verein (Gym-Konto): Trainer legt Plätze an, Boxer lösen ihren Code ein ---------------- */
+let gym = { state: 'idle', data: null, access: null, busy: false, msg: '' }; // state: idle, loading, ok, error
+const gymErr = (error) => (error && error.code === 'P0001' && error.message ? error.message : 'Das hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.');
+function gymHtml() {
+  if (gym.state === 'loading' || gym.state === 'idle') return '<p class="muted">Lädt …</p>';
+  if (gym.state === 'error') return '<div class="notice">Die Daten konnten nicht geladen werden. Prüfe deine Verbindung.</div><button class="ghost block" data-act="gym-refresh">Erneut versuchen</button>';
+  const msg = gym.msg ? `<div class="notice" role="alert">${esc(gym.msg)}</div>` : '';
+  const d = gym.data;
+  if (d) {
+    const total = Number(d.plaetze_gesamt) || 0;
+    const seats = d.plaetze || [];
+    const full = seats.length >= total;
+    const rows = seats
+      .map(
+        (s) => `<div class="seat"><div class="grow"><b>${esc(s.name)}</b><br><span class="code">${esc(s.code)}</span></div><span class="chip ${s.belegt ? 'ok' : ''}">${s.belegt ? 'Eingelöst' : 'Frei'}</span><button class="ghost seat-del" data-act="gym-del" data-id="${esc(s.id)}" data-name="${esc(s.name)}" aria-label="Platz von ${esc(s.name)} löschen">Löschen</button></div>`,
+      )
+      .join('');
+    return `${msg}<div class="card"><div class="row between"><b>${esc(d.name)}</b><span class="chip ${total ? 'ok' : 'amber'}">${total ? `Paket: ${total} Plätze` : 'Noch kein Paket'}</span></div>
+    <p class="muted small" style="margin:8px 0 0">${total ? `${seats.length} von ${total} Plätzen angelegt. Boxer mit Platz trainieren ohne Werbung.` : 'Ohne Paket kannst du noch keine Plätze anlegen. Der Kauf der Pakete kommt später.'}</p></div>
+    ${seats.length ? `<div class="card seats">${rows}</div>` : ''}
+    <div class="card"><h2 style="margin-top:0">Neuer Platz</h2>
+    <p class="muted small">Für jeden Boxer ein Platz mit eigenem Code. Gib dem Boxer den Code. Verlässt er den Verein, lösche seinen Platz und lege für den Nächsten einen neuen an.</p>
+    <label for="gymSeatName" class="small" style="margin:0 0 4px">Name des Boxers</label>
+    <input id="gymSeatName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Boxer A" ${total && !full ? '' : 'disabled'}>
+    <button class="main block" style="margin-top:10px" data-act="gym-add" ${total && !full && !gym.busy ? '' : 'disabled'}>Platz anlegen</button>
+    ${total && full ? '<p class="muted small" style="margin-bottom:0">Alle Plätze sind vergeben. Lösche einen Platz oder nimm ein größeres Paket.</p>' : ''}</div>
+    ${account && account.isAdmin ? `<div class="card"><h2 style="margin-top:0">Test-Paket (nur für dich)</h2><p class="muted small">Ersetzt den Kauf, solange es ihn noch nicht gibt.</p><div class="btn-row">${[0, 3, 5, 10].map((n) => `<button class="ghost" data-act="gym-pkg" data-n="${n}" ${n === total ? 'aria-pressed="true"' : ''}>${n ? n + ' Plätze' : 'Kein Paket'}</button>`).join('')}</div></div>` : ''}`;
+  }
+  if (gym.access) {
+    return `${msg}<div class="card"><div class="row between"><b>${esc(gym.access.verein)}</b><span class="chip ok">Dein Verein</span></div><p class="muted small" style="margin:8px 0 0">Du trainierst über den Platz deines Vereins, ohne Werbung. Verlässt du den Verein, endet der Zugang, dein Fortschritt bleibt.</p></div>`;
+  }
+  return `${msg}<div class="card"><h2 style="margin-top:0">Ich habe einen Code</h2>
+  <p class="muted small">Dein Trainer hat dir einen Code gegeben? Trag ihn hier ein.</p>
+  <label for="gymCode" class="small" style="margin:0 0 4px">Code</label>
+  <input id="gymCode" type="text" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX">
+  <button class="main block" style="margin-top:10px" data-act="gym-redeem" ${gym.busy ? 'disabled' : ''}>Code einlösen</button></div>
+  <div class="card"><h2 style="margin-top:0">Ich bin Trainer</h2>
+  <p class="muted small">Lege deinen Verein an und gib deinen Boxern je einen eigenen Code. Pakete gibt es für 3, 5 oder 10 Boxer.</p>
+  <label for="gymName" class="small" style="margin:0 0 4px">Name des Vereins</label>
+  <input id="gymName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Boxclub Musterstadt">
+  <button class="main block" style="margin-top:10px" data-act="gym-create" ${gym.busy ? 'disabled' : ''}>Verein anlegen</button></div>`;
+}
+function viewVerein() {
+  if (!account) return '<a href="#/more" class="back">← Mehr</a><h1>Verein</h1><div class="notice">Bitte melde dich zuerst an.</div>';
+  return `<a href="#/more" class="back">← Mehr</a><h1>Verein</h1><div id="gymBody">${gymHtml()}</div>`;
+}
+function gymRender() {
+  if (location.hash !== '#/verein') return;
+  const el = document.getElementById('gymBody');
+  if (el) el.innerHTML = gymHtml();
+}
+async function loadGym() {
+  if (!account) return;
+  if (!gym.data && !gym.access) gym.state = 'loading';
+  try {
+    const [g, a] = await withTimeout(Promise.all([cloud.gymLoad(), cloud.gymAccess()]), 12000);
+    if (g.error || a.error) throw g.error || a.error;
+    gym.data = g.data || null;
+    gym.access = a.data || null;
+    gym.state = 'ok';
+  } catch {
+    gym.state = 'error';
+  }
+  gymRender();
+}
+// Führt eine Gym-Aktion aus und zeigt danach den neuen Stand (die Datenbank liefert ihn gleich mit)
+async function gymDo(fn, okMsg) {
+  if (gym.busy) return;
+  gym.busy = true;
+  gym.msg = '';
+  const request = fn(); // zuerst abschicken (liest die Eingabefelder), dann die Ansicht neu zeichnen
+  gymRender();
+  try {
+    const { error } = await withTimeout(request, 12000);
+    if (error) gym.msg = gymErr(error);
+    else {
+      if (okMsg) toast(okMsg);
+      await loadGym();
+    }
+  } catch {
+    gym.msg = gymErr(null);
+  }
+  gym.busy = false;
+  gymRender();
+}
+
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
@@ -781,6 +867,7 @@ function viewMore() {
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block logout" data-act="logout">Abmelden</button></div>` : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
+  ${account ? row('#/verein', 'Verein', 'Trainer: Plätze für deine Boxer. Boxer: Code einlösen.') : ''}
   ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
@@ -958,13 +1045,14 @@ function route() {
     adminData = null; // Nutzerdaten nicht im Speicher behalten, wenn man die Admin-Ansicht verlässt
     adminState = 'idle';
   }
+  if (view !== 'verein') gym = { state: 'idle', data: null, access: null, busy: false, msg: '' }; // Codes nicht im Speicher behalten
   if (view !== 'feedback') {
     if (view !== 'more') lastRoute = location.hash || '#/'; // zuletzt besuchte Seite vor „Mehr“, dort ist meist der Fehler passiert
     fb = { kind: 'fehler', text: '', sent: false, busy: false };
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'datenschutz', 'impressum', 'news'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'verein', 'datenschutz', 'impressum', 'news'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -987,6 +1075,7 @@ function route() {
     case 'feedback': html = viewFeedback(); break;
     case 'reports': html = viewReports(); loadReports(); break;
     case 'admin': html = viewAdmin(); loadAdmin(); break;
+    case 'verein': html = viewVerein(); loadGym(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -2701,6 +2790,25 @@ document.addEventListener('click', (e) => {
     case 'admin-del':
       adminDelete(t.dataset.id, t.dataset.mail);
       break;
+    case 'gym-refresh':
+      gym.state = 'idle';
+      loadGym();
+      break;
+    case 'gym-create':
+      gymDo(() => cloud.gymCreate(document.getElementById('gymName')?.value || ''), 'Verein angelegt');
+      break;
+    case 'gym-redeem':
+      gymDo(() => cloud.gymRedeem(document.getElementById('gymCode')?.value || ''), 'Code eingelöst');
+      break;
+    case 'gym-add':
+      gymDo(() => cloud.gymAddSeat(document.getElementById('gymSeatName')?.value || ''), 'Platz angelegt');
+      break;
+    case 'gym-del':
+      if (confirm(`Platz von ${t.dataset.name || 'diesem Boxer'} wirklich löschen?\n\nDer Code ist danach ungültig und der Boxer verliert den Zugang über den Verein. Sein Fortschritt bleibt erhalten.`)) gymDo(() => cloud.gymDeleteSeat(t.dataset.id), 'Platz gelöscht');
+      break;
+    case 'gym-pkg':
+      gymDo(() => cloud.gymTestPackage(Number(t.dataset.n)), 'Test-Paket gesetzt');
+      break;
     case 'del-confirm':
       doDeleteConfirm(t);
       break;
@@ -3082,12 +3190,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 109;
+const APP_BUILD = 110;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code.','Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
