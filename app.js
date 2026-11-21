@@ -774,13 +774,14 @@ function viewMore() {
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block logout" data-act="logout">Abmelden</button></div>` : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
+  ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
   ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
   ${account && account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}
   ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
   ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
-  <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_BUILD}</p>`;
+  <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_VERSION} (${APP_BUILD})</p>`;
 }
 
 function viewProgress() {
@@ -953,7 +954,7 @@ function route() {
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'datenschutz', 'impressum'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'datenschutz', 'impressum', 'news'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -979,6 +980,7 @@ function route() {
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
+    case 'news': html = viewNews(); break;
     case 'test': html = viewTest(); break;
     default: html = notFound();
   }
@@ -2577,6 +2579,7 @@ function legalImprint() {
   <h2>Anbieter</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg</p>
   <h2>Kontakt</h2><p>E-Mail: <a href="mailto:ahmet@ozcorapci.de">ahmet@ozcorapci.de</a></p>`;
 }
+const viewNews = () => `<a href="#/more" class="back">← Mehr</a><h1>Das ist neu</h1>${NEUES.map((n) => `<div class="card"><div class="row between"><b>Version ${esc(n.v)}</b><span class="muted small">${esc(n.datum)}</span></div><ul class="news">${n.punkte.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}`;
 const viewLegal = (which) => `<a href="#/more" class="back">← Mehr</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
 
 /* ---------------- Ereignisse ---------------- */
@@ -2709,6 +2712,9 @@ document.addEventListener('click', (e) => {
     case 'fb-again':
       fb = { kind: 'fehler', text: '', sent: false, busy: false };
       route();
+      break;
+    case 'news-close':
+      document.getElementById('newsnote')?.remove();
       break;
     case 'update-reload':
       if (document.body.classList.contains('running') && !confirm('Dein Training läuft noch. Trotzdem neu laden?')) break;
@@ -2979,7 +2985,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 105;
+const APP_BUILD = 106;
+// Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
+const APP_VERSION = '1.0';
+// Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
+const NEUES = [
+  { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
+];
 async function checkForUpdate() {
   try {
     const r = await fetch('sw.js?check=' + Date.now(), { cache: 'no-store' });
@@ -2990,6 +3002,25 @@ async function checkForUpdate() {
   }
 }
 setTimeout(checkForUpdate, 1500);
+// Nach einem Update einmal kurz zeigen, was neu ist (neue Nutzer sehen den Hinweis nicht)
+const SEENVER_KEY = 'redline.seenver';
+function showNewsNote() {
+  let seen = null;
+  try {
+    seen = localStorage.getItem(SEENVER_KEY);
+    if (seen !== APP_VERSION) localStorage.setItem(SEENVER_KEY, APP_VERSION);
+  } catch {
+    return;
+  }
+  if (!seen || seen === APP_VERSION || document.getElementById('newsnote')) return;
+  if (document.body.classList.contains('running')) return;
+  const bar = document.createElement('div');
+  bar.id = 'newsnote';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = `<span><b>Neu in Version ${APP_VERSION}.</b> <a href="#/news" data-act="news-close">Ansehen</a></span><button class="ghost" data-act="news-close">OK</button>`;
+  document.body.appendChild(bar);
+}
+setTimeout(showNewsNote, 2500);
 setInterval(checkForUpdate, 2 * 60 * 1000);
 window.addEventListener('focus', checkForUpdate);
 document.addEventListener('visibilitychange', () => {
