@@ -492,5 +492,21 @@ button.ghost.logout, .btn.ghost.logout { color: #fff; background: linear-gradien
 .seat { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--surface-2); }
 .seat:last-child { border-bottom: 0; }
 .seat .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: .04em; user-select: all; -webkit-user-select: all; }
+.seat { display: block; }
+.seathead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.coderow { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
+.coderow .code { white-space: nowrap; }
+.coderow .seat-del { margin-left: auto; }
+.copybtn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -6px 0 -6px 0; padding: 0; background: transparent; border: 0; border-radius: 12px; color: var(--data); cursor: pointer; }
+.copybtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.copybtn:active { background: var(--surface-2); }
 .seat-del { padding: 8px 12px; min-height: 40px; }
-#gymCode { text-transform: uppercase; letter-spacing: .06em; }
+#gymCode, #clubCode { text-transform: uppercase; letter-spacing: .06em; }
+/* Eingabefelder im Vereinsbereich: dunkler Grund, heller Rahmen, kräftiger Platzhalter (auf dem Kartengrund waren sie kaum zu erkennen) */
+#gymBody input, #clubask input { background: #07090e; border: 1.5px solid #5b6784; font-size: 17px; min-height: 50px; }
+#gymBody input::placeholder, #clubask input::placeholder { color: #8d98b3; opacity: 1; }
+#gymBody input:disabled { opacity: .55; }
+#clubask { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); z-index: 256; padding: 16px; background: #1b1f28; border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-size: 15px; line-height: 1.4; }
+#clubask p { margin: 6px 0 12px; }
+#clubask .btn-row { display: flex; flex-direction: column; gap: 8px; }
+#clubask button { min-height: 48px; width: 100%; }
