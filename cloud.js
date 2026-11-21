@@ -45,6 +45,15 @@ export const adminOverview = () => client.rpc('admin_overview');
 // Konto eines Nutzers löschen (die Datenbank erlaubt es nur Admins und nie für sich selbst oder andere Admins)
 export const adminDeleteUser = (target) => client.rpc('admin_delete_user', { target });
 
+// Gym-Konto (Verein): Plätze, Codes und Zugang prüft die Datenbank (siehe docs/DB-GYM.sql)
+export const gymLoad = () => client.rpc('gym_laden');
+export const gymCreate = (name) => client.rpc('gym_erstellen', { p_name: name });
+export const gymAddSeat = (name) => client.rpc('gym_platz_anlegen', { p_name: name });
+export const gymDeleteSeat = (id) => client.rpc('gym_platz_loeschen', { p_platz: id });
+export const gymRedeem = (code) => client.rpc('gym_code_einloesen', { p_code: code });
+export const gymAccess = () => client.rpc('gym_mein_zugang');
+export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
+
 export async function pullState(userId) {
   const { data, error } = await client.from('user_state').select('state, updated_at').eq('user_id', userId).maybeSingle();
   if (error) throw error;
