@@ -2576,7 +2576,19 @@ function authShell(inner) {
   sheet.innerHTML = `<div class="sheet-in">${inner}</div>`;
   sheet.scrollTop = 0;
 }
-const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="auth-tag">Mehr Kondition bis zur letzten Runde</p>`;
+// Fünf schnelle Tipps auf das Logo öffnen die Passwort-Anmeldung für Apples Prüfer (kein sichtbarer Link, damit Nutzer nicht denken, sie müssten dort tippen)
+const logoTaps = { n: 0, t: 0 };
+function authLogoTap() {
+  if (authView !== 'login') return;
+  const now = Date.now();
+  if (now - logoTaps.t > 2500) logoTaps.n = 0;
+  logoTaps.t = now;
+  if (++logoTaps.n >= 5) {
+    logoTaps.n = 0;
+    renderAuth('pw');
+  }
+}
+const authBrand = () => `<div class="auth-brand" data-act="auth-logo">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="auth-tag">Mehr Kondition bis zur letzten Runde</p>`;
 const authTabs = (on) => `<div class="seg2" role="tablist"><button class="${on === 'login' ? 'sel' : ''}" data-act="auth-view" data-v="login" role="tab">Anmelden</button><button class="${on === 'register' ? 'sel' : ''}" data-act="auth-view" data-v="register" role="tab">Registrieren</button></div>`;
 const legalLinks = () => `<p class="muted small center" style="margin-top:18px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
 
@@ -2594,7 +2606,6 @@ function renderAuth(view = 'login') {
       <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Damit meldest du dich an.</p>
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <button class="primary block" style="margin-top:16px" data-act="auth-code">Code senden</button>
-      <button class="linkbtn" data-act="auth-view" data-v="pw">Anmeldung mit Passwort (App-Prüfung)</button>
 ${legalLinks()}`;
   } else if (view === 'pw') {
     body = `${authBrand()}${authTabs('login')}${authMessage()}
@@ -2855,6 +2866,9 @@ document.addEventListener('click', (e) => {
       }
       break;
     }
+    case 'auth-logo':
+      authLogoTap();
+      break;
     case 'auth-view':
       authMsg = '';
       renderAuth(t.dataset.v);
@@ -3301,12 +3315,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 112;
+const APP_BUILD = 113;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {

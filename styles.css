@@ -118,6 +118,12 @@ input, select {
   font: inherit; width: 100%; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line); border-radius: 12px; padding: 12px;
 }
+/* Eingabefelder und Auswahllisten: dunkler Grund, heller Rahmen, kräftiger Platzhalter (auf dem Kartengrund waren sie kaum zu erkennen) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]), select {
+  background: #07090e; border: 1.5px solid #5b6784;
+}
+input::placeholder { color: #8d98b3; opacity: 1; }
+input:disabled, select:disabled { opacity: .55; }
 /* Zeitfeld: iOS Safari gibt ihm sonst eine eigene Mindestbreite und es ragt über den Rand */
 input[type="time"] { display: block; min-width: 0; max-width: 100%; min-height: 50px; text-align: left; -webkit-appearance: none; appearance: none; }
 input[type="time"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
