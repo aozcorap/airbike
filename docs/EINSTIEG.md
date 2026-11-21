@@ -42,7 +42,7 @@ Die App (Version 94, Stand 20.11.: Maximalsprints altersunabhängig (85); Plan e
 
 ## Stand vom 21.11.2026 (aktuell)
 
-**Version 1.0 der App ist bei Apple zur Prüfung eingereicht (21.11. 06:36, Status „Warten auf Prüfung“, bis zu 48 Stunden).** Ohne Werbung, kostenlos, nur Deutschland, Österreich, Schweiz, Veröffentlichung automatisch nach der Freigabe. Alle Einzelheiten und der Plan für Version 1.1 mit Werbung: `OFFENE-PUNKTE.md`, Eintrag „EINGEREICHT“. Aufs iPhone: `npm run ios:iphone`. Store-Build hochladen: `npm run ios:testflight` (lädt zu App Store Connect hoch, auch wenn TestFlight nicht mehr genutzt wird). Das Passwort des Demo-Kontos für Apples Prüfer steht nicht im Repo, nur in App Store Connect und beim Betreiber.
+**Version 1.0 der App ist bei Apple zur Prüfung eingereicht (21.11. 06:36, Status „Warten auf Prüfung“, bis zu 48 Stunden).** Ohne Werbung, kostenlos, nur Deutschland, Österreich, Schweiz, Veröffentlichung automatisch nach der Freigabe. Alle Einzelheiten und der Plan für Version 1.1 mit Werbung: `OFFENE-PUNKTE.md`, Eintrag „EINGEREICHT“. **Version 1.1 der iPhone-App kommt erst, wenn die Werbung eingeschaltet werden kann; alles, was bis dahin dazukommt, wird gesammelt und in 1.1 mitgeliefert (Entscheidung des Betreibers, 21.11.). Bis dahin kein neuer Store-Build, die Store-App enthält die Web-Dateien fest eingebaut.** Aufs iPhone: `npm run ios:iphone`. Store-Build hochladen: `npm run ios:testflight` (lädt zu App Store Connect hoch, auch wenn TestFlight nicht mehr genutzt wird). Das Passwort des Demo-Kontos für Apples Prüfer steht nicht im Repo, nur in App Store Connect und beim Betreiber.
 
 ## Stand vom 19.11.2026 (Gespräch mit dem Betreiber)
 
