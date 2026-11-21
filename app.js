@@ -17,6 +17,7 @@ const DEFAULTS = {
   done: {},
   days: { s1: 1, rec: 3, s2: 4, s3: 6 },
   time: '18:00',
+  when: '', // wann man trainiert: morgens, mittags, abends (leer = frühere Einstellung: Erinnerung am Trainingstag zur Uhrzeit)
   age: 0,
   notify: false,
   recOpt: 'opt1',
@@ -25,6 +26,12 @@ const DEFAULTS = {
   onboarded: false,
 };
 
+// Trainingszeit → Zeitpunkt der Erinnerung. before = am Vorabend, at = Uhrzeit der Erinnerung, time = Uhrzeit des Trainings (Kalender-Datei)
+const TRAIN_WHEN = {
+  morgens: { name: 'Morgens', time: '07:00', before: true, at: [19, 0], lead: 'Morgen früh', tip: 'Plane den Termin ein.' },
+  mittags: { name: 'Mittags', time: '12:00', before: true, at: [18, 0], lead: 'Morgen Mittag', tip: 'Plane den Termin ein.' },
+  abends: { name: 'Abends', time: '18:00', before: false, at: [8, 0], lead: 'Heute Abend', tip: 'Halte dir den Termin frei.' },
+};
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
@@ -905,7 +912,10 @@ function viewSettings() {
   ${hf ? `<p>Pulsbereich in der Aktiven Erholung: <b>${Math.round(hf * 0.7)}–${Math.round(hf * 0.8)} Schläge pro Minute</b></p><p class="muted small">Das ist ein Richtwert aus dem Alter${accAge ? ' (aus deinem Geburtsjahr)' : ''}.</p>` : ''}
 
   <h2>Erinnerungen</h2>
-  <label for="time">Uhrzeit</label>
+  ${nativeNotif ? `<label for="when">Wann trainierst du?</label>
+  <select id="when" data-set="when"><option value="" ${state.when ? '' : 'selected'}>Erinnerung am Trainingstag zur Uhrzeit</option>${Object.entries(TRAIN_WHEN).map(([k, w]) => `<option value="${k}" ${state.when === k ? 'selected' : ''}>${w.name}</option>`).join('')}</select>
+  <p class="muted small">${state.when === 'abends' ? 'Du wirst am Trainingstag um 8:00 Uhr erinnert, damit du dir den Abend freihältst.' : state.when ? `Du wirst am Abend vorher um ${TRAIN_WHEN[state.when].at[0]}:00 Uhr erinnert, damit du dir den Termin freihältst.` : 'Wähle, wann du trainierst, dann erinnert dich die App zum passenden Zeitpunkt.'}</p>` : ''}
+  <label for="time">Uhrzeit${nativeNotif && state.when ? ' des Trainings (für die Kalender-Datei)' : ''}</label>
   <input id="time" type="time" value="${esc(state.time)}" data-set="time">
   <div class="btn-row"><button class="primary" data-act="ics">Kalender-Datei (.ics) laden</button></div>
   <p class="muted small">Der Kalender erinnert am zuverlässigsten, auch bei geschlossener App. Datei öffnen und in deinen Kalender importieren. Zuerst Kampftermin setzen. Ändert sich dein Plan, lade die Datei neu. Termine aus einer früheren Datei bleiben im Kalender stehen und müssen dort von Hand gelöscht werden.</p>
@@ -1658,8 +1668,15 @@ function scheduleNativeReminders() {
           const d = sessionDate(w, dayOf(s));
           if (!d || tooCloseToFight(d, plan().fight)) continue;
           const at = new Date(d);
-          at.setHours(hh, mm, 0, 0);
-          if (at.getTime() > Date.now()) list.push({ at, body: `Heute: ${s.title}` });
+          const tw = TRAIN_WHEN[state.when];
+          if (tw) {
+            // Je nach Trainingszeit: am Trainingstag morgens (abends trainieren) oder am Vorabend (morgens und mittags trainieren)
+            if (tw.before) at.setDate(at.getDate() - 1);
+            at.setHours(tw.at[0], tw.at[1], 0, 0);
+          } else {
+            at.setHours(hh, mm, 0, 0);
+          }
+          if (at.getTime() > Date.now()) list.push({ at, body: tw ? `${tw.lead}: ${s.title}. ${tw.tip}` : `Heute: ${s.title}` });
         }
       }
       list.sort((a, b) => a.at - b.at);
@@ -1670,7 +1687,8 @@ function scheduleNativeReminders() {
       if (next) {
         const nudge = (days, id, body) => {
           const at = new Date(Date.now() + days * 864e5);
-          at.setHours(hh, mm, 0, 0);
+          if (TRAIN_WHEN[state.when]) at.setHours(8, 0, 0, 0);
+          else at.setHours(hh, mm, 0, 0);
           if (at.getTime() > Date.now()) notifications.push({ id, title: 'Nonstop Boxing', body, badge: 1, schedule: { at } });
         };
         nudge(3, 101, `Dein nächstes Training wartet: ${next.title}`);
@@ -1719,7 +1737,7 @@ function maybeAskNotif() {
   box.id = 'notifask';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', 'Erinnerungen');
-  box.innerHTML = `<b>Soll ich dich ans Training erinnern?</b><p class="muted small">Du bekommst an deinen Trainingstagen um ${esc(state.time || '18:00')} Uhr einen kurzen Hinweis und eine Erinnerung, wenn du ein paar Tage nicht da warst. Das kannst du jederzeit in den Einstellungen ändern.</p><div class="btn-row"><button class="primary" data-act="notifask-yes">Ja, erinnere mich</button><button class="ghost" data-act="notifask-no">Nicht jetzt</button></div>`;
+  box.innerHTML = `<b>Soll ich dich ans Training erinnern?</b><p class="muted small">Wann trainierst du meistens? Ich erinnere dich rechtzeitig, damit du dir den Termin freihältst, und melde mich, wenn du ein paar Tage nicht da warst. Das kannst du jederzeit in den Einstellungen ändern.</p><div class="btn-row">${Object.entries(TRAIN_WHEN).map(([k, w]) => `<button class="primary" data-act="notifask-when" data-w="${k}">${w.name}</button>`).join('')}<button class="ghost" data-act="notifask-no">Nicht jetzt</button></div>`;
   document.body.appendChild(box);
 }
 setTimeout(maybeAskNotif, 4000);
@@ -2056,6 +2074,7 @@ function sanitizeImport(obj) {
   c.time = typeof obj.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(obj.time) ? obj.time : DEFAULTS.time;
   for (const k of Object.keys(DEFAULTS.days)) c.days[k] = num(isObj(obj.days) ? obj.days[k] : undefined, 1, 7, DEFAULTS.days[k]);
   c.notify = obj.notify === true;
+  c.when = typeof obj.when === 'string' && TRAIN_WHEN[obj.when] ? obj.when : '';
   c.onboarded = obj.onboarded === true;
   c.recOpt = Object.hasOwn(RECOVERY_OPTIONS, obj.recOpt) ? obj.recOpt : DEFAULTS.recOpt;
   c.profile = Object.hasOwn(PROFILES, obj.profile) ? obj.profile : DEFAULTS.profile;
@@ -2767,10 +2786,17 @@ document.addEventListener('click', (e) => {
       fb = { kind: 'fehler', text: '', sent: false, busy: false };
       route();
       break;
-    case 'notifask-yes':
+    case 'notifask-when': {
+      const w = TRAIN_WHEN[t.dataset.w];
       document.getElementById('notifask')?.remove();
+      if (w) {
+        state.when = t.dataset.w;
+        state.time = w.time;
+        save();
+      }
       enableNativeNotif();
       break;
+    }
     case 'notifask-no':
       document.getElementById('notifask')?.remove();
       break;
@@ -2970,6 +2996,7 @@ document.addEventListener('change', (e) => {
       }
     }
     state[k] = ['maxW', 'age', 'freq', 'rounds', 'roundMin'].includes(k) ? Math.round(Number(t.value)) || 0 : t.value;
+    if (k === 'when' && TRAIN_WHEN[t.value]) state.time = TRAIN_WHEN[t.value].time;
     if (k === 'fightDate') freezePlan();
     if (k === 'maxW') { state.sprints = []; state.maxWDate = state.maxW ? new Date().toISOString() : ''; }
     if (k === 'profile' && PROFILES[t.value] && PROFILES[t.value].roundSecs) state.roundMin = PROFILES[t.value].roundSecs / 60;
@@ -3046,12 +3073,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 107;
+const APP_BUILD = 108;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt jetzt, ob sie dich ans Training erinnern darf.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
