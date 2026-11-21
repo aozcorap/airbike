@@ -2576,21 +2576,9 @@ function authShell(inner) {
   sheet.innerHTML = `<div class="sheet-in">${inner}</div>`;
   sheet.scrollTop = 0;
 }
-// Fünf schnelle Tipps auf das Logo öffnen die Passwort-Anmeldung für Apples Prüfer (kein sichtbarer Link, damit Nutzer nicht denken, sie müssten dort tippen)
-const logoTaps = { n: 0, t: 0 };
-function authLogoTap() {
-  if (authView !== 'login') return;
-  const now = Date.now();
-  if (now - logoTaps.t > 2500) logoTaps.n = 0;
-  logoTaps.t = now;
-  if (++logoTaps.n >= 5) {
-    logoTaps.n = 0;
-    renderAuth('pw');
-  }
-}
-const authBrand = () => `<div class="auth-brand" data-act="auth-logo">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="auth-tag">Mehr Kondition bis zur letzten Runde</p>`;
+const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i>${APP_NAME_B}</i></b></div><p class="auth-tag">Mehr Kondition bis zur letzten Runde</p>`;
 const authTabs = (on) => `<div class="seg2" role="tablist"><button class="${on === 'login' ? 'sel' : ''}" data-act="auth-view" data-v="login" role="tab">Anmelden</button><button class="${on === 'register' ? 'sel' : ''}" data-act="auth-view" data-v="register" role="tab">Registrieren</button></div>`;
-const legalLinks = () => `<p class="muted small center" style="margin-top:18px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
+const legalLinks = (top = 18) => `<p class="muted small center" style="margin-top:${top}px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
 
 function renderAuth(view = 'login') {
   const prevEmail = document.getElementById('aEmail')?.value;
@@ -2606,7 +2594,8 @@ function renderAuth(view = 'login') {
       <p class="muted" style="margin:0 0 4px">Wir schicken dir einen Code per E-Mail. Damit meldest du dich an.</p>
       <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
       <button class="primary block" style="margin-top:16px" data-act="auth-code">Code senden</button>
-${legalLinks()}`;
+      <p class="muted small center" style="margin-top:18px"><a href="#" data-act="auth-view" data-v="pw">Anmeldung mit Passwort (App-Prüfung)</a></p>
+${legalLinks(6)}`;
   } else if (view === 'pw') {
     body = `${authBrand()}${authTabs('login')}${authMessage()}
       <p class="muted" style="margin:0 0 4px">Nur für die Prüfung der App bei Apple. Alle anderen melden sich mit dem Code an.</p>
@@ -2866,9 +2855,6 @@ document.addEventListener('click', (e) => {
       }
       break;
     }
-    case 'auth-logo':
-      authLogoTap();
-      break;
     case 'auth-view':
       authMsg = '';
       renderAuth(t.dataset.v);
@@ -3315,7 +3301,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 113;
+const APP_BUILD = 114;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
