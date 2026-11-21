@@ -479,3 +479,7 @@ button.ghost.logout, .btn.ghost.logout { color: #fff; background: linear-gradien
 #newsnote button { flex: none; min-height: 44px; padding: 0 16px; }
 .news { margin: 10px 0 0; padding-left: 20px; }
 .news li { margin: 4px 0; }
+#notifask { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); z-index: 255; padding: 16px; background: #1b1f28; border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-size: 15px; line-height: 1.4; }
+#notifask p { margin: 6px 0 12px; }
+#notifask .btn-row { display: flex; flex-direction: column; gap: 8px; }
+#notifask button { min-height: 48px; width: 100%; }
