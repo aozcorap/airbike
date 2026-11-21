@@ -8,16 +8,19 @@
     "sync": "node tools/build-www.mjs && cap sync",
     "ios:prepare": "node tools/prepare-ios.mjs",
     "ios:testflight": "bash tools/testflight.sh",
-    "ios:iphone": "bash tools/iphone.sh"
+    "ios:iphone": "bash tools/iphone.sh",
+    "android:prepare": "node tools/prepare-android.mjs",
+    "android:test": "bash tools/android.sh"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.4.2",
+    "@capacitor/android": "^8.6.2",
     "@capacitor/app-launcher": "^8.0.1",
     "@capacitor/core": "^8.6.2",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/ios": "^8.6.2",
     "@capacitor/local-notifications": "^8.3.1",
-    "@capacitor/share": "^8.0.3",
-    "@capacitor-community/admob": "^8.4.2"
+    "@capacitor/share": "^8.0.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2"
