@@ -1663,13 +1663,66 @@ function scheduleNativeReminders() {
         }
       }
       list.sort((a, b) => a.at - b.at);
-      const notifications = list.slice(0, 30).map((n, i) => ({ id: i + 1, title: 'Nonstop Boxing', body: n.body, schedule: { at: n.at } }));
+      // badge: 1 = rote Zahl auf dem App-Symbol, bis die App geöffnet wird (dann löscht clearNativeBadge sie wieder)
+      const notifications = list.slice(0, 30).map((n, i) => ({ id: i + 1, title: 'Nonstop Boxing', body: n.body, badge: 1, schedule: { at: n.at } }));
+      // Wiedersehens-Hinweise: nach 3 und nach 7 Tagen ohne Öffnen der App. Bei jedem Öffnen und Verlassen der App werden sie neu geplant, kommen also nur, wenn man wirklich weg war.
+      const next = nextOpenSession();
+      if (next) {
+        const nudge = (days, id, body) => {
+          const at = new Date(Date.now() + days * 864e5);
+          at.setHours(hh, mm, 0, 0);
+          if (at.getTime() > Date.now()) notifications.push({ id, title: 'Nonstop Boxing', body, badge: 1, schedule: { at } });
+        };
+        nudge(3, 101, `Dein nächstes Training wartet: ${next.title}`);
+        nudge(7, 102, 'Du warst eine Woche nicht da. Eine Einheit hält dich im Plan.');
+      }
       if (notifications.length) await ln.schedule({ notifications });
     } catch {
       /* Erinnerungen nicht möglich, die App läuft trotzdem weiter */
     }
   });
 }
+// Die nächste noch nicht erledigte Einheit im Plan (für den Wiedersehens-Hinweis)
+function nextOpenSession() {
+  for (const w of plan().weeks) {
+    for (const s of weekOrder(w)) if (!isDone(s.id)) return s;
+  }
+  return null;
+}
+// Beim Öffnen der App: rote Zahl auf dem Symbol und angezeigte Hinweise löschen, Wiedersehens-Hinweise ab jetzt neu zählen
+function clearNativeBadge() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    ln.removeAllDeliveredNotifications().catch(() => {});
+  } catch {
+    /* kein Problem, die Zahl bleibt dann stehen */
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!nativePlugin('LocalNotifications')) return;
+  if (document.visibilityState === 'visible') clearNativeBadge();
+  if (state.notify) scheduleReminder();
+});
+// Einmalige Frage, ob die App erinnern darf (das iPhone zeigt sein eigenes Fenster nur ein einziges Mal, deshalb erst unsere Frage)
+const NOTIFASK_KEY = 'redline.notifask';
+function maybeAskNotif() {
+  if (!nativePlugin('LocalNotifications') || !state.onboarded || state.notify) return;
+  if (document.getElementById('notifask') || document.body.classList.contains('running') || document.getElementById('onboard')) return;
+  try {
+    if (localStorage.getItem(NOTIFASK_KEY)) return;
+    localStorage.setItem(NOTIFASK_KEY, '1');
+  } catch {
+    return;
+  }
+  const box = document.createElement('div');
+  box.id = 'notifask';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Erinnerungen');
+  box.innerHTML = `<b>Soll ich dich ans Training erinnern?</b><p class="muted small">Du bekommst an deinen Trainingstagen um ${esc(state.time || '18:00')} Uhr einen kurzen Hinweis und eine Erinnerung, wenn du ein paar Tage nicht da warst. Das kannst du jederzeit in den Einstellungen ändern.</p><div class="btn-row"><button class="primary" data-act="notifask-yes">Ja, erinnere mich</button><button class="ghost" data-act="notifask-no">Nicht jetzt</button></div>`;
+  document.body.appendChild(box);
+}
+setTimeout(maybeAskNotif, 4000);
 function scheduleReminder() {
   clearTimeout(reminderTimer);
   if (nativePlugin('LocalNotifications')) {
@@ -2650,6 +2703,7 @@ document.addEventListener('click', (e) => {
     case 'ob-finish':
       closeOnboarding();
       location.hash = '#/';
+      setTimeout(maybeAskNotif, 800);
       break;
     case 'ob-replay':
       startOnboarding(0);
@@ -2712,6 +2766,13 @@ document.addEventListener('click', (e) => {
     case 'fb-again':
       fb = { kind: 'fehler', text: '', sent: false, busy: false };
       route();
+      break;
+    case 'notifask-yes':
+      document.getElementById('notifask')?.remove();
+      enableNativeNotif();
+      break;
+    case 'notifask-no':
+      document.getElementById('notifask')?.remove();
       break;
     case 'news-close':
       document.getElementById('newsnote')?.remove();
@@ -2985,11 +3046,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 106;
+const APP_BUILD = 107;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
+  { v: '1.1', datum: '21.11.2026', punkte: ['Die App fragt jetzt, ob sie dich ans Training erinnern darf.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
