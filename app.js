@@ -777,6 +777,28 @@ async function loadAdmin() {
 /* ---------------- Verein (Gym-Konto): Trainer legt Plätze an, Boxer lösen ihren Code ein ---------------- */
 let gym = { state: 'idle', data: null, access: null, busy: false, msg: '' }; // state: idle, loading, ok, error
 const gymErr = (error) => (error && error.code === 'P0001' && error.message ? error.message : 'Das hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.');
+// Text in die Zwischenablage legen (neuer Weg, sonst der alte über ein verstecktes Feld); true, wenn es geklappt hat
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const done = document.execCommand('copy');
+      ta.remove();
+      return done;
+    } catch {
+      return false;
+    }
+  }
+}
 function gymHtml() {
   if (gym.state === 'loading' || gym.state === 'idle') return '<p class="muted">Lädt …</p>';
   if (gym.state === 'error') return '<div class="notice">Die Daten konnten nicht geladen werden. Prüfe deine Verbindung.</div><button class="ghost block" data-act="gym-refresh">Erneut versuchen</button>';
@@ -788,7 +810,7 @@ function gymHtml() {
     const full = seats.length >= total;
     const rows = seats
       .map(
-        (s) => `<div class="seat"><div class="grow"><b>${esc(s.name)}</b><br><span class="code">${esc(s.code)}</span></div><span class="chip ${s.belegt ? 'ok' : ''}">${s.belegt ? 'Eingelöst' : 'Frei'}</span><button class="ghost seat-del" data-act="gym-del" data-id="${esc(s.id)}" data-name="${esc(s.name)}" aria-label="Platz von ${esc(s.name)} löschen">Löschen</button></div>`,
+        (s) => `<div class="seat"><div class="seathead"><b>${esc(s.name)}</b><span class="chip ${s.belegt ? 'ok' : ''}">${s.belegt ? 'Eingelöst' : 'Frei'}</span></div><div class="coderow"><span class="code">${esc(s.code)}</span><button class="copybtn" data-act="gym-copy" data-code="${esc(s.code)}" aria-label="Code von ${esc(s.name)} kopieren"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="12" rx="2.2"/><path d="M15.5 5.5v-.3A1.7 1.7 0 0 0 13.8 3.5H6.2A1.7 1.7 0 0 0 4.5 5.2v9.6a1.7 1.7 0 0 0 1.7 1.7h.3"/></svg></button><button class="ghost seat-del" data-act="gym-del" data-id="${esc(s.id)}" data-name="${esc(s.name)}" aria-label="Platz von ${esc(s.name)} löschen">Löschen</button></div></div>`,
       )
       .join('');
     return `${msg}<div class="card"><div class="row between"><b>${esc(d.name)}</b><span class="chip ${total ? 'ok' : 'amber'}">${total ? `Paket: ${total} Plätze` : 'Noch kein Paket'}</span></div>
@@ -2877,6 +2899,9 @@ document.addEventListener('click', (e) => {
     case 'gym-del':
       if (confirm(`Platz von ${t.dataset.name || 'diesem Boxer'} wirklich löschen?\n\nDer Code ist danach ungültig und der Boxer verliert den Zugang über den Verein. Sein Fortschritt bleibt erhalten.`)) gymDo(() => cloud.gymDeleteSeat(t.dataset.id), 'Platz gelöscht');
       break;
+    case 'gym-copy':
+      copyText(t.dataset.code || '').then((okc) => (okc ? toast('Code kopiert') : alert(`Der Code konnte nicht kopiert werden. Bitte von Hand abschreiben: ${t.dataset.code || ''}`)));
+      break;
     case 'gym-pkg':
       gymDo(() => cloud.gymTestPackage(Number(t.dataset.n)), 'Test-Paket gesetzt');
       break;
@@ -3276,7 +3301,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 111;
+const APP_BUILD = 112;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
