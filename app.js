@@ -1806,11 +1806,26 @@ function scheduleNativeReminders() {
         nudge(3, 101, `Dein nächstes Training wartet: ${next.title}`);
         nudge(7, 102, 'Du warst eine Woche nicht da. Eine Einheit hält dich im Plan.');
       }
+      // Einmalige Erinnerung 24 Stunden nach der Bestätigung des Kontos: Einrichtung noch offen oder noch kein Fitness-Test
+      const first = setupNudge();
+      if (first) notifications.push({ id: 103, title: 'Nonstop Boxing', body: first.body, badge: 1, schedule: { at: first.at } });
       if (notifications.length) await ln.schedule({ notifications });
     } catch {
       /* Erinnerungen nicht möglich, die App läuft trotzdem weiter */
     }
   });
+}
+// Erinnerung für neue Konten: 24 Stunden nach der Bestätigung, falls die Einrichtung (Kampftermin, Trainingstage) noch offen ist
+// oder zwar eingerichtet, aber weder Fitness-Test noch Einheit gemacht wurde. Geplant wird sie bei jedem Öffnen und Verlassen der App neu,
+// der Zeitpunkt bleibt dabei fest (Bestätigung + 24 Stunden). Ist der Stand schon erledigt oder die Zeit vorbei, entfällt sie.
+function setupNudge() {
+  const since = account && account.since;
+  if (!since) return null;
+  const at = new Date(since + 864e5);
+  if (at.getTime() <= Date.now()) return null;
+  if (!state.onboarded) return { at, body: 'Dein Plan wartet noch. Trag deinen Kampftermin und deine Trainingstage ein, dann kann es losgehen.' };
+  if (!state.maxW && !Object.keys(state.done || {}).length) return { at, body: 'Mach deinen Fitness-Test, etwa 10 Minuten. Danach zeigt dir die App deine Watt-Ziele.' };
+  return null;
 }
 // Die nächste noch nicht erledigte Einheit im Plan (für den Wiedersehens-Hinweis)
 function nextOpenSession() {
@@ -1905,8 +1920,36 @@ async function clubAskGo() {
     el.disabled = false;
   }
 }
+// Neue Konten: Die Erlaubnis für Mitteilungen wird schon vor der Einrichtung erfragt, damit die Erinnerung nach 24 Stunden kommen kann.
+// Zu welcher Tageszeit jemand trainiert, fragt maybeAskNotif danach trotzdem noch einmal.
+const SETUPASK_KEY = 'redline.setupask';
+function setupAskDone() {
+  try {
+    return Boolean(localStorage.getItem(SETUPASK_KEY));
+  } catch {
+    return false;
+  }
+}
+function maybeAskSetupNudge() {
+  if (!nativePlugin('LocalNotifications') || state.notify || state.onboarded) return;
+  if (!account || !account.since || account.since + 864e5 < Date.now()) return; // nur für neue Konten
+  if (document.getElementById('setupask') || document.getElementById('notifask') || setupAskDone()) return;
+  try {
+    localStorage.setItem(SETUPASK_KEY, '1');
+  } catch {
+    return;
+  }
+  const box = document.createElement('div');
+  box.id = 'setupask';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Erinnerung zur Einrichtung');
+  box.innerHTML = `<b>Soll ich dich morgen erinnern?</b><p class="muted small">Falls deine Einrichtung dann noch offen ist, schicke ich dir eine kurze Mitteilung. Mehr nicht.</p><div class="btn-row"><button class="primary" data-act="setupask-yes">Ja, erinnern</button><button class="ghost" data-act="setupask-no">Nein danke</button></div>`;
+  document.body.appendChild(box);
+}
 function maybeAskNotif() {
-  if (!nativePlugin('LocalNotifications') || !state.onboarded || state.notify) return;
+  // state.notify schon an (über die Frage vor der Einrichtung), aber noch keine Tageszeit gewählt: einmal danach fragen
+  const askWhenOnly = state.notify && !state.when && setupAskDone();
+  if (!nativePlugin('LocalNotifications') || !state.onboarded || (state.notify && !askWhenOnly)) return;
   if (document.getElementById('notifask') || document.getElementById('clubask') || document.body.classList.contains('running') || document.getElementById('onboard')) return;
   try {
     if (localStorage.getItem(NOTIFASK_KEY)) return;
@@ -2408,7 +2451,8 @@ function applyRemote(remote) {
 }
 
 async function startSession(user, quick = false) {
-  account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick) };
+  // since: Zeitpunkt der Bestätigung des Kontos (für die Erinnerung nach 24 Stunden, gilt nur für neue Konten)
+  account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick), since: Date.parse(user.email_confirmed_at || user.created_at || '') || 0 };
   if (quick) {
     // Server nicht erreichbar: sofort mit lokalen Daten starten, Abgleich läuft im Hintergrund
     syncStatus = 'offline';
@@ -2451,7 +2495,10 @@ async function startSession(user, quick = false) {
     if (v && location.hash === '#/more' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
   });
   if (!account.birthYear) setTimeout(retryBirthYear, 8000);
-  if (!state.onboarded) startOnboarding();
+  if (!state.onboarded) {
+    startOnboarding();
+    setTimeout(maybeAskSetupNudge, 2500);
+  }
   scheduleReminder();
 }
 function closeAuth() {
@@ -2818,7 +2865,8 @@ function legalPrivacy() {
   <li><b>Rückmeldungen:</b> Wenn du über „Fehler melden“ etwas schickst, wird deine Meldung als <b>öffentliches Issue auf GitHub</b> veröffentlicht, ohne deinen Namen und ohne deine E-Mail-Adresse. Sie enthält deinen Text, die Art, die Seite, auf der du warst, die App-Version, die vollständige Kennung deines Browsers und Geräts, die Bildschirmgröße, ob du online warst, die letzte Fehlermeldung der App und deine Einstellungen (Altersklasse, Trainingshäufigkeit, Runden, ob ein Test-Watt vorliegt). Damit du den Stand sehen kannst, speichert die App in deinem Konto außerdem die Nummer deiner Meldung und ihre erste Zeile (bis 60 Zeichen). Das wird mit dem Konto gelöscht. Eine einmal veröffentlichte Meldung wird nicht automatisch gelöscht, wenn du dein Konto löschst. Schreibe deshalb keine privaten Daten in den Text.</li>
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
-  <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt.</li></ul>
+  <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. Hast du dich registriert, den Code aber nicht eingegeben, schicken wir dir nach etwa einem Tag einmal einen neuen Code. Danach melden wir uns nicht mehr per E-Mail.</li>
+  <li><b>Erinnerungen in der iPhone-App:</b> Wenn du es erlaubst, schickt die App Mitteilungen auf dein Gerät (zum Beispiel zu deinen Trainingseinheiten oder wenn deine Einrichtung nach einem Tag noch offen ist). Diese Mitteilungen werden auf deinem Gerät geplant, es werden dafür keine Daten an einen Server geschickt. Du kannst sie jederzeit in den iPhone-Einstellungen ausschalten.</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. ${AD_ENABLED ? 'In der Web-Version gibt es keine Werbung und keine Auswertung deines Verhaltens durch Dritte. <b>In der iPhone-App</b> läuft vor einer neuen Einheit ein Werbevideo (Google AdMob). Dafür kann Google Geräte- und Nutzungsdaten verarbeiten, zum Beispiel deine IP-Adresse, Kennungen deines Geräts und Angaben dazu, welche Anzeige gezeigt und angesehen wurde. Ob personalisierte Werbung erlaubt ist, entscheidest du in der Abfrage der App.' : 'Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.'}</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO).</p>
   <h2>Alter</h2><p>Dein Geburtsjahr bestimmt deine Altersklasse und damit den Umfang deines Plans. Es gibt kein Mindestalter und keine Einwilligung der Eltern, das Alter wird nicht nachgewiesen.</p>
@@ -2925,6 +2973,7 @@ document.addEventListener('click', (e) => {
     case 'ob-finish':
       closeOnboarding();
       location.hash = '#/';
+      scheduleReminder(); // Erinnerung zur Einrichtung entfällt, wenn sie jetzt fertig ist
       setTimeout(maybeAskClub, 800);
       break;
     case 'club-ask-go':
@@ -2933,6 +2982,13 @@ document.addEventListener('click', (e) => {
     case 'club-ask-later':
       document.getElementById('clubask')?.remove();
       setTimeout(maybeAskNotif, 300);
+      break;
+    case 'setupask-yes':
+      document.getElementById('setupask')?.remove();
+      enableNativeNotif();
+      break;
+    case 'setupask-no':
+      document.getElementById('setupask')?.remove();
       break;
     case 'club-hide':
       try {
@@ -3300,12 +3356,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 116;
+const APP_BUILD = 118;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
