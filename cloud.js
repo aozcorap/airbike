@@ -51,7 +51,10 @@ export const gymCreate = (name) => client.rpc('gym_erstellen', { p_name: name })
 export const gymAddSeat = (name) => client.rpc('gym_platz_anlegen', { p_name: name });
 export const gymDeleteSeat = (id) => client.rpc('gym_platz_loeschen', { p_platz: id });
 export const gymRedeem = (code) => client.rpc('gym_code_einloesen', { p_code: code });
-export const gymLeave = () => client.rpc('gym_verlassen');
+// Nur für Admins (die Datenbank prüft das): alle Vereine und der Stand der Boxer eines Vereins (siehe docs/DB-ADMIN-VEREINE.sql)
+export const adminClubs = () => client.rpc('admin_vereine');
+export const adminClubOverview = (id) => client.rpc('admin_verein_uebersicht', { p_gym: id });
+export const gymLeave =() => client.rpc('gym_verlassen');
 export const gymAccess = ()=> client.rpc('gym_mein_zugang');
 export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
 // Traineransicht: Stand der Boxer auf den eigenen Plätzen (die Datenbank gibt nur diese Daten heraus, siehe docs/DB-TRAINER.sql)
