@@ -5,8 +5,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+echo "== Prüfen (Build und Version, Offline-Liste)"
+node tools/pruefe.mjs
+
 BUILD="$(date +%y%m%d%H%M)" # Build-Nummer aus Datum und Uhrzeit, wird bei jedem Upload größer (Apple verlangt das)
-echo "== Build-Nummer $BUILD"
+# Version für den App Store aus APP_VERSION in app.js (sonst bleibt sie auf der alten, schon eingereichten Version stehen und Apple lehnt den Upload ab)
+VERSION="$(sed -n "s/^const APP_VERSION = '\([0-9.]*\)'.*/\1/p" app.js | head -1)"
+if [ -z "$VERSION" ]; then echo "APP_VERSION in app.js nicht gefunden."; exit 1; fi
+echo "== Version $VERSION, Build-Nummer $BUILD"
 
 echo "== App-Dateien ins iOS-Projekt kopieren"
 npm run sync
@@ -18,7 +24,7 @@ echo "== Archiv bauen (dauert einige Minuten)"
 rm -rf build/App.xcarchive
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
   -destination 'generic/platform=iOS' -archivePath build/App.xcarchive \
-  CURRENT_PROJECT_VERSION="$BUILD" -allowProvisioningUpdates archive
+  CURRENT_PROJECT_VERSION="$BUILD" MARKETING_VERSION="$VERSION" -allowProvisioningUpdates archive
 
 echo "== Zu App Store Connect hochladen"
 if ! xcodebuild -exportArchive -archivePath build/App.xcarchive \

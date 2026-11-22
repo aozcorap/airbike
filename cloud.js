@@ -25,7 +25,7 @@ export async function currentUser() {
     return null;
   }
 }
-export const signOut = () => client.auth.signOut();
+export const signOut = (scope) => client.auth.signOut(scope ? { scope } : undefined);
 export const sendCode = (email, create, data) => client.auth.signInWithOtp({ email, options: { shouldCreateUser: create, ...(data ? { data } : {}) } });
 export const verifyCode = (email, token, type) => client.auth.verifyOtp({ email, token, type });
 // Anmeldung mit Passwort: nur für das Demo-Konto der App-Prüfung bei Apple (alle anderen melden sich mit dem Code an)

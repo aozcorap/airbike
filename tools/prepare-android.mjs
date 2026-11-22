@@ -74,5 +74,24 @@ try {
   warn(`AndroidManifest.xml nicht angepasst (${e.message}).`);
 }
 
+// 5. Version: versionName aus APP_VERSION, versionCode aus APP_BUILD (Google Play verlangt bei jedem Upload eine größere Zahl)
+try {
+  const gradlePath = join(android, 'app', 'build.gradle');
+  const app = readFileSync(join(root, 'app.js'), 'utf8');
+  const name = /const APP_VERSION = '([0-9.]+)'/.exec(app)?.[1];
+  const code = /const APP_BUILD = (\d+);/.exec(app)?.[1];
+  if (existsSync(gradlePath) && name && code) {
+    let g = readFileSync(gradlePath, 'utf8');
+    const before = g;
+    g = g.replace(/versionName\s+"[^"]*"/, `versionName "${name}"`).replace(/versionCode\s+\d+/, `versionCode ${code}`);
+    if (g !== before) {
+      writeFileSync(gradlePath, g);
+      say(`Version gesetzt: ${name} (Code ${code})`);
+    }
+  }
+} catch (e) {
+  warn(`Version nicht gesetzt (${e.message}).`);
+}
+
 console.log(problems ? `Fertig mit ${problems} Warnung(en).` : 'Fertig.');
 process.exit(problems ? 2 : 0);

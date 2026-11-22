@@ -14,7 +14,15 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
-const clean = (s: unknown) => String(s ?? '').replace(/```/g, "'''");
+// Fremden Text im GitHub-Issue entschärfen: kein @name (würde Nutzer benachrichtigen), keine Backticks (brechen aus dem Codeblock oder Inline-Code aus),
+// keine spitzen Klammern (HTML) und keine Verweise auf andere Issues (#123).
+const clean = (s: unknown) =>
+  String(s ?? '')
+    .replace(/`/g, "'")
+    .replace(/@/g, '(at)')
+    .replace(/</g, '(')
+    .replace(/>/g, ')')
+    .replace(/#(\d)/g, '# $1');
 
 // Begrenzung: höchstens 10 Meldungen pro Stunde und Nutzer.
 // Beständig über die Datenbankfunktion feedback_allow; fehlt sie, gilt der Rückfall im Speicher (setzt sich beim Neustart zurück).
