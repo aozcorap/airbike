@@ -71,10 +71,8 @@ body.running #nav { display: none; }
   background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, 0) 60%), var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 12px 0;
 }
-h2.grp { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 24px 0 -4px; }
-.legalrows { padding: 0 16px; }
-.legalrows a { display: flex; min-height: 48px; color: inherit; text-decoration: none; }
-.legalrows a + a { border-top: 1px solid var(--line); }
+.morelinks { margin: 22px 0 0; color: var(--muted); }
+.morelinks a { display: inline-block; padding: 10px 8px; color: var(--muted); text-decoration: underline; }
 .card.link { display: block; text-decoration: none; }
 .card.link.row { display: flex; }
 .card.link:active { transform: scale(.99); }
