@@ -53,6 +53,8 @@ export const gymDeleteSeat = (id) => client.rpc('gym_platz_loeschen', { p_platz:
 export const gymRedeem = (code) => client.rpc('gym_code_einloesen', { p_code: code });
 export const gymAccess = () => client.rpc('gym_mein_zugang');
 export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
+// Traineransicht: Stand der Boxer auf den eigenen Plätzen (die Datenbank gibt nur diese Daten heraus, siehe docs/DB-TRAINER.sql)
+export const gymTrainer = () => client.rpc('gym_trainer_uebersicht');
 
 export async function pullState(userId) {
   const { data, error } = await client.from('user_state').select('state, updated_at').eq('user_id', userId).maybeSingle();

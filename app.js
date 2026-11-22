@@ -856,7 +856,7 @@ async function loadGym() {
     gym.data = g.data || null;
     gym.access = a.data || null;
     gym.state = 'ok';
-    clubInfo = { loaded: true, access: gym.access, trainer: Boolean(gym.data) }; // Startseite zeigt den gleichen Stand
+    clubInfo = { loaded: true, access: gym.access, trainer: Boolean(gym.data), attention: clubInfo.attention || 0 }; // Startseite zeigt den gleichen Stand
   } catch {
     gym.state = 'error';
   }
@@ -883,6 +883,141 @@ async function gymDo(fn, okMsg) {
   gymRender();
 }
 
+/* ---------------- Trainer: Stand der Boxer auf den eigenen Plätzen (Konzept siehe OFFENE-PUNKTE.md) ---------------- */
+let tr = { state: 'idle', data: null, open: '' };
+const trNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const trDay = (iso) => {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }); // Form JJJJ-MM-TT
+};
+const trDayNum = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 864e5 : NaN;
+};
+const trMS = (secs) => `${Math.floor(trNum(secs) / 60)}:${String(Math.round(trNum(secs) % 60)).padStart(2, '0')}`;
+const trWhen = (iso) => {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? '–' : new Date(t).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+// Warum eine Einheit nicht als „voll trainiert“ gilt (leer = voll trainiert)
+function trReasons(r) {
+  const out = [];
+  const plan = trNum(r.plan);
+  const act = trNum(r.act);
+  if (!r.fin) out.push(`abgebrochen nach ${trMS(act)} von ${trMS(plan)}`);
+  else if (act < plan - 3) out.push(`nur ${trMS(act)} von ${trMS(plan)} gelaufen`);
+  if (trNum(r.skip) > 0) out.push(`${trNum(r.skip)}× übersprungen`);
+  if (trNum(r.pz) > 0) out.push(`Pause ${trMS(r.pzs)}${trNum(r.pz) > 1 ? ` (${trNum(r.pz)}×)` : ''}`);
+  if (trNum(r.bg) > 0) out.push(`App verlassen ${trMS(r.bgs)}${trNum(r.bg) > 1 ? ` (${trNum(r.bg)}×)` : ''}`);
+  if (trNum(r.res) > 0) out.push('nach Unterbrechung fortgesetzt');
+  return out;
+}
+// Auswertung eines Boxers: Ampel, Status von heute, Aufmerksamkeit (3 Tage ohne Training, wenn in der Zeit eine Einheit geplant war)
+function trAnalyse(b, heute) {
+  const ti = b.ti && typeof b.ti === 'object' ? b.ti : null;
+  const runs = b.runs && typeof b.runs === 'object' ? b.runs : {};
+  const done = b.erledigt && typeof b.erledigt === 'object' ? b.erledigt : {};
+  const lastAct = [b.zuletzt_gespeichert, b.letzte_anmeldung].filter(Boolean).sort().pop() || '';
+  const idle = lastAct ? trDayNum(heute) - trDayNum(trDay(lastAct)) : null;
+  let ampel = ['frei', ''];
+  if (b.belegt) ampel = !lastAct ? ['noch nicht gestartet', 'amber'] : idle <= 3 ? ['aktiv', 'ok'] : idle <= 14 ? ['ruhig', 'amber'] : ['inaktiv', 'red'];
+  let attention = '';
+  if (b.belegt && ti && ti.missed) {
+    const since = ti.last ? trDay(ti.last) : String(ti.missed);
+    const days = trDayNum(heute) - trDayNum(since);
+    if (days >= 3) attention = `seit ${days} Tagen nicht trainiert`;
+  }
+  let today = { tone: '', text: '' };
+  if (b.belegt && ti) {
+    if (ti.today && ti.at && trDay(ti.at) === heute) {
+      const r = runs[ti.today.id];
+      const rToday = r && r.s && trDay(r.s) === heute ? r : null;
+      const plan = `${Math.round(trNum(ti.today.secs) / 60)} min`;
+      if (rToday) {
+        const why = trReasons(rToday);
+        today = why.length ? { tone: 'amber', text: `nicht voll trainiert (${esc(String(ti.today.title))}, ${plan}): ${esc(why.join(', '))}` } : { tone: 'ok', text: `voll trainiert (${esc(String(ti.today.title))}, ${plan})` };
+      } else if (done[ti.today.id] && trDay(done[ti.today.id]) === heute) today = { tone: 'amber', text: `ohne Timer als erledigt markiert (${esc(String(ti.today.title))}, ${plan})` };
+      else today = { tone: 'red', text: `noch nicht trainiert (${esc(String(ti.today.title))}, ${plan})` };
+    } else if (ti.today) today = { tone: '', text: `Stand vom ${esc(trWhen(ti.at))}, noch nichts von heute bekannt` };
+    else today = { tone: '', text: 'heute ist nichts geplant' };
+  }
+  return { ti, runs, done, ampel, attention, today, lastAct };
+}
+function trAttentionCount(data) {
+  if (!data || !Array.isArray(data.boxer)) return 0;
+  return data.boxer.filter((b) => trAnalyse(b, data.heute).attention).length;
+}
+function trainerHtml() {
+  if (tr.state === 'loading' || tr.state === 'idle') return '<p class="muted">Lädt …</p>';
+  if (tr.state === 'error') return '<div class="notice">Die Daten konnten nicht geladen werden. Prüfe deine Verbindung.</div><button class="ghost block" data-act="tr-refresh">Erneut versuchen</button>';
+  const d = tr.data;
+  if (!d) return '<div class="notice">Du hast noch keinen Verein. Lege ihn unter „Mehr“, „Verein“ an.</div>';
+  const list = (d.boxer || []).map((b) => ({ b, a: trAnalyse(b, d.heute) }));
+  const need = list.filter(({ a }) => a.attention);
+  const warn = need.length ? `<div class="notice" role="alert"><b>Aufmerksamkeit nötig: ${need.length} ${need.length === 1 ? 'Boxer' : 'Boxer'}</b><br>${need.map(({ b, a }) => `${esc(b.name)}: ${esc(a.attention)}`).join('<br>')}</div>` : '';
+  const cards = list
+    .filter(({ b }) => b.belegt)
+    .map(({ b, a }) => {
+      const ti = a.ti;
+      const open = tr.open === b.platz;
+      const status = ti ? `Woche ${trNum(ti.week) || '–'}${ti.phase ? ` · ${esc(String(ti.phase))}` : ''} · ${trNum(ti.done)} von ${trNum(ti.total)} Einheiten erledigt` : 'noch keine Daten von diesem Boxer';
+      const runRows = Object.entries(a.runs)
+        .filter(([, r]) => r && typeof r === 'object')
+        .sort((x, y) => String(y[1].s).localeCompare(String(x[1].s)))
+        .slice(0, 8)
+        .map(([, r]) => {
+          const why = trReasons(r);
+          return `<div class="seat"><div class="seathead"><b>${esc(String(r.t || 'Einheit'))}</b><span class="chip ${why.length ? 'amber' : 'ok'}">${why.length ? 'nicht voll' : 'voll trainiert'}</span></div><p class="muted small" style="margin:4px 0 0">${esc(trWhen(r.s))} · geplant ${trMS(r.plan)}, gelaufen ${trMS(r.act)}${r.sv ? ` · gespeichert ${esc(trWhen(r.sv))}` : r.fin ? ' · noch nicht gespeichert' : ''}${why.length ? `<br>${esc(why.join(', '))}` : ''}</p></div>`;
+        })
+        .join('');
+      const more = open
+        ? `<div style="margin-top:10px">${runRows || '<p class="muted small">Noch keine Einheit mit Timer.</p>'}${b.test_watt ? `<p class="muted small">Test-Watt: ${esc(String(b.test_watt))} W${b.test_datum ? `, gemessen ${esc(trWhen(b.test_datum))}` : ''}</p>` : ''}</div>`
+        : '';
+      return `<div class="card"><div class="row between"><b>${esc(b.name)}</b><span class="chip ${a.ampel[1]}">${esc(a.ampel[0])}</span></div>
+      <p class="muted small" style="margin:6px 0 0">${status}</p>
+      ${a.today.text ? `<p class="small" style="margin:6px 0 0"><span class="chip ${a.today.tone}">Heute</span> ${a.today.text}</p>` : ''}
+      <p class="muted small" style="margin:6px 0 0">Zuletzt in der App: ${a.lastAct ? esc(trWhen(a.lastAct)) : '–'}</p>
+      ${a.attention ? `<p class="small" style="margin:6px 0 0;color:#ff8b99">${esc(a.attention)}</p>` : ''}
+      <button class="ghost block" style="margin-top:10px" data-act="tr-open" data-id="${esc(b.platz)}">${open ? 'Weniger anzeigen' : 'Letzte Einheiten anzeigen'}</button>${more}</div>`;
+    })
+    .join('');
+  const free = list.filter(({ b }) => !b.belegt).length;
+  return `${warn}<div class="card"><div class="row between"><b>${esc(d.verein)}</b><span class="chip">${list.length - free} von ${list.length} Plätzen belegt</span></div></div>${cards || '<div class="notice">Noch hat kein Boxer einen Code eingelöst. Die Codes stehen unter „Mehr“, „Verein“.</div>'}`;
+}
+function viewTrainer() {
+  if (!account) return '<a href="#/more" class="back">← Mehr</a><h1>Trainer</h1><div class="notice">Bitte melde dich zuerst an.</div>';
+  return `<a href="#/more" class="back">← Mehr</a><h1>Trainer</h1><div id="trBody">${trainerHtml()}</div><p class="muted small">„Voll trainiert“ heißt: geplante Zeit komplett gelaufen, nichts übersprungen, keine Pause, App nicht verlassen. Die App misst, dass der Timer lief, nicht, dass jemand gefahren ist.</p>`;
+}
+function trRender() {
+  if (location.hash !== '#/trainer') return;
+  const el = document.getElementById('trBody');
+  if (el) el.innerHTML = trainerHtml();
+}
+async function loadTrainer() {
+  if (!account) return;
+  if (!tr.data) tr.state = 'loading';
+  try {
+    const { data, error } = await withTimeout(cloud.gymTrainer(), 12000);
+    if (error) throw error;
+    tr.data = data || null;
+    tr.state = 'ok';
+    if (clubInfo.trainer) clubInfo.attention = trAttentionCount(tr.data);
+  } catch {
+    tr.state = 'error';
+  }
+  trRender();
+}
+async function loadTrainerAttention() {
+  try {
+    const { data, error } = await withTimeout(cloud.gymTrainer(), 12000);
+    if (error) return;
+    clubInfo.attention = trAttentionCount(data);
+    if (['', '#', '#/', '#/more'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
+  } catch {
+    /* ohne Verbindung bleibt der Hinweis weg */
+  }
+}
+
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
@@ -891,6 +1026,7 @@ function viewMore() {
   <button class="ghost block logout" data-act="logout">Abmelden</button></div>` : ''}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
   ${account ? row('#/verein', 'Verein', 'Trainer: Plätze für deine Boxer. Boxer: Code einlösen.') : ''}
+  ${account && clubInfo.trainer ? row('#/trainer', `Trainer${clubInfo.attention ? ` <span class="newchip">${clubInfo.attention}</span>` : ''}`, clubInfo.attention ? `${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer braucht' : 'Boxer brauchen'} Aufmerksamkeit` : 'Wer trainiert, wer nicht') : ''}
   ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
@@ -1069,13 +1205,14 @@ function route() {
     adminState = 'idle';
   }
   if (view !== 'verein') gym = { state: 'idle', data: null, access: null, busy: false, msg: '' }; // Codes nicht im Speicher behalten
+  if (view !== 'trainer') tr = { state: 'idle', data: null, open: '' }; // Daten der Boxer nicht im Speicher behalten
   if (view !== 'feedback') {
     if (view !== 'more') lastRoute = location.hash || '#/'; // zuletzt besuchte Seite vor „Mehr“, dort ist meist der Fehler passiert
     fb = { kind: 'fehler', text: '', sent: false, busy: false };
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'verein', 'datenschutz', 'impressum', 'news'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'settings', 'info', 'feedback', 'reports', 'admin', 'verein', 'trainer', 'datenschutz', 'impressum', 'news'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -1099,6 +1236,7 @@ function route() {
     case 'reports': html = viewReports(); loadReports(); break;
     case 'admin': html = viewAdmin(); loadAdmin(); break;
     case 'verein': html = viewVerein(); loadGym(); break;
+    case 'trainer': html = viewTrainer(); loadTrainer(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -1332,6 +1470,17 @@ function runView(id) {
   let adGate = AD_ENABLED && !resumeAt && Boolean(nativePlugin('AdMob')); // neue Einheit in der iPhone-App: erst das Video
   let adBusy = false;
   let paused = !actx || Boolean(resumeAt) || adGate; // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
+  // Messung für die Traineransicht (alles in Echtzeit, unabhängig von ?speed=): gelaufene Zeit, Sprünge, Pausen, App verlassen
+  let started = !paused; // Training hat wirklich begonnen (erster Start gedrückt)
+  let startedIso = started ? new Date().toISOString() : '';
+  let act = 0; // ms, in denen der Timer sichtbar und ohne Pause lief
+  let skip = 0; // Tipps auf „Weiter“ oder „Zurück“
+  let pz = 0; // Zahl der Pausen
+  let pzMs = 0;
+  let pauseAt = 0;
+  let bg = 0; // Zahl der Male, die die App länger als 3 Sekunden verlassen wurde (Handy gesperrt, andere App)
+  let bgMs = 0;
+  let hiddenAt = 0;
   let finished = false;
   let awaitingLast = false; // Fitness-Test: Eingabefenster für den dritten Sprint ist offen, die Seite mit den drei Werten folgt erst danach
   let lastShownSec = -1;
@@ -1467,8 +1616,40 @@ function runView(id) {
     el.bar.style.width = `${Math.min(100, (doneMs / (total * 1000)) * 100)}%`;
   }
 
+  // Stand dieser Einheit in den gespeicherten Stand schreiben (state.runs), damit der Trainer ihn sieht.
+  // „voll trainiert“ heißt: bis zum Ende gelaufen, geplante Zeit komplett gelaufen, nichts übersprungen, keine Pause, App nicht verlassen.
+  function snapRun(final) {
+    if (!started) return;
+    const nowMs = Date.now();
+    const rec = {
+      t: String(session.title || '').slice(0, 60),
+      s: startedIso,
+      e: final ? new Date(nowMs).toISOString() : '',
+      act: Math.round(act / 1000),
+      plan: Math.round(total),
+      skip,
+      pz,
+      pzs: Math.round((pzMs + (pauseAt ? nowMs - pauseAt : 0)) / 1000),
+      bg,
+      bgs: Math.round(bgMs / 1000),
+      res: resumeAt ? 1 : 0,
+      fin: Boolean(final),
+    };
+    rec.full = rec.fin && rec.skip === 0 && rec.pz === 0 && rec.bg === 0 && rec.res === 0 && rec.act >= rec.plan - 3;
+    if (state.runs && state.runs[id] && state.runs[id].sv) rec.sv = state.runs[id].sv;
+    state.runs = state.runs || {};
+    state.runs[id] = rec;
+    const keys = Object.keys(state.runs);
+    if (keys.length > 40) {
+      keys.sort((a, b) => (String(state.runs[a].s) < String(state.runs[b].s) ? -1 : 1));
+      for (const k of keys.slice(0, keys.length - 40)) delete state.runs[k];
+    }
+    save();
+  }
+
   function finish() {
     finished = true;
+    snapRun(true);
     writeRun(null);
     unlockScreen();
     beep(900, 180);
@@ -1530,9 +1711,11 @@ function runView(id) {
 
   function tick() {
     const now = Date.now();
-    const dt = (now - last) * speed;
+    const real = now - last;
+    const dt = real * speed;
     last = now;
     if (paused || finished) return;
+    if (!document.hidden) act += Math.min(real, 1000); // Echtzeit, in der der Timer sichtbar lief (ein Sprung nach langem Hintergrund zählt höchstens eine Sekunde)
     elapsed += dt;
     let moved = false;
     while (!finished && elapsed >= segs[i].secs * 1000) {
@@ -1584,15 +1767,28 @@ function runView(id) {
       ensureAudio();
       paused = !paused;
       last = Date.now();
+      if (paused && started && !finished) {
+        pauseAt = last;
+        pz += 1;
+      } else if (!paused) {
+        if (pauseAt) pzMs += last - pauseAt;
+        pauseAt = 0;
+        if (!started) {
+          started = true;
+          startedIso = new Date().toISOString();
+        }
+      }
       el.play.textContent = paused ? 'Fortsetzen' : 'Pause';
       if (!paused) lockScreen();
     },
     prev() {
       if (finished || adGate) return;
+      skip += 1;
       goto(elapsed > 2000 ? i : i - 1);
     },
     next() {
       if (finished || adGate) return;
+      skip += 1;
       goto(i + 1);
     },
     entryOk: () => entry && entryOk(),
@@ -1609,6 +1805,17 @@ function runView(id) {
   if (adGate) runAd();
   const timer = setInterval(tick, 100);
   const onVis = () => {
+    if (document.visibilityState === 'hidden') {
+      if (started && !finished && !paused) hiddenAt = Date.now();
+      snapRun(false); // Zwischenstand sichern, falls die App im Hintergrund beendet wird
+    } else if (hiddenAt) {
+      const gap = Date.now() - hiddenAt;
+      hiddenAt = 0;
+      if (gap > 3000) {
+        bg += 1;
+        bgMs += gap;
+      }
+    }
     if (document.visibilityState === 'visible' && !paused && !finished) {
       lockScreen();
       ensureAudio();
@@ -1618,6 +1825,7 @@ function runView(id) {
   document.addEventListener('visibilitychange', onVis);
   window.addEventListener('resize', fitTarget); // auch beim Drehen des Handys
   cleanup = () => {
+    if (started && !finished) snapRun(false); // Einheit vorzeitig verlassen: Stand für den Trainer festhalten
     clearInterval(timer);
     document.removeEventListener('visibilitychange', onVis);
     window.removeEventListener('resize', fitTarget);
@@ -1858,6 +2066,58 @@ function setupNudge() {
   if (!state.maxW && !Object.keys(state.done || {}).length) return { at, body: 'Mach deinen Fitness-Test, etwa 10 Minuten. Danach zeigt dir die App deine Watt-Ziele.' };
   return null;
 }
+// Kurzer Stand für die Traineransicht (steht im gespeicherten Stand des Boxers als state.ti):
+// Woche und Phase, erledigte Einheiten, die Einheit von heute, Zeitpunkt der letzten Einheit und der erste Planungstag danach, den er nicht trainiert hat.
+function computeTi() {
+  const p = plan();
+  const today = startOfDay(new Date());
+  const cw = currentWeek();
+  let todayS = null;
+  let nextS = null;
+  const doneAt = Object.values(state.done || {}).filter(isIso).sort();
+  const last = doneAt.length ? doneAt[doneAt.length - 1] : '';
+  const lastDay = last ? startOfDay(new Date(last)) : null;
+  let missed = null;
+  for (const w of p.weeks) {
+    if (!w.monday) continue;
+    for (const s of weekOrder(w)) {
+      const d = sessionDate(w, dayOf(s));
+      if (!d || tooCloseToFight(d, p.fight)) continue;
+      const dd = startOfDay(d);
+      if (dd.getTime() === today.getTime() && !todayS) todayS = { id: s.id, title: String(s.title).slice(0, 60), secs: sessionSecs(s) };
+      if (!isDone(s.id)) {
+        if (!nextS) nextS = { title: String(s.title).slice(0, 60) };
+        if (dd < today && (!lastDay || dd > lastDay) && !missed) missed = ymd(dd);
+      }
+    }
+  }
+  return { at: new Date().toISOString(), week: cw ? cw.n : 0, phase: cw ? String(cw.phase).slice(0, 40) : '', done: doneInPlan(), total: allSessions().length, today: todayS, next: nextS, last, missed, fight: state.fightDate || '' };
+}
+let tiBusy = false;
+function updateTrainerInfo() {
+  if (!account || tiBusy) return;
+  tiBusy = true;
+  try {
+    const ti = computeTi();
+    const old = state.ti;
+    const key = (x) => {
+      if (!x) return '';
+      const { at, ...rest } = x;
+      return JSON.stringify(rest);
+    };
+    if (!old || key(ti) !== key(old) || Date.now() - (Date.parse(old.at) || 0) > 6 * 36e5) {
+      state.ti = ti;
+      save();
+    }
+  } catch {
+    /* ohne Trainer-Info läuft alles weiter */
+  } finally {
+    tiBusy = false;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !document.querySelector('.timer')) updateTrainerInfo();
+});
 // Die nächste noch nicht erledigte Einheit im Plan (für den Wiedersehens-Hinweis)
 function nextOpenSession() {
   for (const w of plan().weeks) {
@@ -1891,14 +2151,18 @@ async function loadClubInfo() {
   try {
     const [g, a] = await withTimeout(Promise.all([cloud.gymLoad(), cloud.gymAccess()]), 8000);
     if (g.error || a.error) return;
-    clubInfo = { loaded: true, access: a.data || null, trainer: Boolean(g.data) };
+    clubInfo = { loaded: true, access: a.data || null, trainer: Boolean(g.data), attention: clubInfo.attention || 0 };
+    if (clubInfo.trainer) loadTrainerAttention();
     if (['', '#', '#/'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
   } catch {
     /* ohne Verbindung bleibt der Hinweis einfach weg */
   }
 }
 function clubHomeHtml() {
-  if (!clubInfo.loaded || clubInfo.trainer) return '';
+  if (clubInfo.loaded && clubInfo.trainer) {
+    return clubInfo.attention ? `<a class="card link accent row" href="#/trainer"><span class="grow"><span class="kicker">Trainer</span><br><b>Aufmerksamkeit nötig: ${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer' : 'Boxer'}</b><br><span class="muted small">Seit 3 Tagen oder länger nicht trainiert.</span></span><span class="chev" aria-hidden="true">›</span></a>` : '';
+  }
+  if (!clubInfo.loaded) return '';
   if (clubInfo.access) return `<a class="card link row" href="#/verein"><span class="grow"><span class="chip ok">Dein Verein</span> <b>${esc(clubInfo.access.verein)}</b><br><span class="muted small">Du trainierst ohne Werbung.</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   let hidden = false;
   try {
@@ -2531,6 +2795,7 @@ async function startSession(user, quick = false) {
     setTimeout(maybeAskSetupNudge, 2500);
   }
   scheduleReminder();
+  updateTrainerInfo();
 }
 function closeAuth() {
   document.getElementById('auth')?.remove();
@@ -3014,6 +3279,14 @@ document.addEventListener('click', (e) => {
       document.getElementById('clubask')?.remove();
       setTimeout(maybeAskNotif, 300);
       break;
+    case 'tr-open':
+      tr.open = tr.open === t.dataset.id ? '' : t.dataset.id;
+      trRender();
+      break;
+    case 'tr-refresh':
+      tr.state = 'idle';
+      loadTrainer();
+      break;
     case 'setupask-yes':
       document.getElementById('setupask')?.remove();
       enableNativeNotif();
@@ -3159,16 +3432,22 @@ document.addEventListener('click', (e) => {
       state.done[t.dataset.id] = new Date().toISOString();
       save();
       scheduleReminder();
+      updateTrainerInfo();
       route();
       break;
     case 'unmark':
       delete state.done[t.dataset.id];
       save();
       scheduleReminder();
+      updateTrainerInfo();
       route();
       break;
     case 'savetest':
       if (saveSprints('tw')) {
+        if (state.runs && state.runs.test) {
+          state.runs.test.sv = new Date().toISOString();
+          save();
+        }
         toast(`Test-Watt gespeichert: ${state.maxW} W`);
         location.hash = '#/progress';
       }
@@ -3204,8 +3483,10 @@ document.addEventListener('click', (e) => {
       break;
     case 'tdone':
       state.done[t.dataset.id] = new Date().toISOString();
+      if (state.runs && state.runs[t.dataset.id]) state.runs[t.dataset.id].sv = state.done[t.dataset.id]; // Zeitpunkt von „Speichern“ für den Trainer
       save();
       scheduleReminder();
+      updateTrainerInfo();
       location.hash = '#/';
       break;
     case 'fight-remove':
@@ -3387,12 +3668,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 122;
+const APP_BUILD = 123;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
