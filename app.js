@@ -1806,11 +1806,26 @@ function scheduleNativeReminders() {
         nudge(3, 101, `Dein nächstes Training wartet: ${next.title}`);
         nudge(7, 102, 'Du warst eine Woche nicht da. Eine Einheit hält dich im Plan.');
       }
+      // Einmalige Erinnerung 24 Stunden nach der Bestätigung des Kontos: Einrichtung noch offen oder noch kein Fitness-Test
+      const first = setupNudge();
+      if (first) notifications.push({ id: 103, title: 'Nonstop Boxing', body: first.body, badge: 1, schedule: { at: first.at } });
       if (notifications.length) await ln.schedule({ notifications });
     } catch {
       /* Erinnerungen nicht möglich, die App läuft trotzdem weiter */
     }
   });
+}
+// Erinnerung für neue Konten: 24 Stunden nach der Bestätigung, falls die Einrichtung (Kampftermin, Trainingstage) noch offen ist
+// oder zwar eingerichtet, aber weder Fitness-Test noch Einheit gemacht wurde. Geplant wird sie bei jedem Öffnen und Verlassen der App neu,
+// der Zeitpunkt bleibt dabei fest (Bestätigung + 24 Stunden). Ist der Stand schon erledigt oder die Zeit vorbei, entfällt sie.
+function setupNudge() {
+  const since = account && account.since;
+  if (!since) return null;
+  const at = new Date(since + 864e5);
+  if (at.getTime() <= Date.now()) return null;
+  if (!state.onboarded) return { at, body: 'Dein Plan wartet noch. Trag deinen Kampftermin und deine Trainingstage ein, dann kann es losgehen.' };
+  if (!state.maxW && !Object.keys(state.done || {}).length) return { at, body: 'Mach deinen Fitness-Test, etwa 10 Minuten. Danach zeigt dir die App deine Watt-Ziele.' };
+  return null;
 }
 // Die nächste noch nicht erledigte Einheit im Plan (für den Wiedersehens-Hinweis)
 function nextOpenSession() {
@@ -1905,8 +1920,36 @@ async function clubAskGo() {
     el.disabled = false;
   }
 }
+// Neue Konten: Die Erlaubnis für Mitteilungen wird schon vor der Einrichtung erfragt, damit die Erinnerung nach 24 Stunden kommen kann.
+// Zu welcher Tageszeit jemand trainiert, fragt maybeAskNotif danach trotzdem noch einmal.
+const SETUPASK_KEY = 'redline.setupask';
+function setupAskDone() {
+  try {
+    return Boolean(localStorage.getItem(SETUPASK_KEY));
+  } catch {
+    return false;
+  }
+}
+function maybeAskSetupNudge() {
+  if (!nativePlugin('LocalNotifications') || state.notify || state.onboarded) return;
+  if (!account || !account.since || account.since + 864e5 < Date.now()) return; // nur für neue Konten
+  if (document.getElementById('setupask') || document.getElementById('notifask') || setupAskDone()) return;
+  try {
+    localStorage.setItem(SETUPASK_KEY, '1');
+  } catch {
+    return;
+  }
+  const box = document.createElement('div');
+  box.id = 'setupask';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Erinnerung zur Einrichtung');
+  box.innerHTML = `<b>Soll ich dich morgen erinnern?</b><p class="muted small">Falls deine Einrichtung dann noch offen ist, schicke ich dir eine kurze Mitteilung. Mehr nicht.</p><div class="btn-row"><button class="primary" data-act="setupask-yes">Ja, erinnern</button><button class="ghost" data-act="setupask-no">Nein danke</button></div>`;
+  document.body.appendChild(box);
+}
 function maybeAskNotif() {
-  if (!nativePlugin('LocalNotifications') || !state.onboarded || state.notify) return;
+  // state.notify schon an (über die Frage vor der Einrichtung), aber noch keine Tageszeit gewählt: einmal danach fragen
+  const askWhenOnly = state.notify && !state.when && setupAskDone();
+  if (!nativePlugin('LocalNotifications') || !state.onboarded || (state.notify && !askWhenOnly)) return;
   if (document.getElementById('notifask') || document.getElementById('clubask') || document.body.classList.contains('running') || document.getElementById('onboard')) return;
   try {
     if (localStorage.getItem(NOTIFASK_KEY)) return;
@@ -2408,7 +2451,8 @@ function applyRemote(remote) {
 }
 
 async function startSession(user, quick = false) {
-  account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick) };
+  // since: Zeitpunkt der Bestätigung des Kontos (für die Erinnerung nach 24 Stunden, gilt nur für neue Konten)
+  account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick), since: Date.parse(user.email_confirmed_at || user.created_at || '') || 0 };
   if (quick) {
     // Server nicht erreichbar: sofort mit lokalen Daten starten, Abgleich läuft im Hintergrund
     syncStatus = 'offline';
@@ -2451,7 +2495,10 @@ async function startSession(user, quick = false) {
     if (v && location.hash === '#/more' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
   });
   if (!account.birthYear) setTimeout(retryBirthYear, 8000);
-  if (!state.onboarded) startOnboarding();
+  if (!state.onboarded) {
+    startOnboarding();
+    setTimeout(maybeAskSetupNudge, 2500);
+  }
   scheduleReminder();
 }
 function closeAuth() {
@@ -2925,6 +2972,7 @@ document.addEventListener('click', (e) => {
     case 'ob-finish':
       closeOnboarding();
       location.hash = '#/';
+      scheduleReminder(); // Erinnerung zur Einrichtung entfällt, wenn sie jetzt fertig ist
       setTimeout(maybeAskClub, 800);
       break;
     case 'club-ask-go':
@@ -2933,6 +2981,13 @@ document.addEventListener('click', (e) => {
     case 'club-ask-later':
       document.getElementById('clubask')?.remove();
       setTimeout(maybeAskNotif, 300);
+      break;
+    case 'setupask-yes':
+      document.getElementById('setupask')?.remove();
+      enableNativeNotif();
+      break;
+    case 'setupask-no':
+      document.getElementById('setupask')?.remove();
       break;
     case 'club-hide':
       try {
@@ -3300,12 +3355,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 116;
+const APP_BUILD = 117;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
