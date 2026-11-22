@@ -1,5 +1,5 @@
 // Service Worker: App-Dateien offline verfügbar machen (Cache zuerst, bei neuer Version aktualisieren).
-const CACHE = 'redline-v124'; // gleiche Zahl wie APP_BUILD in app.js
+const CACHE = 'redline-v125'; // gleiche Zahl wie APP_BUILD in app.js
 const FILES = [
   './',
   'index.html',
@@ -24,7 +24,8 @@ const FILES = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' umgeht den 10-Minuten-Zwischenspeicher des Browsers, sonst landet nach einem Update eine alte Datei unter dem neuen Versionsnamen
+  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(FILES.map((f) => c.add(new Request(f, { cache: 'reload' }))))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

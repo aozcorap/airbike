@@ -870,8 +870,9 @@ async function gymDo(fn, okMsg) {
   const request = fn(); // zuerst abschicken (liest die Eingabefelder), dann die Ansicht neu zeichnen
   gymRender();
   try {
-    const { error } = await withTimeout(request, 12000);
+    const { data, error } = await withTimeout(request, 12000);
     if (error) gym.msg = gymErr(error);
+    else if (data && data.fehler) gym.msg = String(data.fehler);
     else {
       if (okMsg) toast(okMsg);
       await loadGym();
@@ -922,10 +923,16 @@ function trAnalyse(b, heute) {
   let ampel = ['frei', ''];
   if (b.belegt) ampel = !lastAct ? ['noch nicht gestartet', 'amber'] : idle <= 3 ? ['aktiv', 'ok'] : idle <= 14 ? ['ruhig', 'amber'] : ['inaktiv', 'red'];
   let attention = '';
-  if (b.belegt && ti && ti.missed) {
-    const since = ti.last ? trDay(ti.last) : String(ti.missed);
-    const days = trDayNum(heute) - trDayNum(since);
-    if (days >= 3) attention = `seit ${days} Tagen nicht trainiert`;
+  if (b.belegt && ti) {
+    // Verpasst ist: ein Planungstag nach der letzten Einheit, der schon vorbei ist. Der Trainer rechnet das selbst gegen heute,
+    // damit es auch bei Boxern auffällt, die die App nicht mehr öffnen (deren Stand bleibt eingefroren).
+    const lastDay = ti.last ? trDay(ti.last) : '';
+    const nd = ti.next && ti.next.day ? String(ti.next.day) : '';
+    const missedDay = ti.missed ? String(ti.missed) : nd && nd < heute && (!lastDay || nd > lastDay) ? nd : '';
+    if (missedDay) {
+      const days = trDayNum(heute) - trDayNum(lastDay || missedDay);
+      if (days >= 3) attention = `seit ${days} Tagen nicht trainiert`;
+    }
   }
   let today = { tone: '', text: '' };
   if (b.belegt && ti) {
@@ -1791,6 +1798,7 @@ function runView(id) {
       skip += 1;
       goto(i + 1);
     },
+    awaiting: () => awaitingLast,
     entryOk: () => entry && entryOk(),
     entryClose: () => entry && entryClose(),
   };
@@ -1807,7 +1815,7 @@ function runView(id) {
   const onVis = () => {
     if (document.visibilityState === 'hidden') {
       if (started && !finished && !paused) hiddenAt = Date.now();
-      snapRun(false); // Zwischenstand sichern, falls die App im Hintergrund beendet wird
+      if (!finished) snapRun(false); // Zwischenstand sichern, falls die App im Hintergrund beendet wird (eine fertige Einheit nicht zu „abgebrochen“ machen)
     } else if (hiddenAt) {
       const gap = Date.now() - hiddenAt;
       hiddenAt = 0;
@@ -1853,6 +1861,8 @@ const writeRun = (v) => {
   }
 };
 let runCtl = null;
+// Der Timer zeigt die fertige Seite. Solange das Eingabefenster für den dritten Sprint offen ist, gilt er noch nicht als fertig (Abbrechen fragt nach).
+const timerDone = () => Boolean(document.querySelector('.timer.k-done')) && !(runCtl && runCtl.awaiting && runCtl.awaiting());
 let runHash = ''; // Adresse der laufenden Einheit (für die Rückfrage beim Verlassen)
 let leaveOk = false; // Verlassen ist schon bestätigt (z. B. über „Abbrechen“)
 let reloading = false;
@@ -2078,6 +2088,12 @@ function computeTi() {
   const last = doneAt.length ? doneAt[doneAt.length - 1] : '';
   const lastDay = last ? startOfDay(new Date(last)) : null;
   let missed = null;
+  // Gezählt wird erst ab dem Tag, an dem dieser Plan zum ersten Mal erfasst wurde. Sonst stünde bei einem neuen Boxer oder einem neuen Plan
+  // sofort „nicht trainiert“ für Tage, die schon vorbei waren, bevor er sich eingerichtet hat.
+  const old = state.ti;
+  const pk = [state.planBase, state.fightDate, state.startDate, userFreq()].join('|');
+  const since = old && old.pk === pk && isIso(old.since) ? old.since : new Date().toISOString();
+  const floor = startOfDay(new Date(since));
   for (const w of p.weeks) {
     if (!w.monday) continue;
     for (const s of weekOrder(w)) {
@@ -2085,13 +2101,13 @@ function computeTi() {
       if (!d || tooCloseToFight(d, p.fight)) continue;
       const dd = startOfDay(d);
       if (dd.getTime() === today.getTime() && !todayS) todayS = { id: s.id, title: String(s.title).slice(0, 60), secs: sessionSecs(s) };
-      if (!isDone(s.id)) {
-        if (!nextS) nextS = { title: String(s.title).slice(0, 60) };
+      if (!isDone(s.id) && dd >= floor) {
+        if (!nextS) nextS = { title: String(s.title).slice(0, 60), day: ymd(dd) }; // erste offene Einheit: der Trainer rechnet damit selbst, auch wenn der Boxer die App nie wieder öffnet
         if (dd < today && (!lastDay || dd > lastDay) && !missed) missed = ymd(dd);
       }
     }
   }
-  return { at: new Date().toISOString(), week: cw ? cw.n : 0, phase: cw ? String(cw.phase).slice(0, 40) : '', done: doneInPlan(), total: allSessions().length, today: todayS, next: nextS, last, missed, fight: state.fightDate || '' };
+  return { at: new Date().toISOString(), week: cw ? cw.n : 0, phase: cw ? String(cw.phase).slice(0, 40) : '', done: doneInPlan(), total: allSessions().length, today: todayS, next: nextS, last, missed, fight: state.fightDate || '', pk, since };
 }
 let tiBusy = false;
 function updateTrainerInfo() {
@@ -2197,9 +2213,9 @@ async function clubAskGo() {
   el.disabled = true;
   msg.hidden = true;
   try {
-    const { error } = await withTimeout(cloud.gymRedeem(el.value), 12000);
-    if (error) {
-      msg.textContent = gymErr(error);
+    const { data, error } = await withTimeout(cloud.gymRedeem(el.value), 12000);
+    if (error || (data && data.fehler)) {
+      msg.textContent = error ? gymErr(error) : String(data.fehler); // data.fehler: Falscheingaben meldet die Datenbank als Antwort, damit sie mitgezählt werden (Versuchslimit)
       msg.hidden = false;
       el.disabled = false;
       return;
@@ -2614,6 +2630,19 @@ function schedulePush(delay = 1500) {
   syncStatus = 'pending';
   pushTimer = setTimeout(pushNow, delay);
 }
+// Abgelaufene oder widerrufene Anmeldung (zum Beispiel Konto auf anderem Gerät gelöscht oder Sitzung beendet): Hinweis mit Knopf zum neuen Anmelden.
+// Daten auf dem Gerät bleiben dabei erhalten, der Abgleich beim nächsten Anmelden führt sie zusammen.
+const isAuthError = (e) => Boolean(e) && (e.status === 401 || /jwt|refresh token|not authenticated|invalid token/i.test(String(e.message || '')) || e.code === 'PGRST301' || e.code === 'PGRST303');
+function sessionExpired() {
+  if (!account || signingOut || sessionWarned) return;
+  sessionWarned = true;
+  syncStatus = 'error';
+  const box = document.createElement('div');
+  box.id = 'sessionexp';
+  box.setAttribute('role', 'alert');
+  box.innerHTML = '<span><b>Deine Anmeldung ist abgelaufen.</b> Melde dich neu an, damit dein Fortschritt wieder gesichert wird. Nicht gesicherte Daten bleiben auf diesem Gerät.</span><button class="primary" data-act="relogin">Neu anmelden</button>';
+  document.body.appendChild(box);
+}
 let pushing = null;
 async function pushNow() {
   clearTimeout(pushTimer);
@@ -2661,7 +2690,8 @@ async function pushNow() {
       }
       syncStatus = 'error';
       return false;
-    } catch {
+    } catch (e) {
+      if (isAuthError(e)) sessionExpired();
       syncStatus = navigator.onLine ? 'error' : 'offline';
       return false;
     } finally {
@@ -2746,6 +2776,9 @@ function applyRemote(remote) {
 }
 
 async function startSession(user, quick = false) {
+  signingOut = false;
+  sessionWarned = false;
+  document.getElementById('sessionexp')?.remove();
   // since: Zeitpunkt der Bestätigung des Kontos (für die Erinnerung nach 24 Stunden, gilt nur für neue Konten)
   account = { id: user.id, email: user.email || readSync().email || '', birthYear: await loadBirthYear(user, quick), since: Date.parse(user.email_confirmed_at || user.created_at || '') || 0 };
   if (quick) {
@@ -2804,6 +2837,10 @@ function closeAuth() {
 function renderLoading() {
   authShell(`${authBrand()}<p class="muted center" style="margin-top:30px">Lade …</p>`);
 }
+// Beendet Supabase die Sitzung von sich aus (Token abgelaufen oder widerrufen), gibt es einen Hinweis zum neuen Anmelden
+cloud.onAuth((event) => {
+  if (event === 'SIGNED_OUT' && account && !signingOut) sessionExpired();
+});
 async function boot() {
   renderLoading();
   let quickStart = false;
@@ -3064,22 +3101,39 @@ async function doPassword(btn) {
     await startSession(data.session.user);
   });
 }
+let signingOut = false; // wir melden selbst ab oder löschen das Konto: kein Hinweis „Anmeldung abgelaufen“
+let sessionWarned = false;
+// Beim Abmelden und beim Löschen des Kontos alle geplanten und angezeigten Mitteilungen entfernen (sonst kommen die des alten Kontos weiter)
+async function cancelAllNativeNotifications() {
+  const ln = nativePlugin('LocalNotifications');
+  if (!ln) return;
+  try {
+    const pending = await ln.getPending();
+    if (pending && pending.notifications && pending.notifications.length) await ln.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+    await ln.removeAllDeliveredNotifications();
+  } catch {
+    /* Mitteilungen ließen sich nicht entfernen, die App meldet trotzdem ab */
+  }
+}
+// Daten dieses Kontos auf dem Gerät entfernen, dazu die Fragen, die zum Konto gehören (das nächste Konto bekommt sie wieder)
+function clearDeviceData() {
+  try {
+    for (const k of [KEY, SYNC_KEY, BASE_KEY, RUN_KEY, CLUBASK_KEY, CLUBHIDE_KEY, SETUPASK_KEY]) localStorage.removeItem(k);
+  } catch {
+    /* ignorieren */
+  }
+}
 async function doLogout() {
   const ok = await pushNow();
   if (!ok && !confirm('Die letzten Änderungen konnten nicht gesichert werden. Trotzdem abmelden? Sie gehen dann verloren.')) return;
+  signingOut = true;
   try {
     await cloud.signOut();
   } catch {
     /* lokal abmelden genügt */
   }
-  try {
-    localStorage.removeItem(KEY);
-    localStorage.removeItem(SYNC_KEY);
-    localStorage.removeItem(BASE_KEY);
-    localStorage.removeItem(RUN_KEY);
-  } catch {
-    /* ignorieren */
-  }
+  await cancelAllNativeNotifications();
+  clearDeviceData();
   location.hash = '';
   location.reload();
 }
@@ -3130,19 +3184,15 @@ async function doDeleteConfirm(btn) {
   await withBusy(btn, async () => {
     const { error } = await cloud.verifyCode(email, code, 'email');
     if (error) return showDeleteSheet(email, authError(error));
+    signingOut = true;
     try {
       await cloud.deleteAccount();
     } catch {
+      signingOut = false;
       return showDeleteSheet(email, 'Das Konto konnte nicht gelöscht werden. Bitte versuche es später noch einmal.');
     }
-    try {
-      localStorage.removeItem(KEY);
-      localStorage.removeItem(SYNC_KEY);
-      localStorage.removeItem(BASE_KEY);
-      localStorage.removeItem(RUN_KEY);
-    } catch {
-      /* ignorieren */
-    }
+    await cancelAllNativeNotifications();
+    clearDeviceData();
     location.hash = '';
     location.reload();
   });
@@ -3278,6 +3328,19 @@ document.addEventListener('click', (e) => {
     case 'club-ask-later':
       document.getElementById('clubask')?.remove();
       setTimeout(maybeAskNotif, 300);
+      break;
+    case 'relogin':
+      document.getElementById('sessionexp')?.remove();
+      signingOut = true;
+      (async () => {
+        try {
+          await cloud.signOut('local');
+        } catch {
+          /* lokal abgemeldet genügt */
+        }
+        account = null;
+        renderAuth('login');
+      })();
       break;
     case 'tr-open':
       tr.open = tr.open === t.dataset.id ? '' : t.dataset.id;
@@ -3475,7 +3538,7 @@ document.addEventListener('click', (e) => {
       runCtl?.entryClose();
       break;
     case 'texit':
-      if (document.querySelector('.timer.k-done') || confirm('Training wirklich abbrechen?')) {
+      if (timerDone() || confirm('Training wirklich abbrechen?')) {
         leaveOk = true;
         const id = location.hash.split('/')[2];
         location.hash = id === 'test' ? '#/test' : `#/s/${id}`;
@@ -3624,7 +3687,7 @@ document.addEventListener('change', (e) => {
 window.addEventListener('hashchange', () => {
   if (!account) return;
   // Läuft ein Training, fragt auch die Zurück-Taste nach, statt es still abzubrechen
-  if (document.body.classList.contains('running') && !document.querySelector('.timer.k-done')) {
+  if (document.body.classList.contains('running') && !timerDone()) {
     if (location.hash === runHash) return; // Rückkehr zur laufenden Einheit
     if (!leaveOk && !confirm('Training wirklich verlassen? Der Stand dieser Einheit geht verloren.')) {
       location.hash = runHash;
@@ -3635,7 +3698,7 @@ window.addEventListener('hashchange', () => {
   route();
 });
 window.addEventListener('beforeunload', (e) => {
-  if (!reloading && document.body.classList.contains('running') && !document.querySelector('.timer.k-done')) {
+  if (!reloading && document.body.classList.contains('running') && !timerDone()) {
     e.preventDefault();
     e.returnValue = '';
   }
@@ -3668,12 +3731,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 124;
+const APP_BUILD = 125;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
