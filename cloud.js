@@ -51,7 +51,8 @@ export const gymCreate = (name) => client.rpc('gym_erstellen', { p_name: name })
 export const gymAddSeat = (name) => client.rpc('gym_platz_anlegen', { p_name: name });
 export const gymDeleteSeat = (id) => client.rpc('gym_platz_loeschen', { p_platz: id });
 export const gymRedeem = (code) => client.rpc('gym_code_einloesen', { p_code: code });
-export const gymAccess = () => client.rpc('gym_mein_zugang');
+export const gymLeave = () => client.rpc('gym_verlassen');
+export const gymAccess = ()=> client.rpc('gym_mein_zugang');
 export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
 // Traineransicht: Stand der Boxer auf den eigenen Plätzen (die Datenbank gibt nur diese Daten heraus, siehe docs/DB-TRAINER.sql)
 export const gymTrainer = () => client.rpc('gym_trainer_uebersicht');

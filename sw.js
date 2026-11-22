@@ -1,5 +1,5 @@
 // Service Worker: App-Dateien offline verfügbar machen (Cache zuerst, bei neuer Version aktualisieren).
-const CACHE = 'redline-v126'; // gleiche Zahl wie APP_BUILD in app.js
+const CACHE = 'redline-v127'; // gleiche Zahl wie APP_BUILD in app.js
 const FILES = [
   './',
   'index.html',
