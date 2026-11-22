@@ -1333,6 +1333,7 @@ function runView(id) {
   let adBusy = false;
   let paused = !actx || Boolean(resumeAt) || adGate; // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
   let finished = false;
+  let awaitingLast = false; // Fitness-Test: Eingabefenster für den dritten Sprint ist offen, die Seite mit den drei Werten folgt erst danach
   let lastShownSec = -1;
   let beepedAt = -1;
   let knocked = new Set(); // Sekunden (10, 9, 8), zu denen in dieser Pause schon geklopft wurde
@@ -1396,11 +1397,19 @@ function runView(id) {
     }
     entered[entry.n - 1] = v;
     hideEntry();
+    if (awaitingLast) {
+      awaitingLast = false;
+      renderFinish();
+    }
   }
   function entryClose() {
     const v = Math.round(Number(entry.input.value));
     if (validWatt(v)) entered[entry.n - 1] = v; // schon Eingetipptes nicht verlieren
     hideEntry();
+    if (awaitingLast) {
+      awaitingLast = false;
+      renderFinish(); // wer das Fenster schließt, kann die Werte auf der nächsten Seite eintragen
+    }
   }
   if (entry) {
     entry.input.addEventListener('keydown', (e) => {
@@ -1450,7 +1459,7 @@ function runView(id) {
       }
       if (seg.secs > 5 && remain >= 1 && remain <= 3 && beepedAt !== remain && !paused) {
         beepedAt = remain;
-        beep(820, 90, 0.35);
+        beep(820, 90, 0.9);
         vib([40]);
       }
     }
@@ -1468,6 +1477,28 @@ function runView(id) {
     vib([200, 100, 200, 100, 400]);
     el.box.className = 'timer k-done';
     setChrome('done');
+    if (isTest && !entered[2]) {
+      // Fitness-Test: Auch nach dem dritten Sprint kommt zuerst das Eingabefenster. Erst wenn der Wert eingetragen ist, folgt die Seite mit den drei Werten.
+      awaitingLast = true;
+      el.block.textContent = '';
+      el.count.textContent = '';
+      el.blockname.textContent = '';
+      el.round.textContent = '';
+      el.label.textContent = 'Test geschafft';
+      el.time.textContent = '';
+      el.target.textContent = '';
+      el.target.style.fontSize = '';
+      el.sub.textContent = 'Trag den höchsten Wert des dritten Sprints ein.';
+      el.next.textContent = '';
+      const btns = el.box.querySelector('.t-btns');
+      if (btns) btns.style.display = 'none';
+      showEntry(3);
+      return;
+    }
+    renderFinish();
+  }
+
+  function renderFinish() {
     if (session.type === 'test') {
       el.box.innerHTML = `<div class="t-mid"><div class="t-label">Test geschafft</div><div class="t-target">Deine drei Werte?</div>
         <div class="t-sub">${entered.every(Boolean) ? 'Kontrolliere deine drei Werte und speichere sie.' : 'Trage den höchsten Wert jedes Sprints ein.'}</div>
@@ -3356,12 +3387,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 118;
+const APP_BUILD = 120;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
