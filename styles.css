@@ -71,6 +71,10 @@ body.running #nav { display: none; }
   background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, 0) 60%), var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 12px 0;
 }
+#app { position: relative; }
+.profbtn { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 16px; z-index: 5; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; color: var(--text); text-decoration: none; }
+.profbtn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.profbtn i { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
 .morelinks { margin: 22px 0 0; color: var(--muted); }
 .morelinks a { display: inline-block; padding: 10px 8px; color: var(--muted); text-decoration: underline; }
 .card.link { display: block; text-decoration: none; }

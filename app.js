@@ -752,7 +752,7 @@ async function adminDelete(id, mail) {
   loadAdmin();
 }
 function viewAdmin() {
-  return `<a href="#/more" class="back">← Mehr</a><h1>Admin</h1><div id="adminBody">${adminHtml()}</div>`;
+  return `<a href="#/profile" class="back">← Profil</a><h1>Admin</h1><div id="adminBody">${adminHtml()}</div>`;
 }
 async function loadAdmin() {
   if (!adminData) adminState = 'loading';
@@ -840,8 +840,8 @@ function gymHtml() {
   <button class="main block" style="margin-top:10px" data-act="gym-create" ${gym.busy ? 'disabled' : ''}>Verein anlegen</button></div>`;
 }
 function viewVerein() {
-  if (!account) return '<a href="#/more" class="back">← Mehr</a><h1>Verein</h1><div class="notice">Bitte melde dich zuerst an.</div>';
-  return `<a href="#/more" class="back">← Mehr</a><h1>Verein</h1><div id="gymBody">${gymHtml()}</div>`;
+  if (!account) return '<a href="#/profile" class="back">← Profil</a><h1>Verein</h1><div class="notice">Bitte melde dich zuerst an.</div>';
+  return `<a href="#/profile" class="back">← Profil</a><h1>Verein</h1><div id="gymBody">${gymHtml()}</div>`;
 }
 function gymRender() {
   if (location.hash !== '#/verein') return;
@@ -959,7 +959,7 @@ function trainerHtml() {
   if (tr.state === 'loading' || tr.state === 'idle') return '<p class="muted">Lädt …</p>';
   if (tr.state === 'error') return '<div class="notice">Die Daten konnten nicht geladen werden. Prüfe deine Verbindung.</div><button class="ghost block" data-act="tr-refresh">Erneut versuchen</button>';
   const d = tr.data;
-  if (!d) return '<div class="notice">Du hast noch keinen Verein. Lege ihn unter „Mehr“, „Verein“ an.</div>';
+  if (!d) return '<div class="notice">Du hast noch keinen Verein. Lege ihn unter „Profil“, „Verein“ an.</div>';
   const list = (d.boxer || []).map((b) => ({ b, a: trAnalyse(b, d.heute) }));
   const need = list.filter(({ a }) => a.attention);
   const warn = need.length ? `<div class="notice" role="alert"><b>Aufmerksamkeit nötig: ${need.length} ${need.length === 1 ? 'Boxer' : 'Boxer'}</b><br>${need.map(({ b, a }) => `${esc(b.name)}: ${esc(a.attention)}`).join('<br>')}</div>` : '';
@@ -990,14 +990,10 @@ function trainerHtml() {
     })
     .join('');
   const free = list.filter(({ b }) => !b.belegt).length;
-  return `${warn}<div class="card"><div class="row between"><b>${esc(d.verein)}</b><span class="chip">${list.length - free} von ${list.length} Plätzen belegt</span></div></div>${cards || '<div class="notice">Noch hat kein Boxer einen Code eingelöst. Die Codes stehen unter „Mehr“, „Verein“.</div>'}`;
-}
-function viewTrainer() {
-  if (!account) return '<a href="#/more" class="back">← Mehr</a><h1>Trainer</h1><div class="notice">Bitte melde dich zuerst an.</div>';
-  return `<a href="#/more" class="back">← Mehr</a><h1>Trainer</h1><div id="trBody">${trainerHtml()}</div><p class="muted small">„Voll trainiert“ heißt: geplante Zeit komplett gelaufen, nichts übersprungen, keine Pause, App nicht verlassen. Die App misst, dass der Timer lief, nicht, dass jemand gefahren ist.</p>`;
+  return `${warn}<div class="card"><div class="row between"><b>${esc(d.verein)}</b><span class="chip">${list.length - free} von ${list.length} Plätzen belegt</span></div></div>${cards || '<div class="notice">Noch hat kein Boxer einen Code eingelöst. Die Codes stehen unter „Plätze und Codes“.</div>'}`;
 }
 function trRender() {
-  if (location.hash !== '#/trainer') return;
+  if (location.hash !== '#/profile') return;
   const el = document.getElementById('trBody');
   if (el) el.innerHTML = trainerHtml();
 }
@@ -1020,7 +1016,7 @@ async function loadTrainerAttention() {
     const { data, error } = await withTimeout(cloud.gymTrainer(), 12000);
     if (error) return;
     clubInfo.attention = trAttentionCount(data);
-    if (['', '#', '#/', '#/more'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
+    if (['', '#', '#/'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
   } catch {
     /* ohne Verbindung bleibt der Hinweis weg */
   }
@@ -1029,25 +1025,38 @@ async function loadTrainerAttention() {
 function viewMore() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   return `<h1>Mehr</h1>
-  ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
-  <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
-  <button class="ghost block logout" data-act="logout">Abmelden</button></div>` : ''}
-  ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
-  ${account ? row('#/verein', 'Verein', 'Trainer: Plätze für deine Boxer. Boxer: Code einlösen.') : ''}
-  ${account && clubInfo.trainer ? row('#/trainer', `Trainer${clubInfo.attention ? ` <span class="newchip">${clubInfo.attention}</span>` : ''}`, clubInfo.attention ? `${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer braucht' : 'Boxer brauchen'} Aufmerksamkeit` : 'Wer trainiert, wer nicht') : ''}
-  ${row('#/help', `Hilfe${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Einführung, Fehler melden, Das ist neu')}
-  ${account && account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}
+  ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
+  ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
+  ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
+  ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
   <p class="center morelinks"><a href="#/datenschutz">Datenschutz</a> · <a href="#/impressum">Impressum</a></p>
   <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_VERSION} (${APP_BUILD})</p>`;
 }
 
-function viewHelp() {
+// Profil: ein Profil für alle. Persönliches Konto: Konto und Einstellungen. Trainer-Konto (hat einen Verein): die Traineransicht.
+const profileBtn = () => `<a class="profbtn" href="#/profile" aria-label="Profil${account && clubInfo.trainer && clubInfo.attention ? `, ${clubInfo.attention} Boxer brauchen Aufmerksamkeit` : ''}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c.8-4 3.7-6 7.5-6s6.7 2 7.5 6"/></svg>${account && clubInfo.trainer && clubInfo.attention ? '<i aria-hidden="true"></i>' : ''}</a>`;
+function accountCardHtml() {
+  return account
+    ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
+  <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
+  <button class="ghost block logout" data-act="logout">Abmelden</button></div>`
+    : '';
+}
+function viewProfile() {
   const row = (href, title, sub) => `<a class="card link row" href="${href}"><span class="grow"><b>${title}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
-  return `<a href="#/more" class="back">← Mehr</a><h1>Hilfe</h1>
-  ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
-  ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
-  ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
-  ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}`;
+  if (account && clubInfo.trainer) {
+    return `<a href="#/" class="back">← Zurück</a><h1>Profil</h1><div id="trBody">${trainerHtml()}</div>
+  ${row('#/verein', 'Plätze und Codes', 'Neue Boxer anlegen, Codes kopieren')}
+  ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten, Konto löschen')}
+  ${account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}
+  ${accountCardHtml()}
+  <p class="muted small">„Voll trainiert“ heißt: geplante Zeit komplett gelaufen, nichts übersprungen, keine Pause, App nicht verlassen. Die App misst, dass der Timer lief, nicht, dass jemand gefahren ist.</p>`;
+  }
+  return `<a href="#/" class="back">← Zurück</a><h1>Profil</h1>
+  ${accountCardHtml()}
+  ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
+  ${account ? row('#/verein', 'Verein', clubInfo.access ? `Dein Verein: ${esc(clubInfo.access.verein)}` : 'Du hast einen Code von deinem Trainer? Hier eintragen.') : ''}
+  ${account && account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}`;
 }
 
 function viewProgress() {
@@ -1137,7 +1146,7 @@ function viewSettings() {
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const nativeNotif = Boolean(nativePlugin('LocalNotifications'));
   const notifSupported = 'Notification' in window || nativeNotif;
-  return `<a href="#/more" class="back">← Mehr</a><h1>Einstellungen</h1>
+  return `<a href="#/profile" class="back">← Profil</a><h1>Einstellungen</h1>
 
   <h2>Dein Kampf</h2>
   <label for="fightDate">Kampftermin (Turnier)</label>
@@ -1218,14 +1227,14 @@ function route() {
     adminState = 'idle';
   }
   if (view !== 'verein') gym = { state: 'idle', data: null, access: null, busy: false, msg: '' }; // Codes nicht im Speicher behalten
-  if (view !== 'trainer') tr = { state: 'idle', data: null, open: '' }; // Daten der Boxer nicht im Speicher behalten
+  if (view !== 'profile') tr = { state: 'idle', data: null, open: '' }; // Daten der Boxer nicht im Speicher behalten
   if (view !== 'feedback') {
     if (view !== 'more') lastRoute = location.hash || '#/'; // zuletzt besuchte Seite vor „Mehr“, dort ist meist der Fehler passiert
     fb = { kind: 'fehler', text: '', sent: false, busy: false };
   }
   document.querySelectorAll('#nav a').forEach((a) => {
     const nav = a.dataset.nav;
-    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'help', 'settings', 'info', 'feedback', 'reports', 'admin', 'verein', 'trainer', 'datenschutz', 'impressum', 'news'].includes(view));
+    const active = (nav === 'home' && !view) || (nav === 'plan' && (view === 'plan' || view === 'week' || view === 's')) || (nav === 'progress' && (view === 'progress' || view === 'test')) || (nav === 'more' && ['more', 'info', 'feedback', 'reports', 'datenschutz', 'impressum', 'news'].includes(view));
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
@@ -1245,12 +1254,11 @@ function route() {
     case 'info': html = viewInfo(); break;
     case 'progress': html = viewProgress(); break;
     case 'more': html = viewMore(); break;
-    case 'help': html = viewHelp(); break;
+    case 'profile': html = viewProfile(); if (account && clubInfo.trainer) loadTrainer(); break;
     case 'feedback': html = viewFeedback(); break;
     case 'reports': html = viewReports(); loadReports(); break;
     case 'admin': html = viewAdmin(); loadAdmin(); break;
     case 'verein': html = viewVerein(); loadGym(); break;
-    case 'trainer': html = viewTrainer(); loadTrainer(); break;
     case 'settings': html = viewSettings(); break;
     case 'datenschutz': html = viewLegal('privacy'); break;
     case 'impressum': html = viewLegal('imprint'); break;
@@ -1258,7 +1266,7 @@ function route() {
     case 'test': html = viewTest(); break;
     default: html = notFound();
   }
-  $app.innerHTML = html;
+  $app.innerHTML = (['', undefined, 'plan', 'progress'].includes(view) ? profileBtn() : '') + html; // Profil-Symbol oben rechts auf den drei Hauptseiten
   window.scrollTo(0, 0);
 }
 
@@ -2176,14 +2184,14 @@ async function loadClubInfo() {
     if (g.error || a.error) return;
     clubInfo = { loaded: true, access: a.data || null, trainer: Boolean(g.data), attention: clubInfo.attention || 0 };
     if (clubInfo.trainer) loadTrainerAttention();
-    if (['', '#', '#/'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
+    if (['', '#', '#/', '#/profile'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
   } catch {
     /* ohne Verbindung bleibt der Hinweis einfach weg */
   }
 }
 function clubHomeHtml() {
   if (clubInfo.loaded && clubInfo.trainer) {
-    return clubInfo.attention ? `<a class="card link accent row" href="#/trainer"><span class="grow"><span class="kicker">Trainer</span><br><b>Aufmerksamkeit nötig: ${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer' : 'Boxer'}</b><br><span class="muted small">Seit 3 Tagen oder länger nicht trainiert.</span></span><span class="chev" aria-hidden="true">›</span></a>` : '';
+    return clubInfo.attention ? `<a class="card link accent row" href="#/profile"><span class="grow"><span class="kicker">Trainer</span><br><b>Aufmerksamkeit nötig: ${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer' : 'Boxer'}</b><br><span class="muted small">Seit 3 Tagen oder länger nicht trainiert.</span></span><span class="chev" aria-hidden="true">›</span></a>` : '';
   }
   if (!clubInfo.loaded) return '';
   if (clubInfo.access) return `<a class="card link row" href="#/verein"><span class="grow"><span class="chip ok">Dein Verein</span> <b>${esc(clubInfo.access.verein)}</b><br><span class="muted small">Du trainierst ohne Werbung.</span></span><span class="chev" aria-hidden="true">›</span></a>`;
@@ -2827,7 +2835,7 @@ async function startSession(user, quick = false) {
   cloud.isAdmin().then((v) => {
     if (!account) return;
     account.isAdmin = v;
-    if (v && location.hash === '#/more' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
+    if (v && location.hash === '#/profile' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
   });
   if (!account.birthYear) setTimeout(retryBirthYear, 8000);
   if (!state.onboarded) {
@@ -3220,7 +3228,7 @@ function legalPrivacy() {
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. Hast du dich registriert, den Code aber nicht eingegeben, schicken wir dir nach etwa einem Tag einmal einen neuen Code. Danach melden wir uns nicht mehr per E-Mail.</li>
   <li><b>Erinnerungen in der iPhone-App:</b> Wenn du es erlaubst, schickt die App Mitteilungen auf dein Gerät (zum Beispiel zu deinen Trainingseinheiten oder wenn deine Einrichtung nach einem Tag noch offen ist). Diese Mitteilungen werden auf deinem Gerät geplant, es werden dafür keine Daten an einen Server geschickt. Du kannst sie jederzeit in den iPhone-Einstellungen ausschalten.</li>
-  <li><b>Verein und Trainer:</b> Nur wenn du einen Vereins-Code einlöst, sieht dein Trainer einen Teil deiner Trainingsdaten: den Namen, den der Trainer für deinen Platz eingetragen hat, deine erledigten Einheiten, deine Plan-Woche und Phase, ob und wie lange du die letzten Einheiten gelaufen bist und ob du sie ohne Pause und ohne Überspringen durchgezogen hast, deinen Test-Watt mit Datum sowie den Zeitpunkt deiner letzten Anmeldung und Speicherung. Deine E-Mail-Adresse sieht der Trainer nicht. Ohne eingelösten Code sieht niemand diese Daten. Das Konto bleibt dein Konto: Du kannst den Verein jederzeit unter „Mehr“, „Verein“ selbst verlassen. Dann sieht der Trainer dich nicht mehr. Löschst du dein Konto, ist dein Platz ebenfalls frei.</li></ul>
+  <li><b>Verein und Trainer:</b> Nur wenn du einen Vereins-Code einlöst, sieht dein Trainer einen Teil deiner Trainingsdaten: den Namen, den der Trainer für deinen Platz eingetragen hat, deine erledigten Einheiten, deine Plan-Woche und Phase, ob und wie lange du die letzten Einheiten gelaufen bist und ob du sie ohne Pause und ohne Überspringen durchgezogen hast, deinen Test-Watt mit Datum sowie den Zeitpunkt deiner letzten Anmeldung und Speicherung. Deine E-Mail-Adresse sieht der Trainer nicht. Ohne eingelösten Code sieht niemand diese Daten. Das Konto bleibt dein Konto: Du kannst den Verein jederzeit unter „Profil“, „Verein“ selbst verlassen. Dann sieht der Trainer dich nicht mehr. Löschst du dein Konto, ist dein Platz ebenfalls frei.</li></ul>
   <h2>Wozu?</h2><p>Zur Anmeldung und damit dein Fortschritt gesichert ist und auf einem neuen Gerät wieder zur Verfügung steht. ${AD_ENABLED ? 'In der Web-Version gibt es keine Werbung und keine Auswertung deines Verhaltens durch Dritte. <b>In der iPhone-App</b> läuft vor einer neuen Einheit ein Werbevideo (Google AdMob). Dafür kann Google Geräte- und Nutzungsdaten verarbeiten, zum Beispiel deine IP-Adresse, Kennungen deines Geräts und Angaben dazu, welche Anzeige gezeigt und angesehen wurde. Ob personalisierte Werbung erlaubt ist, entscheidest du in der Abfrage der App.' : 'Es gibt keine Werbung und keine Auswertung deines Verhaltens durch Dritte.'}</p>
   <h2>Rechtsgrundlage</h2><p>Deine Einwilligung und die Bereitstellung der App (Art. 6 Abs. 1 Buchst. a und b DSGVO).</p>
   <h2>Alter</h2><p>Dein Geburtsjahr bestimmt deine Altersklasse und damit den Umfang deines Plans. Es gibt kein Mindestalter und keine Einwilligung der Eltern, das Alter wird nicht nachgewiesen.</p>
@@ -3742,12 +3750,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 129;
+const APP_BUILD = 130;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Die Seite „Mehr“ ist kürzer: Einführung, Fehler melden, Meine Meldungen und „Das ist neu“ stehen jetzt gesammelt unter „Hilfe“. Datenschutz und Impressum sind kleine Links unten.', 'Boxer können den Verein jetzt selbst verlassen (unter „Mehr“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu: Oben rechts auf Heute, Plan und Fortschritt gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
