@@ -437,9 +437,9 @@ function viewHome() {
   const runHtml = runFound ? `<a class="card link accent" href="#/run/${esc(run.id)}"><span class="kicker">Unterbrochen</span><h3 style="margin-top:6px">Training fortsetzen</h3><p class="muted small" style="margin:4px 0 0">${esc(runFound.session.title)}</p></a>` : '';
 
   return `${brandBar()}<h1 class="sr">Kampfvorbereitung</h1>
-  ${ageUnknown() ? '<div class="notice"><b>Dein Alter konnte nicht geladen werden.</b> Bis es geladen ist, gilt der vorsichtigste Plan (U13–U14 und jünger). Prüfe deine Verbindung und öffne die App neu.</div>' : ''}${fightInfo}
+  ${clubInfo.trainer ? clubHomeHtml() : ''}${ageUnknown() ? '<div class="notice"><b>Dein Alter konnte nicht geladen werden.</b> Bis es geladen ist, gilt der vorsichtigste Plan (U13–U14 und jünger). Prüfe deine Verbindung und öffne die App neu.</div>' : ''}${fightInfo}
   ${total ? `<p class="muted small">${doneCount} von ${total} Einheiten erledigt</p>` : ''}
-  ${runHtml}${setupCard() || maxWatNotice()}${clubHomeHtml()}${todayHtml}${nextHtml}${list}`;
+  ${runHtml}${setupCard() || maxWatNotice()}${clubInfo.trainer ? '' : clubHomeHtml()}${todayHtml}${nextHtml}${list}`;
 }
 
 function viewTest() {
@@ -3668,7 +3668,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 123;
+const APP_BUILD = 124;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
