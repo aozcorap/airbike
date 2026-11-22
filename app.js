@@ -1032,16 +1032,19 @@ function viewMore() {
   ${account ? `<div class="card"><div class="row between"><span class="muted">Angemeldet als</span><b style="word-break:break-all;text-align:right">${esc(account.email || '')}</b></div>
   <p class="muted small" style="margin:8px 0 12px">${esc(syncLabel())}</p>
   <button class="ghost block logout" data-act="logout">Abmelden</button></div>` : ''}
+  <h2 class="grp">Training</h2>
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
-  ${account ? row('#/verein', 'Verein', 'Trainer: Plätze für deine Boxer. Boxer: Code einlösen.') : ''}
-  ${account && clubInfo.trainer ? row('#/trainer', `Trainer${clubInfo.attention ? ` <span class="newchip">${clubInfo.attention}</span>` : ''}`, clubInfo.attention ? `${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer braucht' : 'Boxer brauchen'} Aufmerksamkeit` : 'Wer trainiert, wer nicht') : ''}
-  ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
   ${row('#/info', 'Einführung und Wissen', 'So startest du, Belastungsskala, Hinweise')}
+  ${account ? `<h2 class="grp">Verein</h2>
+  ${row('#/verein', 'Verein', 'Trainer: Plätze für deine Boxer. Boxer: Code einlösen.')}
+  ${clubInfo.trainer ? row('#/trainer', `Trainer${clubInfo.attention ? ` <span class="newchip">${clubInfo.attention}</span>` : ''}`, clubInfo.attention ? `${clubInfo.attention} ${clubInfo.attention === 1 ? 'Boxer braucht' : 'Boxer brauchen'} Aufmerksamkeit` : 'Wer trainiert, wer nicht') : ''}` : ''}
+  <h2 class="grp">Hilfe und Feedback</h2>
   ${row('#/feedback', 'Fehler melden oder Feedback', 'Etwas klappt nicht oder du hast eine Idee? Schreib es uns.')}
   ${Object.keys(state.reports || {}).length ? row('#/reports', `Meine Meldungen${reportsUnseen ? ' <span class="newchip">Neu</span>' : ''}`, 'Status und Antworten zu deinen Meldungen') : ''}
-  ${account && account.isAdmin ? row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar') : ''}
-  ${row('#/datenschutz', 'Datenschutz', 'Welche Daten wir speichern')}
-  ${row('#/impressum', 'Impressum', 'Wer hinter der App steht')}
+  ${row('#/news', 'Das ist neu', `Was sich in Version ${APP_VERSION} geändert hat`)}
+  ${account && account.isAdmin ? `<h2 class="grp">Admin</h2>${row('#/admin', 'Admin: Testuser und Nutzung', 'Nur für dich sichtbar')}` : ''}
+  <h2 class="grp">Rechtliches</h2>
+  <div class="card legalrows"><a class="row" href="#/datenschutz"><span class="grow">Datenschutz</span><span class="chev" aria-hidden="true">›</span></a><a class="row" href="#/impressum"><span class="grow">Impressum</span><span class="chev" aria-hidden="true">›</span></a></div>
   <p class="muted small center" style="margin-top:22px">${APP_NAME_A.trim()} ${APP_NAME_B}<br>Mehr Kondition bis zur letzten Runde<br>Version ${APP_VERSION} (${APP_BUILD})</p>`;
 }
 
@@ -3736,12 +3739,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 127;
+const APP_BUILD = 128;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Boxer können den Verein jetzt selbst verlassen (unter „Mehr“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Die Seite „Mehr“ ist übersichtlicher: Die Einträge sind in Gruppen geordnet (Training, Verein, Hilfe und Feedback, Rechtliches).', 'Boxer können den Verein jetzt selbst verlassen (unter „Mehr“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Unter „Mehr“ gibt es die Seite „Trainer“. Sie zeigt, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu unter „Mehr“: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Mehr“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
