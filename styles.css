@@ -293,6 +293,7 @@ table.rpe td:first-child { width: 48px; font-weight: 800; }
 .rep { font-family: var(--display); font-size: 34px; font-weight: 700; align-self: center; margin-right: 2px; }
 .rep.sm { font-size: 24px; }
 .group { display: flex; gap: 8px; align-items: stretch; padding: 6px; border: 1px dashed var(--line); border-radius: 14px; }
+.pgrid { display: grid; grid-template-columns: repeat(2, max-content); gap: 8px; align-items: stretch; justify-content: start; }
 .pill { min-width: 84px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); text-align: center; }
 .pill b { display: block; font-size: 22px; line-height: 1.15; }
 .pill span { display: block; font-size: 14px; color: var(--muted); }
@@ -546,8 +547,8 @@ button.ghost.logout, .btn.ghost.logout { color: #fff; background: linear-gradien
 .feat { list-style: none; margin: 6px 0 0; padding: 0; font-size: 15px; }
 .feat li { padding: 6px 0 6px 26px; position: relative; border-bottom: 1px solid var(--line); }
 .feat li:before { content: "✓"; position: absolute; left: 2px; color: #34d27b; font-weight: 700; }
-.steps { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: s; }
-.steps li { counter-increment: s; position: relative; padding: 8px 0 8px 40px; border-bottom: 1px solid var(--line); }
-.steps li:last-child { border-bottom: 0; }
-.steps li:before { content: counter(s); position: absolute; left: 0; top: 8px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; }
-.steps li.done:before { content: "✓"; background: #1f7a4a; }
+.fsteps { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: s; }
+.fsteps li { counter-increment: s; position: relative; padding: 8px 0 8px 40px; border-bottom: 1px solid var(--line); }
+.fsteps li:last-child { border-bottom: 0; }
+.fsteps li:before { content: counter(s); position: absolute; left: 0; top: 8px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; }
+.fsteps li.done:before { content: "✓"; background: #1f7a4a; }
