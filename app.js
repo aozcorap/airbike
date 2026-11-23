@@ -855,6 +855,7 @@ function gymHtml() {
     return `${msg}<div class="card"><div class="row between"><b>${esc(d.name)}</b><span class="chip ${total ? 'ok' : 'amber'}">${total ? `Paket: ${total} Plätze` : 'Noch kein Paket'}</span></div>
     <p class="muted small" style="margin:8px 0 0">${total ? `${seats.length} von ${total} Plätzen angelegt. Boxer mit Platz trainieren ohne Werbung.` : 'Ohne Paket kannst du noch keine Plätze anlegen. Der Kauf der Pakete kommt später.'}</p></div>
     ${seats.length ? `<div class="card seats">${rows}</div>` : ''}
+    ${!total && payUi() ? `<div class="card"><h2 style="margin-top:0">Paket wählen</h2>${pkgBlockHtml('gym-pkg-buy', false)}</div>` : ''}
     <div class="card"><h2 style="margin-top:0">Neuer Platz</h2>
     <p class="muted small">Für jeden Boxer ein Platz mit eigenem Code. Gib dem Boxer den Code. Verlässt ein Boxer den Verein selbst, ist sein Platz wieder frei und hat einen neuen Code. Du kannst einen Platz auch selbst löschen.</p>
     <label for="gymSeatName" class="small" style="margin:0 0 4px">Name des Boxers</label>
@@ -874,9 +875,13 @@ function gymHtml() {
   <button class="main block" style="margin-top:10px" data-act="gym-redeem" ${gym.busy ? 'disabled' : ''}>Code einlösen</button></div>
   <div class="card"><h2 style="margin-top:0">Ich bin Trainer</h2>
   <p class="muted small">Lege deinen Verein an und gib deinen Boxern je einen eigenen Code. Pakete gibt es für 3, 5 oder 10 Boxer.</p>
-  <label for="gymName" class="small" style="margin:0 0 4px">Name des Vereins</label>
+  ${
+    payUi()
+      ? pkgBlockHtml('gym-create-pkg', true)
+      : `<label for="gymName" class="small" style="margin:0 0 4px">Name des Vereins</label>
   <input id="gymName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Boxclub Musterstadt">
-  <button class="main block" style="margin-top:10px" data-act="gym-create" ${gym.busy ? 'disabled' : ''}>Verein anlegen</button></div>`;
+  <button class="main block" style="margin-top:10px" data-act="gym-create" ${gym.busy ? 'disabled' : ''}>Verein anlegen</button>`
+  }</div>`;
 }
 function viewVerein() {
   const back = account && account.isAdmin ? '<a href="#/admin" class="back">← Admin</a>' : '<a href="#/profile" class="back">← Profil</a>';
@@ -1095,8 +1100,129 @@ function viewProfile() {
   return `<a href="#/" class="back">← Zurück</a><h1>Profil</h1>
   ${accountCardHtml()}
   ${row('#/settings', 'Einstellungen', 'Kampf, Training, Erinnerungen, Daten')}
+  ${payUi() && !werbefrei() ? row('#/abo', 'Ohne Werbung', `Monat ${PRICE.monat} oder Jahr ${PRICE.jahr}`) : ''}
+  ${payUi() && abo.aktiv ? row('#/abo', `Ohne Werbung <span class="chip ok">aktiv</span>`, `${abo.art === 'jahr' ? 'Jahresabo' : 'Monatsabo'} bis ${esc(aboBisText())}`) : ''}
   ${account && !account.isAdmin ? row('#/verein', 'Verein', clubInfo.access ? `Dein Verein: ${esc(clubInfo.access.verein)}` : 'Du hast einen Code von deinem Trainer? Hier eintragen.') : ''}
   ${account && account.isAdmin ? row('#/admin', 'Admin', 'Vereine, Testuser und Nutzung') : ''}`;
+}
+
+/* ---------------- Ohne Werbung: Abo (Monat, Jahr) und Vereinspakete ---------------- */
+// Entscheidung des Betreibers 23.11.2026: Das erste Training ist gratis. Danach wählt man: Abo ohne Werbung oder mit Werbung weiter.
+// In der Web-Version wird der Kauf nur gespielt (Testkauf, nur Admin) und die Werbung ist nur ein Platzhalter (nur Admin).
+// Echte Käufe und echte Werbung gibt es erst in der iPhone-App 1.1. Dann PAYWALL_FUER_ALLE auf true stellen.
+const PAYWALL_FUER_ALLE = false;
+const PRICE = { monat: '1,99 €', jahr: '14,99 €' };
+const PAKETE = [
+  { n: 3, preis: '39,99 €', je: '13,33 €', tag: '' },
+  { n: 5, preis: '49,99 €', je: '10,00 €', tag: 'beliebt' },
+  { n: 10, preis: '69,99 €', je: '7,00 €', tag: 'günstigster Preis' },
+];
+let abo = { loaded: false, aktiv: false, art: '', bis: '' };
+let aboPick = 'jahr'; // das Jahresabo ist vorgewählt
+let adChoiceId = ''; // Einheit, für die „Weiter mit Werbung“ gewählt wurde
+const payUi = () => Boolean(account && (account.isAdmin || PAYWALL_FUER_ALLE));
+// Werbefrei: Abo, Boxer mit Vereinsplatz, Trainer (Admin nicht, damit man den Ablauf testen kann)
+const werbefrei = () => Boolean(abo.aktiv || clubInfo.access || (clubInfo.trainer && !(account && account.isAdmin)));
+const adDue = (id) => Boolean(account) && id !== 'test' && !werbefrei() && Object.keys(state.done || {}).length >= 1 && (!payUi() || adChoiceId === id);
+const adPlaceholderOn = () => !nativePlugin('AdMob') && Boolean(account && account.isAdmin);
+async function loadAbo() {
+  if (!account) return;
+  try {
+    const { data, error } = await withTimeout(cloud.aboStatus(), 8000);
+    if (error) return;
+    abo = { loaded: true, aktiv: Boolean(data && data.aktiv), art: (data && data.art) || '', bis: (data && data.bis) || '' };
+  } catch {
+    /* ohne Verbindung bleibt es beim bisherigen Stand */
+  }
+  if (['#/profile', '#/abo'].includes(location.hash) && !document.querySelector('.timer')) route();
+}
+const aboBisText = () => {
+  const d = new Date(abo.bis);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-DE');
+};
+// Vor einer Einheit ab dem zweiten Training: Auswahl zeigen (nur wer die Bezahl-Ansicht sieht, nicht werbefrei ist und nicht schon „mit Werbung“ gewählt hat)
+function runNeedsChoice(id) {
+  if (!payUi() || id === 'test' || werbefrei() || adChoiceId === id) return false;
+  if (Object.keys(state.done || {}).length < 1) return false; // das erste Training ist gratis
+  const saved = readRun();
+  return !(saved && saved.id === id); // eine unterbrochene Einheit darf man ohne Auswahl fortsetzen
+}
+function viewAbo(id) {
+  if (!account) return '<a href="#/" class="back">← Zurück</a><h1>Ohne Werbung</h1><div class="notice">Bitte melde dich zuerst an.</div>';
+  if (abo.aktiv) {
+    return `<a href="#/profile" class="back">← Profil</a><h1>Ohne Werbung</h1>
+    <div class="card"><div class="row between"><b>Ohne Werbung</b><span class="chip ok">aktiv</span></div><p class="muted small" style="margin:8px 0 0">${abo.art === 'jahr' ? 'Jahresabo' : 'Monatsabo'}, gültig bis ${esc(aboBisText())}.</p></div>
+    ${account.isAdmin ? '<button class="ghost block" data-act="abo-end">Test-Abo beenden</button><p class="testhint">Nur für dich als Admin: danach kannst du den Ablauf noch einmal testen.</p>' : ''}`;
+  }
+  const card = (art, titel, preis, sub, tag) => `<button class="pk ${aboPick === art ? 'sel' : ''}" data-act="abo-pick" data-art="${art}"><div class="top"><b>${titel}</b><span class="pr">${preis}</span></div><span class="muted small">${sub}${tag ? ` <span class="tag">${tag}</span>` : ''}</span><ul><li>Keine Werbung</li><li>Jederzeit kündbar</li></ul></button>`;
+  const label = aboPick === 'jahr' ? `Jahr für ${PRICE.jahr} wählen` : `Monat für ${PRICE.monat} wählen`;
+  return `${id ? '<a href="#/" class="back">← Zurück</a>' : '<a href="#/profile" class="back">← Profil</a>'}<h1>${id ? 'Ohne Werbung trainieren' : 'Ohne Werbung'}</h1>
+  <p class="muted">${id ? 'Dein erstes Training war gratis. Für das nächste wähle, wie du weitermachen willst.' : 'Mit dem Abo siehst du vor dem Training keine Werbung.'}</p>
+  ${card('monat', 'Monat', PRICE.monat, 'monatlich kündbar', '')}
+  ${card('jahr', 'Jahr', PRICE.jahr, '1,25 € im Monat', 'Empfohlen · spart 37 %')}
+  <button class="primary block" style="margin-top:6px" data-act="abo-buy">${label}</button>
+  ${isNativeApp() ? '' : '<p class="testhint">Zum Testen in der Web-Version: der Kauf wird nur gespielt.</p>'}
+  ${id ? `<button class="ghost block" style="margin-top:14px" data-act="abo-skip" data-id="${esc(id)}">Weiter mit Werbung</button>` : ''}`;
+}
+async function aboBuy() {
+  if (!account || !account.isAdmin) {
+    alert('Der Kauf ist in dieser Version noch nicht möglich.');
+    return;
+  }
+  try {
+    const { error } = await withTimeout(cloud.aboTestBuy(aboPick), 12000);
+    if (error) throw error;
+    await loadAbo();
+    toast('Testkauf gespielt: Ohne Werbung ist aktiv');
+    route();
+  } catch {
+    alert('Das hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.');
+  }
+}
+async function aboEnd() {
+  try {
+    const { error } = await withTimeout(cloud.aboTestEnd(), 12000);
+    if (error) throw error;
+    await loadAbo();
+    toast('Test-Abo beendet');
+    route();
+  } catch {
+    alert('Das hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.');
+  }
+}
+// Pakete für Vereine: Auswahl und Knopf (Testkauf nur für Admins, siehe oben)
+function pkgBlockHtml(action, withName) {
+  const sel = gym.pkg || 5;
+  const p = PAKETE.find((x) => x.n === sel) || PAKETE[1];
+  const cards = PAKETE.map((x) => `<button class="pk ${x.n === sel ? 'sel' : ''}" data-act="pkg-pick" data-n="${x.n}"><div class="top"><b>${x.n} Boxer</b><span class="pr">${x.preis}</span></div><span class="muted small">${x.je} je Boxer im Jahr${x.tag ? ` <span class="tag">${x.tag}</span>` : ''}</span></button>`).join('');
+  return `${withName ? `<label for="gymName" class="small" style="margin:0 0 4px">Name des Vereins</label><input id="gymName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Boxclub Musterstadt" value="${esc(gym.name || '')}">` : ''}
+  <h3 style="font-size:20px;margin:16px 0 4px">Wähle dein Paket</h3><p class="muted small" style="margin:0 0 4px">Jahresabo. Jeder Boxer trainiert ohne Werbung.</p>
+  ${cards}
+  <p class="muted small" style="margin:6px 2px">In jedem Paket: Codes für deine Boxer, Traineransicht mit Stand und Aufmerksamkeit, Plätze jederzeit neu vergeben.</p>
+  <button class="primary block" data-act="${action}" ${gym.busy ? 'disabled' : ''}>Paket mit ${p.n} Boxern für ${p.preis} wählen</button>
+  ${isNativeApp() ? '' : '<p class="testhint">Zum Testen in der Web-Version: der Kauf wird nur gespielt.</p>'}`;
+}
+// Platzhalter für das Werbevideo in der Web-Version (nur Admin): 5 Sekunden
+function placeholderAd() {
+  return new Promise((resolve) => {
+    const box = document.createElement('div');
+    box.id = 'adfake';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Werbung (Platzhalter)');
+    let n = 5;
+    box.innerHTML = `<b>Werbung (Platzhalter)</b><p class="muted small">Hier läuft in der iPhone-App ein Werbevideo. In der Web-Version ist es nur ein Platzhalter zum Testen.</p><p id="adfakeN" class="adbig">${n}</p>`;
+    document.body.appendChild(box);
+    const iv = setInterval(() => {
+      n -= 1;
+      const el = document.getElementById('adfakeN');
+      if (el) el.textContent = String(n);
+      if (n <= 0) {
+        clearInterval(iv);
+        box.remove();
+        resolve('ok');
+      }
+    }, 1000);
+  });
 }
 
 function viewProgress() {
@@ -1279,6 +1405,11 @@ function route() {
     a.classList.toggle('active', active);
   });
   if (view === 'run') {
+    if (runNeedsChoice(arg)) {
+      $app.innerHTML = profileBtn() + viewAbo(arg); // ab dem zweiten Training: Abo ohne Werbung oder mit Werbung weiter
+      window.scrollTo(0, 0);
+      return;
+    }
     runView(arg);
     return;
   }
@@ -1295,6 +1426,7 @@ function route() {
     case 'info': html = viewInfo(); break;
     case 'progress': html = viewProgress(); break;
     case 'more': html = viewMore(); break;
+    case 'abo': html = viewAbo(''); break;
     case 'profile': html = viewProfile(); if (account && clubInfo.trainer && !account.isAdmin) loadTrainer(); break;
     case 'club': html = viewClub(arg); loadClubView(arg); break;
     case 'feedback': html = viewFeedback(); break;
@@ -1447,6 +1579,7 @@ async function adSetup(ad) {
 }
 // Ergebnis: 'ok' (Video gesehen oder keine Werbung verfügbar) oder 'abbruch' (Video vorzeitig geschlossen)
 async function playStartAd() {
+  if (!nativePlugin('AdMob') && adPlaceholderOn()) return placeholderAd();
   const ad = AD_ENABLED ? nativePlugin('AdMob') : null;
   if (!ad) return 'ok';
   try {
@@ -1531,7 +1664,8 @@ function runView(id) {
   let i = resumeAt ? resumeAt.i : 0;
   let elapsed = resumeAt ? Math.max(0, Math.min(Number(resumeAt.elapsed) || 0, segs[i].secs * 1000)) : 0; // ms im aktuellen Segment
   let last = Date.now();
-  let adGate = AD_ENABLED && !resumeAt && Boolean(nativePlugin('AdMob')); // neue Einheit in der iPhone-App: erst das Video
+  // Neue Einheit: erst das Video (iPhone-App mit Werbung, in der Web-Version ein Platzhalter nur für Admins). Das erste Training ist gratis, Abo, Verein und Trainer sehen keine Werbung.
+  let adGate = !resumeAt && adDue(id) && ((AD_ENABLED && Boolean(nativePlugin('AdMob'))) || adPlaceholderOn());
   let adBusy = false;
   let paused = !actx || Boolean(resumeAt) || adGate; // nach dem Fortsetzen wartet der Timer auf „Fortsetzen“
   // Messung für die Traineransicht (alles in Echtzeit, unabhängig von ?speed=): gelaufene Zeit, Sprünge, Pausen, App verlassen
@@ -2874,7 +3008,9 @@ async function startSession(user, quick = false) {
   closeAuth();
   route();
   setTimeout(checkReports, 3000);
+  abo = { loaded: false, aktiv: false, art: '', bis: '' };
   setTimeout(loadClubInfo, 1500);
+  setTimeout(loadAbo, 1700);
   cloud.isAdmin().then((v) => {
     if (!account) return;
     account.isAdmin = v;
@@ -3346,6 +3482,38 @@ document.addEventListener('click', (e) => {
     case 'gym-redeem':
       gymDo(() => cloud.gymRedeem(document.getElementById('gymCode')?.value || ''), 'Code eingelöst');
       break;
+    case 'pkg-pick':
+      gym.name = document.getElementById('gymName')?.value ?? gym.name;
+      gym.pkg = Number(t.dataset.n) || 5;
+      gymRender();
+      break;
+    case 'gym-pkg-buy':
+      gymDo(() => cloud.gymTestPackage(gym.pkg || 5), 'Paket gewählt (Testkauf)');
+      break;
+    case 'gym-create-pkg': {
+      const nm = document.getElementById('gymName')?.value || '';
+      const nPk = gym.pkg || 5;
+      gymDo(async () => {
+        const r = await cloud.gymCreate(nm);
+        if (r.error || (r.data && r.data.fehler)) return r;
+        return cloud.gymTestPackage(nPk); // Testkauf, nur Admin (die Datenbank prüft das), echter Kauf kommt mit der iPhone-App 1.1
+      }, 'Verein angelegt');
+      break;
+    }
+    case 'abo-pick':
+      aboPick = t.dataset.art === 'monat' ? 'monat' : 'jahr';
+      route();
+      break;
+    case 'abo-buy':
+      aboBuy();
+      break;
+    case 'abo-end':
+      aboEnd();
+      break;
+    case 'abo-skip':
+      adChoiceId = t.dataset.id || '';
+      route();
+      break;
     case 'gym-add':
       gymDo(() => cloud.gymAddSeat(document.getElementById('gymSeatName')?.value || ''), 'Platz angelegt');
       break;
@@ -3800,12 +3968,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 132;
+const APP_BUILD = 133;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {

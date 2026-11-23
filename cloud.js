@@ -54,7 +54,11 @@ export const gymRedeem = (code) => client.rpc('gym_code_einloesen', { p_code: co
 // Nur für Admins (die Datenbank prüft das): alle Vereine und der Stand der Boxer eines Vereins (siehe docs/DB-ADMIN-VEREINE.sql)
 export const adminClubs = () => client.rpc('admin_vereine');
 export const adminClubOverview = (id) => client.rpc('admin_verein_uebersicht', { p_gym: id });
-export const gymLeave =() => client.rpc('gym_verlassen');
+// Abo „Ohne Werbung“ (siehe docs/DB-ABO.sql). Testkauf nur für Admins, bis es den In-App-Kauf gibt.
+export const aboStatus = () => client.rpc('abo_status');
+export const aboTestBuy = (art) => client.rpc('abo_test_kaufen', { p_art: art });
+export const aboTestEnd = () => client.rpc('abo_test_beenden');
+export const gymLeave = () => client.rpc('gym_verlassen');
 export const gymAccess = ()=> client.rpc('gym_mein_zugang');
 export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
 // Traineransicht: Stand der Boxer auf den eigenen Plätzen (die Datenbank gibt nur diese Daten heraus, siehe docs/DB-TRAINER.sql)
