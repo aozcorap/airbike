@@ -754,13 +754,28 @@ async function adminDelete(id, mail) {
 // Vereine für den Admin: Auswahl eines Vereinsprofils, eigener Verein (Plätze, Codes, Test-Paket)
 let adminClubs = null;
 function adminClubsHtml() {
-  const own = `<a class="card link row" href="#/verein"><span class="grow"><b>Dein eigener Verein</b><br><span class="muted small">Plätze und Codes, Test-Paket</span></span><span class="chev" aria-hidden="true">›</span></a>`;
-  if (!adminClubs) return `<div class="card"><p class="muted" style="margin:0">Vereine laden …</p></div>${own}`;
-  if (adminClubs === 'error') return `<div class="notice">Die Vereine konnten nicht geladen werden.</div>${own}`;
-  if (!adminClubs.length) return `<div class="card"><b>Vereinsprofil ansehen</b><p class="muted small" style="margin:6px 0 0">Noch gibt es keine Vereine.</p></div>${own}`;
-  return `<div class="card"><label for="admClub" class="small" style="margin:0 0 4px"><b>Vereinsprofil ansehen</b></label>
-  <select id="admClub" style="width:100%">${adminClubs.map((c) => `<option value="${esc(c.id)}">${esc(c.name)} (${esc(Number(c.belegt) || 0)}/${esc(Number(c.plaetze) || 0)})</option>`).join('')}</select>
-  <button class="primary block" style="margin-top:10px" data-act="adm-club-open">Ansehen</button></div>${own}`;
+  if (!adminClubs) return '<h2>Vereine</h2><div class="card"><p class="muted" style="margin:0">Vereine laden …</p></div>';
+  if (adminClubs === 'error') return '<h2>Vereine</h2><div class="notice">Die Vereine konnten nicht geladen werden.</div>';
+  if (!adminClubs.length) return '<h2>Vereine</h2><div class="card"><b>Vereinsprofil ansehen</b><p class="muted small" style="margin:6px 0 0">Noch gibt es keine Vereine.</p></div>';
+  const n = (v) => Number(v) || 0;
+  const sum = (k) => adminClubs.reduce((a, c) => a + n(c[k]), 0);
+  const pk = (x) => adminClubs.filter((c) => n(c.plaetze) === x).length;
+  const tile = (label, big, sub) => `<div class="card adm-tile"><span class="muted small">${label}</span><b class="adm-v">${big}</b><span class="muted small">${sub}</span></div>`;
+  const rows = adminClubs
+    .map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.trainer || '–')}</td><td>${n(c.plaetze) ? `${n(c.plaetze)} Boxer` : 'kein Paket'}</td><td>${n(c.belegt)} von ${n(c.plaetze)}</td><td>${n(c.aktiv_7_tage)}</td><td>${n(c.einheiten)}</td><td>${esc(admWhen(c.zuletzt))}</td><td>${esc(admWhen(c.angelegt))}</td></tr>`)
+    .join('');
+  return `<h2>Vereine</h2>
+  <div class="adm-tiles">
+    ${tile('Vereine', n(adminClubs.length), `ohne Paket ${pk(0)}`)}
+    ${tile('Pakete', `${pk(3)} · ${pk(5)} · ${pk(10)}`, '3er · 5er · 10er')}
+    ${tile('Plätze belegt', `${sum('belegt')} von ${sum('plaetze')}`, 'alle Vereine')}
+    ${tile('Aktiv in 7 Tagen', sum('aktiv_7_tage'), `Einheiten gesamt ${sum('einheiten')}`)}
+  </div>
+  <div class="adm-scroll" style="margin-top:12px"><table class="adm-table"><thead><tr><th>Verein</th><th>Trainer</th><th>Paket</th><th>Plätze belegt</th><th>Aktiv 7 Tage</th><th>Einheiten</th><th>Zuletzt aktiv</th><th>Angelegt</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="card" style="margin-top:12px"><label for="admClub" class="small" style="margin:0 0 4px"><b>Vereinsprofil ansehen</b></label>
+  <select id="admClub" style="width:100%">${adminClubs.map((c) => `<option value="${esc(c.id)}">${esc(c.name)} (${n(c.belegt)}/${n(c.plaetze)})</option>`).join('')}</select>
+  <button class="primary block" style="margin-top:10px" data-act="adm-club-open">Ansehen</button></div>
+  <h2>Privatkonten</h2>`;
 }
 async function loadAdminClubs() {
   try {
@@ -1120,11 +1135,11 @@ const PAKETE = [
 let abo = { loaded: false, aktiv: false, art: '', bis: '' };
 let aboPick = 'jahr'; // das Jahresabo ist vorgewählt
 let adChoiceId = ''; // Einheit, für die „Weiter mit Werbung“ gewählt wurde
-const payUi = () => Boolean(account && (account.isAdmin || PAYWALL_FUER_ALLE));
+const payUi = () => Boolean(account && (account.isAdmin || account.isTester || PAYWALL_FUER_ALLE)); // Testkonto: z. B. das Vereinskonto des Betreibers (siehe docs/DB-VEREINSKONTEN.sql)
 // Werbefrei: Abo, Boxer mit Vereinsplatz, Trainer (Admin nicht, damit man den Ablauf testen kann)
-const werbefrei = () => Boolean(abo.aktiv || clubInfo.access || (clubInfo.trainer && !(account && account.isAdmin)));
+const werbefrei = () => Boolean(abo.aktiv || (clubInfo.access && clubInfo.access.art === 'verein') || (clubInfo.trainer && !(account && account.isAdmin))); // access.art ist auch bei Trainern gesetzt ('trainer'), nur 'verein' ist ein Boxer mit Platz
 const adDue = (id) => Boolean(account) && id !== 'test' && !werbefrei() && Object.keys(state.done || {}).length >= 1 && (!payUi() || adChoiceId === id);
-const adPlaceholderOn = () => !nativePlugin('AdMob') && Boolean(account && account.isAdmin);
+const adPlaceholderOn = () => !nativePlugin('AdMob') && Boolean(account && (account.isAdmin || account.isTester));
 async function loadAbo() {
   if (!account) return;
   try {
@@ -1152,7 +1167,7 @@ function viewAbo(id) {
   if (abo.aktiv) {
     return `<a href="#/profile" class="back">← Profil</a><h1>Ohne Werbung</h1>
     <div class="card"><div class="row between"><b>Ohne Werbung</b><span class="chip ok">aktiv</span></div><p class="muted small" style="margin:8px 0 0">${abo.art === 'jahr' ? 'Jahresabo' : 'Monatsabo'}, gültig bis ${esc(aboBisText())}.</p></div>
-    ${account.isAdmin ? '<button class="ghost block" data-act="abo-end">Test-Abo beenden</button><p class="testhint">Nur für dich als Admin: danach kannst du den Ablauf noch einmal testen.</p>' : ''}`;
+    ${account.isAdmin || account.isTester ? '<button class="ghost block" data-act="abo-end">Test-Abo beenden</button><p class="testhint">Nur für Testkonten: danach kannst du den Ablauf noch einmal testen.</p>' : ''}`;
   }
   const card = (art, titel, preis, sub, tag) => `<button class="pk ${aboPick === art ? 'sel' : ''}" data-act="abo-pick" data-art="${art}"><div class="top"><b>${titel}</b><span class="pr">${preis}</span></div><span class="muted small">${sub}${tag ? ` <span class="tag">${tag}</span>` : ''}</span><ul><li>Keine Werbung</li><li>Jederzeit kündbar</li></ul></button>`;
   const label = aboPick === 'jahr' ? `Jahr für ${PRICE.jahr} wählen` : `Monat für ${PRICE.monat} wählen`;
@@ -1165,7 +1180,7 @@ function viewAbo(id) {
   ${id ? `<button class="ghost block" style="margin-top:14px" data-act="abo-skip" data-id="${esc(id)}">Weiter mit Werbung</button>` : ''}`;
 }
 async function aboBuy() {
-  if (!account || !account.isAdmin) {
+  if (!account || !(account.isAdmin || account.isTester)) {
     alert('Der Kauf ist in dieser Version noch nicht möglich.');
     return;
   }
@@ -2423,6 +2438,67 @@ async function clubAskGo() {
     el.disabled = false;
   }
 }
+// Verein-Registrierung: Nach der Anmeldung wird das gewählte Paket bestätigt (Kauf, in der Web-Version nur gespielt für Admins und Testkonten). Erst danach wird der Verein angelegt.
+function readPendClub() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PENDCLUB_KEY) || 'null');
+    return p && p.name && account && String(p.email) === String(account.email || '').toLowerCase() ? p : null;
+  } catch {
+    return null;
+  }
+}
+function dropPendClub() {
+  try {
+    localStorage.removeItem(PENDCLUB_KEY);
+  } catch {
+    /* Speicher nicht verfügbar */
+  }
+  document.getElementById('clubbuy')?.remove();
+}
+async function maybeFinishClubSignup(tries = 0) {
+  if (!account || document.getElementById('clubbuy')) return;
+  const p = readPendClub();
+  if (!p) return;
+  if (document.querySelector('.timer') || document.getElementById('onboard')) {
+    if (tries < 60) setTimeout(() => maybeFinishClubSignup(tries + 1), 5000); // erst nach der Einrichtung fragen
+    return;
+  }
+  if (!clubInfo.loaded) await loadClubInfo();
+  if (clubInfo.trainer || clubInfo.access) return dropPendClub(); // hat schon einen Verein
+  const pk = PAKETE.find((x) => x.n === p.pkg) || PAKETE[1];
+  const box = document.createElement('div');
+  box.id = 'clubbuy';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Vereinspaket bestätigen');
+  box.innerHTML = `<b>Dein Verein „${esc(p.name)}“</b><p class="muted small">Paket mit ${pk.n} Boxern, ${pk.preis} im Jahr (${pk.je} je Boxer). Nach dem Kauf ist dein Verein angelegt und du kannst Codes für deine Boxer erstellen.</p>${isNativeApp() ? '' : '<p class="testhint">Zum Testen in der Web-Version: der Kauf wird nur gespielt.</p>'}<div class="btn-row"><button class="primary" data-act="clubbuy-go">Paket mit ${pk.n} Boxern für ${pk.preis} wählen</button><button class="ghost" data-act="clubbuy-later">Später, ohne Verein weiter</button></div>`;
+  document.body.appendChild(box);
+}
+async function clubBuyGo() {
+  const p = readPendClub();
+  if (!p) return;
+  if (!account.isAdmin && !account.isTester) {
+    alert('Der Kauf ist in dieser Version noch nicht möglich.');
+    return;
+  }
+  const btn = document.querySelector('#clubbuy [data-act="clubbuy-go"]');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await withTimeout(cloud.gymCreate(p.name), 12000);
+    if (r.error) throw r.error;
+    if (r.data && r.data.fehler) throw new Error(String(r.data.fehler));
+    const r2 = await withTimeout(cloud.gymTestPackage(p.pkg), 12000);
+    if (r2.error) throw r2.error;
+    dropPendClub();
+    clubInfo = { loaded: false, access: null, trainer: false };
+    await loadClubInfo();
+    toast('Verein angelegt');
+    location.hash = '#/profile';
+    route();
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    alert(gymErr(e));
+  }
+}
 // Neue Konten: Die Erlaubnis für Mitteilungen wird schon vor der Einrichtung erfragt, damit die Erinnerung nach 24 Stunden kommen kann.
 // Zu welcher Tageszeit jemand trainiert, fragt maybeAskNotif danach trotzdem noch einmal.
 const SETUPASK_KEY = 'redline.setupask';
@@ -3016,6 +3092,12 @@ async function startSession(user, quick = false) {
     account.isAdmin = v;
     if (v && location.hash === '#/profile' && !document.querySelector('.timer')) route(); // Menüpunkt „Admin“ nachträglich zeigen
   });
+  cloud.isTestAccount().then((v) => {
+    if (!account) return;
+    account.isTester = v;
+    if (v && ['#/profile', '#/verein'].includes(location.hash) && !document.querySelector('.timer')) route();
+  });
+  setTimeout(() => maybeFinishClubSignup(), 2500);
   if (!account.birthYear) setTimeout(retryBirthYear, 8000);
   if (!state.onboarded) {
     startOnboarding();
@@ -3154,9 +3236,26 @@ const authBrand = () => `<div class="auth-brand">${BRAND_MARK}<b>${APP_NAME_A}<i
 const authTabs = (on) => `<div class="seg2" role="tablist"><button class="${on === 'login' ? 'sel' : ''}" data-act="auth-view" data-v="login" role="tab">Anmelden</button><button class="${on === 'register' ? 'sel' : ''}" data-act="auth-view" data-v="register" role="tab">Registrieren</button></div>`;
 const legalLinks = (top = 18) => `<p class="muted small center" style="margin-top:${top}px"><a href="#" data-act="auth-view" data-v="privacy">Datenschutz</a> · <a href="#" data-act="auth-view" data-v="imprint">Impressum</a></p>`;
 
+// Registrieren als Privatperson oder als Verein (Trainer). Ein Verein braucht ein Paket, der Kauf folgt nach der Anmeldung (siehe maybeFinishClubSignup).
+let authKind = 'privat';
+let authPkg = 5;
+let authYear = '';
+let authClub = '';
+const PENDCLUB_KEY = 'redline.pendclub';
+const kindSwitch = () => `<div class="kindsw" role="tablist"><button class="${authKind === 'privat' ? 'on' : ''}" data-act="auth-kind" data-k="privat" role="tab">Privatperson</button><button class="${authKind === 'verein' ? 'on' : ''}" data-act="auth-kind" data-k="verein" role="tab">Verein</button></div>`;
+function clubSignupHtml() {
+  const cards = PAKETE.map((x) => `<button class="pk ${x.n === authPkg ? 'sel' : ''}" data-act="auth-pkg" data-n="${x.n}"><div class="top"><b>${x.n} Boxer</b><span class="pr">${x.preis}</span></div><span class="muted small">${x.je} je Boxer im Jahr${x.tag ? ` <span class="tag">${x.tag}</span>` : ''}</span></button>`).join('');
+  return `<h2 style="font-size:22px;margin:4px 0 4px">Dein Verein mit Nonstop Boxing</h2>
+    <p class="muted small" style="margin:0 0 6px">Für Vereine gibt es drei Jahrespakete. Du wählst deines jetzt, den Kauf schließt du nach der Anmeldung ab. Ohne Paket wird kein Verein angelegt.</p>
+    <ul class="feat"><li>Ein Platz mit eigenem Code für jeden Boxer</li><li>Traineransicht: Stand, Aufmerksamkeit, letzte Einheiten</li><li>Alle Boxer trainieren ohne Werbung</li><li>Plätze jederzeit neu vergeben</li><li>Jahresabo, jederzeit kündbar</li></ul>${cards}`;
+}
 function renderAuth(view = 'login') {
   const prevEmail = document.getElementById('aEmail')?.value;
   if (prevEmail !== undefined) authEmail = prevEmail.trim();
+  const prevYear = document.getElementById('aYear')?.value;
+  if (prevYear !== undefined) authYear = prevYear;
+  const prevClub = document.getElementById('aClub')?.value;
+  if (prevClub !== undefined) authClub = prevClub;
   if (view === 'privacy' || view === 'imprint') {
     if (authView !== 'privacy' && authView !== 'imprint') authPrev = authView;
   }
@@ -3178,12 +3277,15 @@ ${legalLinks(6)}`;
       <button class="primary block" style="margin-top:16px" data-act="auth-pw">Anmelden</button>
       <button class="linkbtn" data-act="auth-view" data-v="login">Zurück zur Anmeldung mit Code</button>${legalLinks()}`;
   } else if (view === 'register') {
-    body = `${authBrand()}${authTabs('register')}${authMessage()}
-      <label for="aEmail">E-Mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
-      <label for="aYear">Geburtsjahr</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="z. B. 2008">
+    const isClub = authKind === 'verein';
+    body = `${authBrand()}${authTabs('register')}${kindSwitch()}${authMessage()}${isClub ? clubSignupHtml() : ''}
+      ${isClub ? `<label for="aClub" style="margin-top:14px">Name des Vereins</label><input id="aClub" type="text" maxlength="60" autocomplete="off" value="${esc(authClub)}">` : ''}
+      <label for="aEmail">${isClub ? 'E-Mail des Trainers' : 'E-Mail'}</label><input id="aEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" value="${em}">
+      <label for="aYear">${isClub ? 'Dein Geburtsjahr' : 'Geburtsjahr'}</label><input id="aYear" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" placeholder="${isClub ? 'z. B. 1985' : 'z. B. 2008'}" value="${esc(authYear)}">
       <p class="muted small" style="margin:10px 0 0">Du meldest dich immer mit einem Code per E-Mail an, ein Passwort gibt es nicht.</p>
       <label class="chk"><input id="aConsent" type="checkbox"><span>Ich habe die <a href="#" data-act="auth-view" data-v="privacy">Datenschutzerklärung</a> gelesen und willige in die Verarbeitung meiner Daten (E-Mail, Geburtsjahr, Trainingsdaten) zur Sicherung meines Fortschritts ein.</span></label>
-      <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>${legalLinks()}`;
+      <button class="primary block" style="margin-top:14px" data-act="auth-register">Code senden</button>
+      ${isClub ? `<p class="muted small center" style="margin-top:10px">Danach: Code eingeben, Paket mit ${authPkg} Boxern für ${(PAKETE.find((x) => x.n === authPkg) || PAKETE[1]).preis} bestätigen, Verein ist angelegt.</p>` : ''}${legalLinks()}`;
   } else if (view === 'confirm') {
     body = `${authBrand()}<h1 style="font-size:28px">Code eingeben</h1><p>${authPrev === 'register' ? `Wir haben einen Code an <b>${em}</b> geschickt.` : `Wir haben einen Code an <b>${em}</b> geschickt.`} Gib ihn hier ein, dann bist du angemeldet.</p>${authMessage()}
       <label for="aCode">Code aus der E-Mail</label><input id="aCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*">
@@ -3211,8 +3313,10 @@ async function doRegister(btn) {
   const consent = document.getElementById('aConsent').checked;
   authEmail = email;
   const nowY = new Date().getFullYear();
+  const clubName = authKind === 'verein' ? (document.getElementById('aClub')?.value || '').trim() : '';
   let problem = '';
-  if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
+  if (authKind === 'verein' && !clubName) problem = 'Bitte gib den Namen des Vereins ein.';
+  else if (!/^\S+@\S+\.\S+$/.test(email)) problem = 'Bitte gib eine gültige E-Mail-Adresse ein.';
   else if (!year || year < 1900 || year > nowY) problem = 'Bitte gib dein Geburtsjahr ein.';
   else if (!consent) problem = 'Bitte stimme der Datenschutzerklärung zu.';
   if (problem) {
@@ -3227,6 +3331,12 @@ async function doRegister(btn) {
     if (error) {
       authMsg = authError(error);
       return renderAuth('register');
+    }
+    try {
+      if (clubName) localStorage.setItem(PENDCLUB_KEY, JSON.stringify({ name: clubName.slice(0, 60), pkg: authPkg, email: email.toLowerCase() }));
+      else localStorage.removeItem(PENDCLUB_KEY);
+    } catch {
+      /* Speicher nicht verfügbar: dann legt der Trainer den Verein später im Profil an */
     }
     authMsg = '';
     authPrev = 'register';
@@ -3572,6 +3682,20 @@ document.addEventListener('click', (e) => {
         account = null;
         renderAuth('login');
       })();
+      break;
+    case 'auth-kind':
+      authKind = t.dataset.k === 'verein' ? 'verein' : 'privat';
+      renderAuth('register');
+      break;
+    case 'auth-pkg':
+      authPkg = Number(t.dataset.n) || 5;
+      renderAuth('register');
+      break;
+    case 'clubbuy-go':
+      clubBuyGo();
+      break;
+    case 'clubbuy-later':
+      dropPendClub();
       break;
     case 'tr-open':
       tr.open = tr.open === t.dataset.id ? '' : t.dataset.id;
@@ -3968,12 +4092,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 133;
+const APP_BUILD = 135;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
