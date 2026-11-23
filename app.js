@@ -136,8 +136,11 @@ function plan() {
     dayKeyOf.clear();
     planCache = { key, value: buildPlan({ today: new Date(), fightDate: state.fightDate, startDate: state.startDate, freq: effFreq(), base: state.fightDate ? state.planBase : '' }) };
   }
-  return planCache.value;
+  // Den Plan gibt es erst mit Kampftermin (oder Startdatum) UND Test-Watt (Wunsch des Betreibers, 23.11.2026). Vorher: leer, mit Hinweis was fehlt.
+  const v = planCache.value;
+  return v.status === 'ok' && !planReady() ? { ...v, weeks: [], waiting: true } : v;
 }
+const planReady = () => Boolean((state.fightDate || parseDay(state.startDate)) && Number(state.maxW) > 0);
 function findInPlan(id) {
   if (id === 'test') return { session: TEST_SESSION, week: { n: 0, phase: 'Test' } };
   for (const w of plan().weeks) {
@@ -180,6 +183,11 @@ function planSummary() {
   const freq = userFreq();
   if (p.status === 'invalid') return 'Das Datum ist ungültig.';
   if (p.status === 'past') return 'Der Kampftermin liegt in der Vergangenheit. Bitte ein neues Datum eintragen.';
+  if (p.waiting) {
+    const hasDate = Boolean(p.fight || parseDay(state.startDate));
+    if (hasDate) return 'Dein Plan entsteht, sobald du den Fitness-Test gemacht hast. Daraus berechnet die App deine Watt-Ziele.';
+    return Number(state.maxW) > 0 ? 'Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.' : 'Dein Plan entsteht, sobald du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast.';
+  }
   if (p.mode === 'none') return 'Trage deinen Kampftermin ein. Dann stellt die App den Plan darauf ein.';
   let txt = '';
   if (p.mode === 'fight') {
@@ -402,7 +410,7 @@ function viewHome() {
     const d = daysToFight();
     fightInfo = `<div class="banner">${HERO_PHOTO}${WHEEL_ART}<div class="banner-in"><span class="kicker">Kampf · ${fmtDate(p.fight)}</span>
       <div class="bignum">${d === 0 ? 'Heute' : d}</div><div class="bannerlbl">${d === 0 ? 'Kampftag' : d === 1 ? 'Tag bis zum Kampf' : 'Tage bis zum Kampf'}</div>
-      <p class="muted small" style="margin:10px 0 0">Dein Plan: ${wochen(p.weeks.length)}, ${userFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}${p.weeks.length === 1 ? ' · sehr kurzfristig, nur die Kampfwoche' : ''}</p></div></div>`;
+      <p class="muted small" style="margin:10px 0 0">${p.waiting ? 'Dein Plan entsteht, sobald du den Fitness-Test gemacht hast.' : `Dein Plan: ${wochen(p.weeks.length)}, ${userFreq()}× pro Woche · ${formatLabel()}${p.compressed ? ' · gekürzt (Annahme, <a href="#/plan"><u>Details</u></a>)' : ''}${p.weeks.length === 1 ? ' · sehr kurzfristig, nur die Kampfwoche' : ''}`}</p></div></div>`;
   } else if (p.status === 'past' || p.status === 'invalid') {
     fightInfo = `<div class="notice">${esc(planSummary())} <a href="#/settings">Einstellungen</a></div>`;
   } else {
@@ -477,6 +485,13 @@ function weekRange(w) {
 function viewPlan() {
   const p = plan();
   let html = `<h1>Trainingsplan</h1><p class="muted">${esc(planSummary())}</p>`;
+  if (p.waiting) {
+    const hasDate = Boolean(p.fight || parseDay(state.startDate));
+    const hasWatt = Number(state.maxW) > 0;
+    const step = (done, title, text) => `<li class="${done ? 'done' : ''}"><b>${title}</b><br><span class="muted small">${text}</span></li>`;
+    return `${html}<div class="card"><ul class="fsteps">${step(hasDate, 'Kampftermin eintragen', 'Dann stellt die App den Plan rückwärts vom Kampf aus ein.')}${step(hasWatt, 'Fitness-Test machen', 'Drei Sprints à 10 Sekunden. Daraus berechnet die App deine Watt-Ziele.')}</ul></div>
+    ${hasDate ? '' : '<a class="btn primary" style="display:block;text-align:center" href="#/settings">Kampftermin eintragen</a>'}${hasWatt ? '' : '<a class="btn primary" style="display:block;text-align:center;margin-top:10px" href="#/test">Fitness-Test machen</a>'}`;
+  }
   if (p.status !== 'ok') return html;
   let phaseNo = 0;
   PHASES.forEach((ph) => {
@@ -4174,12 +4189,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 138;
+const APP_BUILD = 139;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Trainingsplan: Den Plan gibt es erst, wenn du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast. Vorher zeigt die App, was noch fehlt. Das gilt für alle, auch für Trainer, die selbst trainieren.', 'Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
