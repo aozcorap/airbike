@@ -531,10 +531,18 @@ button.ghost.logout, .btn.ghost.logout { color: #fff; background: linear-gradien
 .seat-del { padding: 8px 12px; min-height: 40px; }
 #gymCode, #clubCode { text-transform: uppercase; letter-spacing: .06em; }
 /* Eingabefelder im Vereinsbereich: dunkler Grund, heller Rahmen, kräftiger Platzhalter (auf dem Kartengrund waren sie kaum zu erkennen) */
-#gymBody input, #clubask input { background: #07090e; border: 1.5px solid #5b6784; font-size: 17px; min-height: 50px; }
+#gymBody input, #clubask input, #clubbuy input { background: #07090e; border: 1.5px solid #5b6784; font-size: 17px; min-height: 50px; }
 #gymBody input::placeholder, #clubask input::placeholder { color: #8d98b3; opacity: 1; }
 #gymBody input:disabled { opacity: .55; }
 #clubask { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); z-index: 256; padding: 16px; background: #1b1f28; border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-size: 15px; line-height: 1.4; }
-#clubask p { margin: 6px 0 12px; }
-#clubask .btn-row { display: flex; flex-direction: column; gap: 8px; }
-#clubask button { min-height: 48px; width: 100%; }
+#clubbuy { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); z-index: 256; padding: 16px; background: #1b1f28; border: 1px solid var(--accent); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .6); font-size: 15px; line-height: 1.4; }
+#clubask p, #clubbuy p { margin: 6px 0 12px; }
+#clubask .btn-row, #clubbuy .btn-row { display: flex; flex-direction: column; gap: 8px; }
+#clubask button, #clubbuy button { min-height: 48px; width: 100%; }
+
+.kindsw { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 14px; }
+.kindsw button { min-height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 600; }
+.kindsw button.on { border-color: var(--accent); color: #fff; }
+.feat { list-style: none; margin: 6px 0 0; padding: 0; font-size: 15px; }
+.feat li { padding: 6px 0 6px 26px; position: relative; border-bottom: 1px solid var(--line); }
+.feat li:before { content: "✓"; position: absolute; left: 2px; color: #34d27b; font-weight: 700; }

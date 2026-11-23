@@ -41,7 +41,16 @@ export const isAdmin = async () => {
     return false;
   }
 };
-export const adminOverview = () => client.rpc('admin_overview');
+// Testkonten (z. B. das Vereinskonto des Betreibers) dürfen den gespielten Kauf nutzen, ohne Admin zu sein (siehe docs/DB-VEREINSKONTEN.sql)
+export const isTestAccount = async () => {
+  try {
+    const { data, error } = await client.rpc('ist_testkonto');
+    return !error && data === true;
+  } catch {
+    return false;
+  }
+};
+export const adminOverview =() => client.rpc('admin_overview');
 // Konto eines Nutzers löschen (die Datenbank erlaubt es nur Admins und nie für sich selbst oder andere Admins)
 export const adminDeleteUser = (target) => client.rpc('admin_delete_user', { target });
 
