@@ -7,7 +7,7 @@
 //   abo: true          → „Ohne Werbung“-Abo ist aktiv
 //   club: 'trainer'    → Konto ist Trainer eines Vereins „Testverein“ (ohne Paket); probe: 'laeuft' | 'keine' | 'vorbei'
 // Zähler zum Prüfen: window.__buyCalls (Testkäufe), window.__gymCreate (Verein angelegt), window.__push (Push-Aufrufe, anmErr: true lässt die Anmeldung scheitern).
-// Hilfe: boxer: true zeigt drei Beispiel-Boxer in der Trainer-Ansicht.
+// Hilfe: boxer: true zeigt drei Beispiel-Boxer in der Trainer-Ansicht (Deine Boxer) und Beispieldaten zum Fortschritt (Profil).
 // Hilfe: window.__setze(cfg, state) setzt Schalter und Stand (localStorage 'redline.v1'), räumt eine unterbrochene Einheit weg und lädt neu.
 const cfg = () => { try { return JSON.parse(localStorage.getItem('stub.cfg') || '{}'); } catch { return {}; } };
 window.__buyCalls = 0; window.__rpc = [];
@@ -47,7 +47,34 @@ export const gymAccess = () => ok(cfg().club==='trainer' ? { trainer:true, ist_t
 export const gymTestWeek = () => ok();
 export const gymTestWeekSet = () => ok();
 export const gymTestPackage = () => ok();
-export const gymTrainer = () => ok(cfg().club==='trainer' ? TR() : []);
+// Trainer-Ansicht mit Beispieldaten (fiktiv), nur mit Schalter boxer: true. Zeiten sind relativ zu heute (Berlin), damit die Ampeln stimmen.
+const TRAINER_DATEN = () => {
+  const heute = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+  const vor = (tage, h = 17) => new Date(Date.parse(heute + 'T00:00:00Z') - tage * 864e5 + h * 36e5).toISOString();
+  const lauf = (tage, t, plan, act, x = {}) => ({ s: vor(tage), t, plan, act, fin: true, skip: 0, pz: 0, pzs: 0, bg: 0, bgs: 0, res: 0, sv: vor(tage, 18), ...x });
+  return {
+    verein: 'Testverein', heute, plaetze: 3,
+    boxer: [
+      { platz: 'p1', name: 'Max Muster', belegt: true, test_watt: 940, test_datum: vor(14), zuletzt_gespeichert: vor(0, 9), letzte_anmeldung: vor(0, 9), erledigt: {},
+        ti: { week: 3, phase: 'Tempo aufbauen', done: 7, total: 27, at: vor(0, 9), last: vor(1), next: { title: 'Sprints · Tempo-Ausdauer', day: heute }, today: { id: 'w3s2', title: 'Sprints · Tempo-Ausdauer', secs: 780 } },
+        runs: {
+          w3s2: lauf(0, 'Sprints · Tempo-Ausdauer', 780, 780),
+          w3s1: lauf(1, 'Aktive Erholung', 3480, 3480),
+          w2s3: lauf(4, 'Sprints · Tempo-Ausdauer', 780, 780),
+          w2s2: lauf(6, 'Aktive Erholung', 3480, 3420, { skip: 1 }),
+          w2s1: lauf(8, 'Stufen-Intervalle', 960, 960),
+        } },
+      { platz: 'p3', name: 'Jonas Probe', belegt: true, test_watt: 860, test_datum: vor(20), zuletzt_gespeichert: vor(5, 19), letzte_anmeldung: vor(5, 19), erledigt: {},
+        ti: { week: 2, phase: 'Tempo aufbauen', done: 3, total: 27, at: vor(5, 19), last: vor(5), next: { title: 'Aktive Erholung', day: vor(4).slice(0, 10) }, missed: vor(4).slice(0, 10), today: null },
+        runs: {
+          w2s1: lauf(5, 'Stufen-Intervalle', 960, 720, { fin: false }),
+          w1s3: lauf(8, 'Sprints · Tempo-Ausdauer', 780, 780, { pz: 1, pzs: 45 }),
+          w1s2: lauf(10, 'Aktive Erholung', 3480, 3480),
+        } },
+    ],
+  };
+};
+export const gymTrainer = () => ok(cfg().club==='trainer' ? (cfg().boxer ? TRAINER_DATEN() : TR()) : []);
 export const pullState = async () => ({ state: {}, updated_at: 'v1' });
 export const ensureStateRow = async () => {};
 export const pushStateIf = async () => ({ ok: true, updated_at: 'v' + Date.now() });
