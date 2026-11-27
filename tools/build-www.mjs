@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'www');
-const DATEIEN = ['index.html', 'splash.js', 'styles.css', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'config.js', 'manifest.webmanifest', 'vendor', 'icons', 'img', 'video/start.mp4'];
+const DATEIEN = ['index.html', 'splash.js', 'styles.css', 'app.js', 'data.js', 'plan.js', 'cloud.js', 'legal.js', 'config.js', 'manifest.webmanifest', 'vendor', 'icons', 'img', 'video/start.mp4'];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
