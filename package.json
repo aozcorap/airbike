@@ -5,6 +5,7 @@
   "description": "App-Hülle (Capacitor) für Nonstop Boxing. Die App selbst liegt im Hauptordner (index.html, app.js, ...).",
   "scripts": {
     "pruefen": "node tools/pruefe.mjs",
+    "testumgebung": "python3 tools/testumgebung/server.py 8140",
     "www": "node tools/build-www.mjs",
     "sync": "node tools/build-www.mjs && cap sync",
     "ios:prepare": "node tools/prepare-ios.mjs",
