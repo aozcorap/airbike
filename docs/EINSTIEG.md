@@ -20,6 +20,11 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 - **Begriffe:** „Prototyp" = geschlossener Tester-Kreis, persönlich eingeladen, nur Erwachsene, kein Geld, keine Werbung. „Live" = öffentlich, mit Werbung, Verkauf oder Kindern.
 - **Entscheidungen des Betreibers nicht eigenmächtig ändern.** Beispiele: Ablauf des Trailers, keine Elternzustimmung, Altersklassen bleiben.
 - **Keine echten E-Mails oder Test-Konten auslösen** ohne Rückfrage (ein früherer Test hat ein Konto in der Datenbank hinterlassen).
+- **Antworten kurz halten** (Betreiber, 28.11.2026, mehrfach). Wenige Zeilen, keine Aufzählung von allem, was geprüft wurde.
+- **Keine Nummern oder Kennungen** (wie O1, R5) in Listen und Antworten. Punkte nur mit Namen nennen.
+- **Listen nie ohne Freigabe ändern.** Punkte nur parken, schließen oder verschieben, wenn der Betreiber es sagt. Eigenmächtiges Verschieben wurde zurückgenommen.
+- **Offene Punkte liegen im privaten Repo** (siehe oben): erledigt oder gecancelt aus der offenen Liste löschen und im Archiv eintragen.
+- **Hochformat:** Die Store-App ist auf iPhone und Android auf Hochformat gesperrt. Auf dem iPad ist Querformat erlaubt (`UISupportedInterfaceOrientations~ipad` in der Info.plist). Die Web-Version im Browser lässt Querformat zu.
 
 ## Technik
 
