@@ -7,6 +7,7 @@
 //   abo: true          → „Ohne Werbung“-Abo ist aktiv
 //   club: 'trainer'    → Konto ist Trainer eines Vereins „Testverein“ (ohne Paket); probe: 'laeuft' | 'keine' | 'vorbei'
 // Zähler zum Prüfen: window.__buyCalls (Testkäufe), window.__gymCreate (Verein angelegt), window.__push (Push-Aufrufe, anmErr: true lässt die Anmeldung scheitern).
+// Hilfe: boxer: true zeigt drei Beispiel-Boxer in der Trainer-Ansicht.
 // Hilfe: window.__setze(cfg, state) setzt Schalter und Stand (localStorage 'redline.v1'), räumt eine unterbrochene Einheit weg und lädt neu.
 const cfg = () => { try { return JSON.parse(localStorage.getItem('stub.cfg') || '{}'); } catch { return {}; } };
 window.__buyCalls = 0; window.__rpc = [];
@@ -27,7 +28,9 @@ export const isAdmin = async () => !!cfg().admin;
 export const isTestAccount = async () => !!cfg().tester;
 export const adminOverview = () => ok([]);
 export const adminDeleteUser = () => ok();
-const TR = () => ({ name:'Testverein', plaetze_gesamt:0, plaetze_erlaubt:3, probe:(cfg().probe||'laeuft'), plaetze:[], trainer:true, ist_trainer:true, rolle:'trainer', verein:true, id:'00000000-0000-0000-0000-000000000001', gym_id:'00000000-0000-0000-0000-000000000001' });
+// Beispiel-Boxer (fiktiv) nur mit Schalter boxer: true, für Screenshots der Trainer-Ansicht
+const BEISPIEL = [{ name:'Max Muster', code:'MAX-7K2Q', belegt:true }, { name:'Lena Beispiel', code:'LENA-4PXR', belegt:false }, { name:'Jonas Probe', code:'JONAS-9TMW', belegt:true }];
+const TR = () => ({ name:'Testverein', plaetze_gesamt:(cfg().boxer?3:0), plaetze_erlaubt:3, probe:(cfg().probe||'laeuft'), plaetze:(cfg().boxer?BEISPIEL:[]), trainer:true, ist_trainer:true, rolle:'trainer', verein:true, id:'00000000-0000-0000-0000-000000000001', gym_id:'00000000-0000-0000-0000-000000000001' });
 window.__gymCreate = 0;
 export const gymLoad = () => ok(cfg().club==='trainer' ? TR() : null);
 export const gymCreate = () => { window.__gymCreate++; return ok(); };
