@@ -1230,6 +1230,7 @@ const adDue = (id) => Boolean(account) && id !== 'test' && !werbefrei() && Objec
 const adPlaceholderOn = () => !nativePlugin('AdMob') && Boolean(account && (testPay() || vorschau()));
 async function loadAbo() {
   if (!account) return;
+  pushResync();
   try {
     const { data, error } = await withTimeout(cloud.aboStatus(), 8000);
     if (error) return;
@@ -1418,7 +1419,7 @@ function viewSettings() {
   const hf = age ? Math.round(208 - 0.7 * age) : 0;
   const dayOpts = (key) => `<select data-set-day="${key}" aria-label="Tag">${DAY_LONG.map((d, i) => `<option value="${i + 1}" ${Number(state.days[key]) === i + 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   const nativeNotif = Boolean(nativePlugin('LocalNotifications'));
-  const notifSupported = 'Notification' in window || nativeNotif;
+  const notifSupported = 'Notification' in window || nativeNotif || iosNeedsHome();
   return `<a href="#/profile" class="back">← Profil</a><h1>Einstellungen</h1>
 
   <h2>Dein Kampf</h2>
@@ -1464,7 +1465,7 @@ function viewSettings() {
   ${
     notifSupported
       ? `<div class="btn-row"><button class="ghost" data-act="notif">${state.notify ? 'Hinweise in der App: an' : 'Hinweise in der App aktivieren'}</button></div>
-         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : 'Funktioniert nur, solange die App geöffnet ist. Auf dem iPhone ist das unzuverlässig, nutze dort den Kalender.'}</p>
+         <p class="muted small">${nativeNotif ? 'Das iPhone erinnert dich zur eingestellten Uhrzeit an die nächsten offenen Einheiten, auch bei geschlossener App. Erledigte Einheiten werden nicht mehr gemeldet.' : pushSupported() ? `Du bekommst Mitteilungen zu deinen Trainingszeiten und wenn du ein paar Tage nicht da warst, auch wenn die App geschlossen ist. Trainer bekommen eine Mitteilung, wenn Boxer ein paar Tage nicht trainiert haben. Die Mitteilungen kommen auf dieses Gerät.${iosNeedsHome() ? '' : ' Zeitpunkt: siehe „Uhrzeit“ oben.'}` : iosNeedsHome() ? IOS_HOME_HINT : 'Dieser Browser kann keine Mitteilungen schicken. Nutze den Kalender.'}</p>
          ${nativeNotif && notifHint ? '<div class="notice" role="alert">Mitteilungen sind für Nonstop Boxing ausgeschaltet. Das Fenster zum Erlauben zeigt das iPhone nur einmal. Tippe auf „Einstellungen öffnen“, wähle dort <b>Mitteilungen</b> und schalte sie ein. Danach kommst du zurück zur App, die Erinnerungen gehen dann von selbst an.<div class="btn-row"><button class="primary" data-act="open-settings">Einstellungen öffnen</button></div></div>' : ''}`
       : ''
   }
@@ -2710,12 +2711,107 @@ function maybeAskNotif() {
   document.body.appendChild(box);
 }
 setTimeout(maybeAskNotif, 4000);
+/* ---- Push-Mitteilungen der Web-Version (Server schickt sie direkt aufs Gerät, auch bei geschlossener App; siehe docs/DB-PUSH.sql) ---- */
+const pushSupported = () => !isNativeApp() && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => Boolean((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true);
+const iosNeedsHome = () => !isNativeApp() && isIos() && !isStandalone(); // iPhone: Mitteilungen gehen nur, wenn die Seite zum Home-Bildschirm hinzugefügt wurde
+const IOS_HOME_HINT = 'Auf dem iPhone geht das nur, wenn du die Seite zum Home-Bildschirm hinzufügst: Im Safari auf „Teilen“ tippen, „Zum Home-Bildschirm“ wählen und die App von dort öffnen. Dann kannst du die Hinweise einschalten.';
+let pushOn = false; // dieses Gerät ist für Mitteilungen angemeldet
+const b64ToBytes = (b) => {
+  const s = atob((b + '='.repeat((4 - (b.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+};
+async function pushCurrent() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  } catch {
+    return null;
+  }
+}
+// Nach dem Anmelden: Ist dieses Gerät angemeldet, die Anmeldung für das aktuelle Konto auffrischen (ein Aufruf je Start)
+let pushResynced = false;
+async function pushResync() {
+  if (pushResynced || !pushSupported() || !account) return;
+  pushResynced = true;
+  const sub = await pushCurrent();
+  pushOn = Boolean(sub) && Boolean(state.notify);
+  if (!sub || !state.notify || Notification.permission !== 'granted') return;
+  try {
+    const j = sub.toJSON();
+    await cloud.pushAnmelden(j.endpoint, j.keys.p256dh, j.keys.auth, navigator.userAgent.slice(0, 150));
+  } catch {
+    /* beim nächsten Start noch einmal */
+  }
+}
+async function pushEnable() {
+  const perm = await Notification.requestPermission(); // zuerst, damit es zum Tippen des Nutzers gehört
+  if (perm !== 'granted') return 'denied';
+  const { data, error } = await withTimeout(cloud.pushKey(), 12000);
+  if (error || !data || !data.key) throw error || new Error('kein Schlüssel');
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(data.key) });
+  const j = sub.toJSON();
+  const r = await cloud.pushAnmelden(j.endpoint, j.keys.p256dh, j.keys.auth, navigator.userAgent.slice(0, 150));
+  if (r && r.error) throw r.error;
+  return 'ok';
+}
+async function pushDisable() {
+  const sub = await pushCurrent();
+  if (!sub) return;
+  try {
+    await cloud.pushAbmelden(sub.endpoint);
+  } catch {
+    /* Server-Eintrag räumt sich bei der nächsten Zustellung selbst auf */
+  }
+  try {
+    await sub.unsubscribe();
+  } catch {
+    /* schon abgemeldet */
+  }
+}
+let pushBusy = false;
+async function togglePush() {
+  if (pushBusy) return;
+  if (!state.notify && iosNeedsHome()) {
+    alert(IOS_HOME_HINT);
+    return;
+  }
+  pushBusy = true;
+  try {
+    if (state.notify) {
+      await pushDisable();
+      pushOn = false;
+      state.notify = false;
+      save();
+      route();
+      toast('Hinweise sind aus');
+    } else {
+      const r = await pushEnable();
+      if (r === 'denied') {
+        alert('Mitteilungen sind für diese Seite blockiert. Erlaube sie in den Einstellungen deines Browsers oder Geräts und tippe dann noch einmal auf „Hinweise aktivieren“.');
+      } else {
+        pushOn = true;
+        state.notify = true;
+        save();
+        route();
+        toast('Hinweise sind an');
+      }
+    }
+  } catch {
+    alert('Das hat nicht geklappt. Prüfe deine Verbindung und versuche es noch einmal.');
+  }
+  pushBusy = false;
+}
 function scheduleReminder() {
   clearTimeout(reminderTimer);
   if (nativePlugin('LocalNotifications')) {
     scheduleNativeReminders();
     return;
   }
+  if (pushOn) return; // Mitteilungen kommen vom Server, nicht doppelt aus der geöffneten Seite
   if (!state.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
   const cw = currentWeek();
   if (!cw) return;
@@ -3600,6 +3696,7 @@ async function doLogout() {
   const ok = await pushNow();
   if (!ok && !confirm('Die letzten Änderungen konnten nicht gesichert werden. Trotzdem abmelden? Sie gehen dann verloren.')) return;
   signingOut = true;
+  if (pushSupported()) await pushDisable(); // dieses Gerät soll keine Mitteilungen des alten Kontos mehr bekommen
   try {
     await cloud.signOut();
   } catch {
@@ -3685,6 +3782,7 @@ function legalPrivacy() {
   <li><b>Trainingsdaten:</b> Altersklasse, Kampftermin, Trainingshäufigkeit, Kampfformat, Test-Watt mit Datum, erledigte Einheiten und deine Einstellungen.</li>
   <li><b>Technisch:</b> Beim Aufruf der Seite verarbeitet der Hosting-Anbieter deine IP-Adresse. Beim Anmelden und beim Sichern verarbeitet der Konto-Anbieter technische Zugriffsdaten (z. B. IP-Adresse und Zeitpunkt) in seinen Protokollen. Dein Geburtsjahr liegt zusätzlich in den Kontodaten des Anmeldedienstes.</li>
   <li><b>E-Mails:</b> Für den Anmelde-Code wird eine E-Mail über den Mail-Dienst des Konto-Anbieters verschickt. Hast du dich registriert, den Code aber nicht eingegeben, schicken wir dir nach etwa einem Tag einmal einen neuen Code. Danach melden wir uns nicht mehr per E-Mail.</li>
+  <li><b>Mitteilungen in der Web-Version:</b> Wenn du in den Einstellungen „Hinweise“ einschaltest, speichern wir die Adresse deines Geräts für Mitteilungen (die Push-Adresse deines Browsers) und die dafür nötigen Schlüssel. Unser Server schickt dir darüber Erinnerungen zu deinen Trainingszeiten und, wenn du ein paar Tage nicht da warst, einen Hinweis. Trainer bekommen eine Mitteilung, wenn Boxer ein paar Tage nicht trainiert haben. Der Push-Dienst deines Browsers oder Geräts (zum Beispiel von Apple, Google oder Mozilla) leitet die Mitteilung weiter und verarbeitet dabei technische Daten. Wir merken uns, welche Mitteilung wann geschickt wurde, damit niemand doppelt benachrichtigt wird (60 Tage). Du kannst die Hinweise jederzeit in den Einstellungen oder im Browser ausschalten, beim Abmelden und Löschen deines Kontos werden die Daten gelöscht.</li>
   <li><b>Erinnerungen in der iPhone-App:</b> Wenn du es erlaubst, schickt die App Mitteilungen auf dein Gerät (zum Beispiel zu deinen Trainingseinheiten oder wenn deine Einrichtung nach einem Tag noch offen ist). Diese Mitteilungen werden auf deinem Gerät geplant, es werden dafür keine Daten an einen Server geschickt. Du kannst sie jederzeit in den iPhone-Einstellungen ausschalten.</li>
   <li><b>Verein und Trainer:</b> Nur wenn du einen Vereins-Code einlöst, sieht dein Trainer einen Teil deiner Trainingsdaten: den Namen, den der Trainer für deinen Platz eingetragen hat, deine erledigten Einheiten, deine Plan-Woche und Phase, ob und wie lange du die letzten Einheiten gelaufen bist und ob du sie ohne Pause und ohne Überspringen durchgezogen hast, deinen Test-Watt mit Datum sowie den Zeitpunkt deiner letzten Anmeldung und Speicherung. Deine E-Mail-Adresse sieht der Trainer nicht. Ohne eingelösten Code sieht dein Trainer diese Daten nicht. Auch der Betreiber der App kann den Stand der Boxer eines Vereins einsehen, um die Vereine zu betreuen. Das Konto bleibt dein Konto: Du kannst den Verein jederzeit unter „Profil“, „Verein“ selbst verlassen. Dann sieht der Trainer dich nicht mehr. Löschst du dein Konto, ist dein Platz ebenfalls frei.</li>
   <li><b>Abo und Verein:</b> Schließt du ein Abo „Ohne Werbung“ ab, speichern wir Art und Laufzeit des Abos und woher es kommt (später Apple oder Google). Registrierst du einen Verein, speichern wir den Vereinsnamen, das gewählte Paket und die E-Mail-Adresse des Trainers. Der Betreiber der App sieht im Admin-Bereich die Vereine mit E-Mail-Adresse des Trainers, Paket und Nutzung.</li></ul>
@@ -4127,7 +4225,11 @@ document.addEventListener('click', (e) => {
       download('nonstop-boxing-training.ics', buildICS(), 'text/calendar');
       break;
     case 'notif':
-      if (state.notify) {
+      if (pushSupported()) {
+        togglePush();
+      } else if (iosNeedsHome() && !nativePlugin('LocalNotifications')) {
+        alert(IOS_HOME_HINT);
+      } else if (state.notify) {
         state.notify = false;
         save();
         scheduleReminder();
@@ -4286,12 +4388,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 151;
+const APP_BUILD = 152;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Vorschau: Auch die Vereinspakete sind ausgegraut. Darunter steht der Knopf „Kostenlos weitermachen (Werbung wird nur simuliert)“. „Weiter mit Werbung (Simulation)“ ist jetzt als roter Knopf gut zu sehen.', 'Vorschau: Die Preise bei „Ohne Werbung“ sind ausgegraut und nicht anklickbar. Nur „Weiter mit Werbung (Simulation)“ funktioniert.', 'Der Admin sieht bei „Ohne Werbung“ und bei den Vereinspaketen dieselbe Vorschau wie alle anderen. Den gespielten Kauf gibt es nur noch für Testkonten.', 'Vorschau: Ab dem zweiten Training siehst du jetzt auch in der Web-Version die Auswahl „Ohne Werbung“ und die Werbung (ein Platzhalter mit Countdown). Bezahlen ist noch nicht freigeschaltet, du nutzt alles vorerst kostenlos.', 'Neu starten: Hast du keinen Kampftermin (zum Beispiel nach „Ich habe keinen Kampftermin mehr“), bekommt der Schritt „Kampftermin“ auf der Startseite und im Plan kein Häkchen mehr. Der Knopf führt zum Eintragen, der Fitness-Test geht auch ohne Termin.', 'Verein: Auch auf der Seite „Registrieren“ steht jetzt, dass die erste Woche kostenlos ist.', 'Verein: Eine Woche kostenlos testen. Du wählst bei der Registrierung dein Paket (3, 5 oder 10 Boxer) und testest es sieben Tage ohne Bezahlung. Du und deine Boxer trainieren in dieser Zeit ohne Werbung. Danach brauchst du das Paket, sonst trainiert ihr mit Werbung oder Abo weiter. Die Codes bleiben gültig.', 'Neu starten: Solange Kampftermin oder Fitness-Test fehlen, zeigt die App eine Karte „So startest du“ mit den zwei Schritten und einem Knopf zum nächsten.', 'Verein: Die Schritte unter „So geht es weiter“ haben keine Häkchen mehr, und die Seite heißt auch beim ersten Öffnen „Deine Boxer“.', 'Plan zurücksetzen: Ist der Kampf abgesagt oder willst du neu anfangen, setzt du den Plan unter „Einstellungen“ zurück. Kampftermin, Test-Watt und erledigte Einheiten werden gelöscht, danach legst du alles neu an.', 'Trainingsplan: Den Plan gibt es erst, wenn du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast. Vorher zeigt die App, was noch fehlt. Das gilt für alle, auch für Trainer, die selbst trainieren.', 'Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Neu in der Web-Version: Mitteilungen direkt aufs Gerät, auch wenn die App geschlossen ist. Schalte unter „Einstellungen“, „Erinnerungen“ die Hinweise ein. Du bekommst eine Erinnerung zur Trainingszeit und einen Hinweis, wenn du ein paar Tage nicht da warst. Trainer erfahren, wenn Boxer ein paar Tage nicht trainiert haben. Auf dem iPhone geht das nur, wenn du die Seite zum Home-Bildschirm hinzufügst.', 'Vorschau: Auch die Vereinspakete sind ausgegraut. Darunter steht der Knopf „Kostenlos weitermachen (Werbung wird nur simuliert)“. „Weiter mit Werbung (Simulation)“ ist jetzt als roter Knopf gut zu sehen.', 'Vorschau: Die Preise bei „Ohne Werbung“ sind ausgegraut und nicht anklickbar. Nur „Weiter mit Werbung (Simulation)“ funktioniert.', 'Der Admin sieht bei „Ohne Werbung“ und bei den Vereinspaketen dieselbe Vorschau wie alle anderen. Den gespielten Kauf gibt es nur noch für Testkonten.', 'Vorschau: Ab dem zweiten Training siehst du jetzt auch in der Web-Version die Auswahl „Ohne Werbung“ und die Werbung (ein Platzhalter mit Countdown). Bezahlen ist noch nicht freigeschaltet, du nutzt alles vorerst kostenlos.', 'Neu starten: Hast du keinen Kampftermin (zum Beispiel nach „Ich habe keinen Kampftermin mehr“), bekommt der Schritt „Kampftermin“ auf der Startseite und im Plan kein Häkchen mehr. Der Knopf führt zum Eintragen, der Fitness-Test geht auch ohne Termin.', 'Verein: Auch auf der Seite „Registrieren“ steht jetzt, dass die erste Woche kostenlos ist.', 'Verein: Eine Woche kostenlos testen. Du wählst bei der Registrierung dein Paket (3, 5 oder 10 Boxer) und testest es sieben Tage ohne Bezahlung. Du und deine Boxer trainieren in dieser Zeit ohne Werbung. Danach brauchst du das Paket, sonst trainiert ihr mit Werbung oder Abo weiter. Die Codes bleiben gültig.', 'Neu starten: Solange Kampftermin oder Fitness-Test fehlen, zeigt die App eine Karte „So startest du“ mit den zwei Schritten und einem Knopf zum nächsten.', 'Verein: Die Schritte unter „So geht es weiter“ haben keine Häkchen mehr, und die Seite heißt auch beim ersten Öffnen „Deine Boxer“.', 'Plan zurücksetzen: Ist der Kampf abgesagt oder willst du neu anfangen, setzt du den Plan unter „Einstellungen“ zurück. Kampftermin, Test-Watt und erledigte Einheiten werden gelöscht, danach legst du alles neu an.', 'Trainingsplan: Den Plan gibt es erst, wenn du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast. Vorher zeigt die App, was noch fehlt. Das gilt für alle, auch für Trainer, die selbst trainieren.', 'Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
