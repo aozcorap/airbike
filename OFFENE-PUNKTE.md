@@ -192,6 +192,13 @@ Erledigte und überholte Einträge liegen in `docs/ARCHIV-OFFENE-PUNKTE.md` (nur
   **5. Werbung (AdMob) in die App:** Der Betreiber meint, der Store-Link (derzeit nur Schweiz) reiche für Googles Prüfung. **Ungeprüft**, ob AdMob eine App prüft, die nur in der Schweiz sichtbar ist, und ob die Prüfung ohne Freigabe in DE/AT durchgeht. Vorarbeit unabhängig davon: AdMob-Eintrag mit dem Store-Link verbinden, Einwilligung, Tracking-Abfrage, Datenschutztext, `AD_ENABLED`. Version 1.1 wird erst gebaut und eingereicht, wenn die Werbung eingeschaltet werden kann (Entscheidung 21.11.). **Entscheidung 27.11.2026:** 1.1 kommt mit Werbung beziehungsweise mit Kauf, aber noch nicht bauen, der Betreiber wartet kurz.
   **6. Video für Instagram, TikTok und die Webseite (Wunsch des Betreibers, 27.11.2026, später):** Es soll zeigen, was ein Verein (Trainer mit Paket, Codes, Testwoche, werbefrei) und was eine Privatperson (Abo oder Werbung) bekommt. Werberegeln beachten (nichts Unbelegtes, keine Zahlen aus dem Boxing-Science-PDF).
 
+## Stand 28.11.2026 (Build 153, PR 186 bis 203 gemergt)
+
+- **Testumgebung für die Web-Version:** `tools/testumgebung` (Server, Attrappe für `cloud.js`, Anleitung). Ersetzt das Neubauen durch Prüf-Agenten. Offen: nichts.
+- **Web-Push (Build 152):** Mitteilungen auf dem Gerät, auch bei geschlossener App (Edge-Function `push`, stündlicher Auftrag). **Offen:** echter Empfang auf einem Handy, Android und iPhone (Home-Bildschirm) noch nicht bestätigt. Konto löschen meldet das Browser-Abo nicht ab (Randfall).
+- **Vorschau für Web-Nutzer (Builds 148 bis 151):** Auswahl „Ohne Werbung“ ab dem zweiten Training, Werbe-Platzhalter mit Countdown, Preise und Vereinspakete ausgegraut, Knopf „Kostenlos weitermachen (Werbung wird nur simuliert)“. Admin sieht dasselbe wie Privatpersonen. **Offen:** Vorschau endet, wenn die Stores live sind.
+- **Modell-Vorgehen:** Standard ist Haiku 5.5 für kleine Änderungen. Bei mehreren Dateien, Datenbank, Server, Rechtlichem oder Geld-Themen wird vorher auf Sonnet oder Opus gewechselt.
+
 ## Empfehlung für live
 
 Zuerst die Rechte am Plan und den Datenschutz klären (Rechtlich 1 und 2), danach die Kinderfrage (Rechtlich 3, Fachlich 1) und das neue Video. Der Rest ist Aufräumen.
