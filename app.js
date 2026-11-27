@@ -1,5 +1,6 @@
 import { PHASES, PROFILES, RECOVERY_OPTIONS, TEST_SESSION, TEST_PAUSE_SECS, weekOrder as weekOrderRaw, ageBand, flatten, sessionBlocks as sessionBlocksRaw, totalSecs, fmtSecs, resolveTarget } from './data.js';
 import * as cloud from './cloud.js';
+import { legalImprint } from './legal.js'; // Impressum steht in eigener Datei (Kontaktdaten nicht in app.js)
 import { buildPlan, parseDay, sessionDate, tooCloseToFight, startOfDay, addDays, mondayOf, planStartMonday, DAY } from './plan.js';
 
 /* ---------------- Zustand ---------------- */
@@ -3794,11 +3795,6 @@ function legalPrivacy() {
   <h2>Wie lange?</h2><p>Bis du dein Konto löschst. Das geht jederzeit in den Einstellungen („Konto löschen“). Dabei werden Konto und alle gesicherten Daten in der Datenbank gelöscht. Sicherungskopien und Protokolle des Anbieters können noch eine begrenzte Zeit weiter bestehen.</p>
   <h2>Deine Rechte</h2><p>Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerruf deiner Einwilligung (mit Wirkung für die Zukunft) sowie Beschwerde bei der zuständigen Datenschutz-Aufsichtsbehörde. Wende dich dazu an die oben genannte Stelle.</p>`;
 }
-function legalImprint() {
-  return `<h1>Impressum</h1>
-  <h2>Anbieter</h2><p>Ahmet Özcorapci<br>Hospitalgasse 36d<br>61169 Friedberg</p>
-  <h2>Kontakt</h2><p>E-Mail: <a href="mailto:ahmet@ozcorapci.de">ahmet@ozcorapci.de</a></p>`;
-}
 const viewNews = () => `<a href="#/more" class="back">← Mehr</a><h1>Das ist neu</h1>${NEUES.map((n) => `<div class="card"><div class="row between"><b>Version ${esc(n.v)}</b><span class="muted small">${esc(n.datum)}</span></div><ul class="news">${n.punkte.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`).join('')}`;
 const viewLegal = (which) => `<a href="#/more" class="back">← Mehr</a>${which === 'privacy' ? legalPrivacy() : legalImprint()}`;
 
@@ -4388,7 +4384,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 152;
+const APP_BUILD = 153;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
