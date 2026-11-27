@@ -1,3 +1,4 @@
+-- ÜBERHOLT am 27.11.2026: ersetzt durch die Testwoche, siehe docs/DB-TESTWOCHE.sql. Diese Datei zeigt nur den früheren Stand.
 -- Probezeit für Vereine (27.11.2026, Regel des Betreibers, ausgeführt in Supabase am 27.11.2026)
 --
 -- Regel: Ein Verein hat EINE gemeinsame Gratis-Einheit, wer zuerst trainiert (Trainer oder ein Boxer).

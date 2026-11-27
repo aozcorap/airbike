@@ -69,8 +69,9 @@ export const aboTestBuy = (art) => client.rpc('abo_test_kaufen', { p_art: art })
 export const aboTestEnd = () => client.rpc('abo_test_beenden');
 export const gymLeave = () => client.rpc('gym_verlassen');
 export const gymAccess = ()=> client.rpc('gym_mein_zugang');
-// Probezeit des Vereins: hält fest, wenn die gemeinsame Gratis-Einheit gemacht ist (siehe docs/DB-PROBE.sql)
-export const gymProbeCheck = () => client.rpc('gym_probe_pruefen');
+// Testwoche des Vereins: eine Woche das gewählte Paket testen (siehe docs/DB-TESTWOCHE.sql). Die zweite Funktion ist nur für Admins und Testkonten.
+export const gymTestWeek = (seats) => client.rpc('gym_testwoche_starten', { p_plaetze: seats });
+export const gymTestWeekSet = (days) => client.rpc('gym_test_woche_setzen', { p_tage: days });
 export const gymTestPackage = (seats) => client.rpc('gym_test_paket', { p_plaetze: seats });
 // Traineransicht: Stand der Boxer auf den eigenen Plätzen (die Datenbank gibt nur diese Daten heraus, siehe docs/DB-TRAINER.sql)
 export const gymTrainer = () => client.rpc('gym_trainer_uebersicht');
