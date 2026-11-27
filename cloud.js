@@ -68,6 +68,10 @@ export const aboStatus = () => client.rpc('abo_status');
 export const aboTestBuy = (art) => client.rpc('abo_test_kaufen', { p_art: art });
 export const aboTestEnd = () => client.rpc('abo_test_beenden');
 export const gymLeave = () => client.rpc('gym_verlassen');
+// Push-Mitteilungen der Web-Version (siehe docs/DB-PUSH.sql und supabase/functions/push)
+export const pushKey = () => client.functions.invoke('push', { body: { a: 'key' } });
+export const pushAnmelden = (endpoint, p256dh, auth, ua) => client.rpc('push_anmelden', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_ua: ua || '' });
+export const pushAbmelden = (endpoint) => client.rpc('push_abmelden', { p_endpoint: endpoint });
 export const gymAccess = ()=> client.rpc('gym_mein_zugang');
 // Testwoche des Vereins: eine Woche das gewählte Paket testen (siehe docs/DB-TESTWOCHE.sql). Die zweite Funktion ist nur für Admins und Testkonten.
 export const gymTestWeek = (seats) => client.rpc('gym_testwoche_starten', { p_plaetze: seats });
