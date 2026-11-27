@@ -918,7 +918,9 @@ function gymHtml() {
   if (d) {
     const total = Number(d.plaetze_gesamt) || 0;
     const seats = d.plaetze || [];
-    const full = seats.length >= total;
+    const probe = d.probe || ''; // ohne Paket: 'laeuft' (eine gemeinsame Gratis-Einheit) oder 'vorbei'
+    const allowed = total || (probe === 'laeuft' ? 1 : 0);
+    const full = seats.length >= allowed;
     const rows = seats
       .map(
         (s) => `<div class="seat"><div class="seathead"><b>${esc(s.name)}</b><span class="chip ${s.belegt ? 'ok' : ''}">${s.belegt ? 'Eingelöst' : 'Noch nicht eingelöst'}</span></div><div class="coderow"><span class="code">${esc(s.code)}</span><button class="copybtn" data-act="gym-copy" data-code="${esc(s.code)}" aria-label="Code von ${esc(s.name)} kopieren"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="12" rx="2.2"/><path d="M15.5 5.5v-.3A1.7 1.7 0 0 0 13.8 3.5H6.2A1.7 1.7 0 0 0 4.5 5.2v9.6a1.7 1.7 0 0 0 1.7 1.7h.3"/></svg></button><button class="ghost seat-del" data-act="gym-del" data-id="${esc(s.id)}" data-name="${esc(s.name)}" aria-label="${esc(s.name)} löschen">Löschen</button></div>${s.belegt ? '' : `<button class="ghost block" style="margin-top:8px" data-act="gym-invite" data-code="${esc(s.code)}" data-name="${esc(s.name)}">Einladung kopieren</button>`}</div>`,
@@ -927,21 +929,27 @@ function gymHtml() {
     const redeemed = seats.filter((s) => s.belegt).length;
     const step = (done, title, text) => `<li class="${done ? 'done' : ''}"><b>${title}</b><br><span class="muted small">${text}</span></li>`;
     const guide =
-      total && !redeemed
+      allowed && !redeemed
         ? `<div class="card"><h2 style="margin-top:0;font-size:20px">So geht es weiter</h2><ul class="fsteps">${step(false, 'Boxer anlegen', 'Schreibe den Namen und tippe auf „Boxer anlegen“.')}${step(false, 'Einladung schicken', 'Tippe neben dem Namen auf „Einladung kopieren“ und schicke den Text an den Boxer.')}${step(false, 'Boxer löst den Code ein', 'Er meldet sich als Privatperson an und trägt den Code ein. Dann siehst du seinen Stand.')}</ul></div>`
         : '';
-    return `${msg}<div class="card"><div class="row between"><b>${esc(d.name)}</b><span class="chip ${total ? 'ok' : 'amber'}">${total ? `Paket: ${total} Boxer` : 'Noch kein Paket'}</span></div>
-    <p class="muted small" style="margin:8px 0 0">${total ? `${seats.length} von ${total} Boxern angelegt, ${redeemed} haben ihren Code eingelöst. Du und deine Boxer trainieren ohne Werbung.` : 'Ohne Paket kannst du noch keine Boxer anlegen. Der Kauf der Pakete kommt mit der iPhone-App.'}</p></div>
+    return `${msg}<div class="card"><div class="row between"><b>${esc(d.name)}</b><span class="chip ${total || probe === 'laeuft' ? 'ok' : 'amber'}">${total ? `Paket: ${total} Boxer` : probe === 'laeuft' ? 'Probe läuft' : 'Paket fehlt'}</span></div>
+    <p class="muted small" style="margin:8px 0 0">${total ? `${seats.length} von ${total} Boxern angelegt, ${redeemed} haben ihren Code eingelöst. Du und deine Boxer trainieren ohne Werbung.` : probe === 'laeuft' ? 'Eine Gratis-Einheit für den ganzen Verein: du oder dein Boxer, ohne Werbung. Du kannst einen Boxer anlegen. Danach brauchst du ein Paket.' : 'Die Gratis-Einheit ist gemacht. Für weitere Boxer und werbefreies Training brauchst du ein Paket. Der Kauf der Pakete kommt mit der iPhone-App.'}</p></div>
     ${guide}
     ${seats.length ? `<div class="card seats">${rows}</div>` : ''}
     ${!total && payUi() ? `<div class="card"><h2 style="margin-top:0">Paket wählen</h2>${pkgBlockHtml('gym-pkg-buy', false)}</div>` : ''}
     <div class="card"><h2 style="margin-top:0">Neuer Boxer</h2>
     <p class="muted small">Jeder Boxer bekommt einen eigenen Code. Verlässt ein Boxer den Verein selbst, ist sein Platz wieder frei und hat einen neuen Code. Du kannst einen Boxer auch selbst löschen.</p>
     <label for="gymSeatName" class="small" style="margin:0 0 4px">Name des Boxers</label>
-    <input id="gymSeatName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Lena" ${total && !full ? '' : 'disabled'}>
-    <button class="primary block" style="margin-top:10px" data-act="gym-add" ${total && !full && !gym.busy ? '' : 'disabled'}>Boxer anlegen</button>
-    ${total && full ? '<p class="muted small" style="margin-bottom:0">Alle Plätze im Paket sind vergeben. Lösche einen Boxer oder nimm ein größeres Paket.</p>' : ''}</div>
+    <input id="gymSeatName" type="text" maxlength="60" autocomplete="off" placeholder="z. B. Lena" ${allowed && !full ? '' : 'disabled'}>
+    <button class="primary block" style="margin-top:10px" data-act="gym-add" ${allowed && !full && !gym.busy ? '' : 'disabled'}>Boxer anlegen</button>
+    ${total && full ? '<p class="muted small" style="margin-bottom:0">Alle Plätze im Paket sind vergeben. Lösche einen Boxer oder nimm ein größeres Paket.</p>' : ''}
+    ${!total && probe !== 'laeuft' ? '<p class="muted small" style="margin-bottom:0">Für weitere Boxer brauchst du ein Paket.</p>' : ''}
+    ${!total && probe === 'laeuft' && full ?'<p class="muted small" style="margin-bottom:0">In der Probe ist ein Boxer möglich. Für weitere brauchst du ein Paket.</p>' : ''}</div>
     ${account && account.isAdmin ? `<div class="card"><h2 style="margin-top:0">Test-Paket (nur für dich)</h2><p class="muted small">Ersetzt den Kauf, solange es ihn noch nicht gibt.</p><div class="btn-row">${[0, 3, 5, 10].map((n) => `<button class="ghost" data-act="gym-pkg" data-n="${n}" ${n === total ? 'aria-pressed="true"' : ''}>${n ? n + ' Boxer' : 'Kein Paket'}</button>`).join('')}</div></div>` : ''}`;
+  }
+  if (gym.access && gym.access.art === 'probe_vorbei') {
+    return `${msg}<div class="card"><div class="row between"><b>${esc(gym.access.verein)}</b><span class="chip amber">Probe vorbei</span></div><p class="muted small" style="margin:8px 0 0">Die Gratis-Einheit deines Vereins ist vorbei. Du trainierst jetzt mit Werbung oder Abo, bis dein Trainer ein Paket hat. Dein Fortschritt bleibt.</p></div>
+    <div class="card"><h2 style="margin-top:0">Verein verlassen</h2><p class="muted small">Dein Trainer sieht dich danach nicht mehr. Dein Konto und dein Fortschritt bleiben. Du kannst später einen neuen Code einlösen.</p><button class="ghost block" data-act="gym-leave" ${gym.busy ? 'disabled' : ''}>Verein verlassen</button></div>`;
   }
   if (gym.access) {
     return `${msg}<div class="card"><div class="row between"><b>${esc(gym.access.verein)}</b><span class="chip ok">Dein Verein</span></div><p class="muted small" style="margin:8px 0 0">Du trainierst über den Platz deines Vereins, ohne Werbung. Verlässt du den Verein, endet der Zugang, dein Fortschritt bleibt.</p></div>
@@ -1205,7 +1213,7 @@ let aboPick = 'jahr'; // das Jahresabo ist vorgewählt
 let adChoiceId = ''; // Einheit, für die „Weiter mit Werbung“ gewählt wurde
 const payUi = () => Boolean(account && (account.isAdmin || account.isTester || PAYWALL_FUER_ALLE)); // Testkonto: z. B. das Vereinskonto des Betreibers (siehe docs/DB-VEREINSKONTEN.sql)
 // Werbefrei: Abo, Boxer mit Vereinsplatz, Trainer (Admin nicht, damit man den Ablauf testen kann)
-const werbefrei = () => Boolean(abo.aktiv || (clubInfo.access && clubInfo.access.art === 'verein') || (clubInfo.trainer && clubInfo.seatsTotal > 0 && !(account && account.isAdmin))); // access.art ist auch bei Trainern gesetzt ('trainer'), nur 'verein' ist ein Boxer mit Platz; ein Trainer ist nur mit Paket werbefrei
+const werbefrei = () => Boolean(abo.aktiv || (clubInfo.access && clubInfo.access.art === 'verein') || (clubInfo.trainer && (clubInfo.seatsTotal > 0 || clubInfo.probe === 'laeuft') && !(account && account.isAdmin))); // access.art ist auch bei Trainern gesetzt ('trainer'), nur 'verein' ist ein Boxer mit Platz; ein Trainer ist nur mit Paket werbefrei
 const adDue = (id) => Boolean(account) && id !== 'test' && !werbefrei() && Object.keys(state.done || {}).length >= 1 && (!payUi() || adChoiceId === id);
 const adPlaceholderOn = () => !nativePlugin('AdMob') && Boolean(account && (account.isAdmin || account.isTester));
 async function loadAbo() {
@@ -2443,6 +2451,7 @@ const clubSeats = (d) => ({
   seatsTotal: d ? Number(d.plaetze_gesamt) || 0 : 0,
   seatsCount: d && Array.isArray(d.plaetze) ? d.plaetze.length : 0,
   seatsRedeemed: d && Array.isArray(d.plaetze) ? d.plaetze.filter((s) => s.belegt).length : 0,
+  probe: d && d.probe ? String(d.probe) : '', // Verein ohne Paket: 'laeuft' oder 'vorbei'
 });
 async function loadClubInfo() {
   if (!account) return;
@@ -2451,10 +2460,22 @@ async function loadClubInfo() {
     if (g.error || a.error) return;
     clubInfo = { loaded: true, access: a.data || null, trainer: Boolean(g.data), attention: clubInfo.attention || 0, ...clubSeats(g.data) };
     if (clubInfo.trainer) loadTrainerAttention();
+    if (clubInfo.trainer || clubInfo.access) Promise.resolve(cloud.gymProbeCheck()).catch(() => {}); // hält das Ende der Probe fest (siehe docs/DB-PROBE.sql)
     if (['', '#', '#/', '#/profile'].includes(location.hash) && !document.querySelector('.timer') && !document.getElementById('onboard')) route();
   } catch {
     /* ohne Verbindung bleibt der Hinweis einfach weg */
   }
+}
+// Nach einer erledigten Einheit: Stand sichern, Ende der Probe festhalten und den Vereinsstand neu laden (die Werbung setzt dann sofort ein)
+async function refreshClubAfterUnit() {
+  if (!account || !(clubInfo.trainer || clubInfo.access)) return;
+  try {
+    await withTimeout(pushNow(), 15000);
+    await withTimeout(Promise.resolve(cloud.gymProbeCheck()), 8000);
+  } catch {
+    /* ohne Verbindung klappt es beim nächsten Start */
+  }
+  loadClubInfo();
 }
 function clubHomeHtml() {
   if (account && account.isAdmin) return ''; // Admin: Vereinsdetails nur im Admin-Bereich
@@ -2464,9 +2485,13 @@ function clubHomeHtml() {
     const c = clubInfo.seatsCount || 0;
     let head = '';
     let sub = '';
-    if (!t) {
+    if (!t && clubInfo.probe === 'laeuft') {
+      if (c && clubInfo.seatsRedeemed) return '';
+      head = c ? 'Nächster Schritt: Code weitergeben' : 'Probe: Boxer anlegen';
+      sub = c ? 'Noch hat niemand seinen Code eingelöst.' : 'Eine Gratis-Einheit für den ganzen Verein. Lege einen Boxer an und schicke ihm den Code.';
+    } else if (!t) {
       head = 'Paket fehlt';
-      sub = 'Ohne Paket kannst du noch keine Boxer anlegen.';
+      sub = 'Ohne Paket kannst du keine weiteren Boxer anlegen.';
     } else if (!c) {
       head = 'Nächster Schritt: Boxer anlegen';
       sub = `0 von ${t} Boxern angelegt. Lege den ersten Boxer an und schicke ihm den Code.`;
@@ -2477,6 +2502,7 @@ function clubHomeHtml() {
     return `<a class="card link accent row" href="#/verein"><span class="grow"><span class="kicker">Dein Verein</span><br><b>${head}</b><br><span class="muted small">${sub}</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   }
   if (!clubInfo.loaded) return '';
+  if (clubInfo.access && clubInfo.access.art === 'probe_vorbei') return `<a class="card link row" href="#/verein"><span class="grow"><span class="chip amber">Probe vorbei</span> <b>${esc(clubInfo.access.verein)}</b><br><span class="muted small">Du trainierst jetzt mit Werbung oder Abo, bis dein Trainer ein Paket hat.</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   if (clubInfo.access) return `<a class="card link row" href="#/verein"><span class="grow"><span class="chip ok">Dein Verein</span> <b>${esc(clubInfo.access.verein)}</b><br><span class="muted small">Du trainierst ohne Werbung.</span></span><span class="chev" aria-hidden="true">›</span></a>`;
   let hidden = false;
   try {
@@ -2590,7 +2616,7 @@ function viewPaket() {
   ${
     can
       ? `<button class="primary block" style="margin-top:6px" data-act="clubbuy-go">Paket mit ${pk.n} Boxern für ${pk.preis} wählen</button>${isNativeApp() ? '' : '<p class="testhint">Zum Testen in der Web-Version: der Kauf wird nur gespielt.</p>'}`
-      : '<div class="notice"><b>Der Kauf kommt mit der iPhone-App.</b><br>Bis dahin legen wir deinen Verein ohne Paket an. Du kannst Boxer anlegen, sobald der Kauf möglich ist. Du bekommst keine Vorteile und bist nicht werbefrei.</div><button class="primary block" style="margin-top:6px" data-act="clubbuy-go">Verein ohne Paket anlegen</button>'
+      : '<div class="notice"><b>Dein Verein startet mit einer Probe.</b><br>Du oder ein Boxer macht eine Gratis-Einheit, ohne Werbung. Danach brauchst du ein Paket. Der Kauf kommt mit der iPhone-App.</div><button class="primary block" style="margin-top:6px" data-act="clubbuy-go">Verein mit Probe anlegen</button>'
   }
   <button class="ghost block" style="margin-top:14px" data-act="clubbuy-later">Später</button>`;
 }
@@ -3995,6 +4021,7 @@ document.addEventListener('click', (e) => {
       save();
       scheduleReminder();
       updateTrainerInfo();
+      refreshClubAfterUnit();
       route();
       break;
     case 'unmark':
@@ -4049,6 +4076,7 @@ document.addEventListener('click', (e) => {
       save();
       scheduleReminder();
       updateTrainerInfo();
+      refreshClubAfterUnit();
       location.hash = '#/';
       break;
     case 'fight-remove':
@@ -4230,12 +4258,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 // Zusätzliche Prüfung unabhängig vom Service Worker (nötig für die App auf dem Home-Bildschirm): die App fragt selbst, welche Version online ist.
 // Die Zahl muss gleich der in sw.js (redline-vNN) sein. Bei jeder Änderung beide erhöhen.
-const APP_BUILD = 142;
+const APP_BUILD = 143;
 // Die Version, die Nutzer sehen (gleich der Version im App Store). APP_BUILD ist nur die interne Zählung für den Hinweis "Neu laden".
 const APP_VERSION = '1.1';
 // Neuigkeiten, neueste zuerst. Bei jeder sichtbaren Änderung oben einen Eintrag ergänzen (neue Version nur, wenn auch im App Store eine neue Version erscheint).
 const NEUES = [
-  { v: '1.1', datum: '21.11.2026', punkte: ['Neu starten: Solange Kampftermin oder Fitness-Test fehlen, zeigt die App eine Karte „So startest du“ mit den zwei Schritten und einem Knopf zum nächsten.', 'Verein: Die Schritte unter „So geht es weiter“ haben keine Häkchen mehr, und die Seite heißt auch beim ersten Öffnen „Deine Boxer“.', 'Plan zurücksetzen: Ist der Kampf abgesagt oder willst du neu anfangen, setzt du den Plan unter „Einstellungen“ zurück. Kampftermin, Test-Watt und erledigte Einheiten werden gelöscht, danach legst du alles neu an.', 'Trainingsplan: Den Plan gibt es erst, wenn du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast. Vorher zeigt die App, was noch fehlt. Das gilt für alle, auch für Trainer, die selbst trainieren.', 'Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
+  { v: '1.1', datum: '21.11.2026', punkte: ['Verein: Probe mit einer Gratis-Einheit für den ganzen Verein, ohne Werbung. Der Trainer kann dafür einen Boxer anlegen. Danach brauchst du ein Paket, Boxer trainieren dann mit Werbung oder Abo weiter.', 'Neu starten: Solange Kampftermin oder Fitness-Test fehlen, zeigt die App eine Karte „So startest du“ mit den zwei Schritten und einem Knopf zum nächsten.', 'Verein: Die Schritte unter „So geht es weiter“ haben keine Häkchen mehr, und die Seite heißt auch beim ersten Öffnen „Deine Boxer“.', 'Plan zurücksetzen: Ist der Kampf abgesagt oder willst du neu anfangen, setzt du den Plan unter „Einstellungen“ zurück. Kampftermin, Test-Watt und erledigte Einheiten werden gelöscht, danach legst du alles neu an.', 'Trainingsplan: Den Plan gibt es erst, wenn du deinen Kampftermin eingetragen und den Fitness-Test gemacht hast. Vorher zeigt die App, was noch fehlt. Das gilt für alle, auch für Trainer, die selbst trainieren.', 'Verein: Als Trainer trainierst du zusätzlich zu deinen Boxern selbst ohne Werbung und ohne eigenes Abo mit. Das steht jetzt bei der Registrierung und beim Paket.', 'Einheiten: Die Blöcke eines Satzes (zum Beispiel 20 s Arbeit, 20 s Pause, 20 s Arbeit, 3 min Pause) stehen jetzt sauber in zwei Spalten untereinander.', 'Verein: Nach der Registrierung gibt es keine Einrichtung für Privatpersonen mehr, sondern gleich „Paket bestätigen“. Danach legst du unter „Deine Boxer“ deine Boxer an, kopierst eine Einladung mit dem Code und schickst sie ab. Die Startseite zeigt dir den nächsten Schritt.', 'Neu: Du kannst dich jetzt als Verein registrieren. Du siehst die drei Pakete (3, 5 oder 10 Boxer) mit allem, was dabei ist, und bestätigst dein Paket nach der Anmeldung. Admin: Auswertung der Vereine mit Paketen und Nutzung.', 'Fehlerbehebung: Wer selbst einen Verein besitzt und Admin ist, galt fälschlich als werbefrei und sah die Auswahl „Ohne Werbung“ nicht.', 'Neu: „Ohne Werbung“. Das erste Training ist gratis. Ab dem zweiten wählst du ein Abo (Monat 1,99 €, Jahr 14,99 €) oder trainierst mit Werbung. Vereine wählen beim Anlegen ein Paket (3, 5 oder 10 Boxer). Zum Testen wird der Kauf nur gespielt.', 'Anmelden mit einer E-Mail-Adresse ohne Konto: Die App sagt jetzt gleich, dass es kein Konto gibt, statt so zu tun, als wäre ein Code unterwegs.', 'Neu: Oben rechts gibt es das Profil (Mensch-Symbol). Dort sind dein Konto, Abmelden, Einstellungen und der Verein. Trainer sehen dort gleich ihre Boxer. Unter „Mehr“ stehen Einführung, Fehler melden, Meine Meldungen und „Das ist neu“.', 'Boxer können den Verein jetzt selbst verlassen (unter „Profil“, „Verein“). Der Trainer sieht sie dann nicht mehr, Konto und Fortschritt bleiben.', 'Der Datenschutztext erklärt jetzt, was dein Trainer im Verein von dir sieht und dass auch der Betreiber der App den Stand der Vereine einsehen kann.', 'Trainer: „Aufmerksamkeit nötig“ erkennt jetzt auch Boxer, die die App gar nicht mehr öffnen, und meldet neue Boxer nicht mehr gleich als „nicht trainiert“.', 'Ist deine Anmeldung abgelaufen, zeigt die App einen Hinweis mit Knopf zum neuen Anmelden. Beim Abmelden werden auch alle geplanten Erinnerungen entfernt.', 'Neu für Trainer: Im Profil siehst du, wer von deinen Boxern trainiert, in welcher Phase er ist und ob er die Einheit wirklich voll durchgezogen hat. Dafür misst die App jetzt bei jeder Einheit die gelaufene Zeit.', 'Das Klopfen vor dem Ende einer Pause und der Piepton in den letzten drei Sekunden sind lauter.', 'Fitness-Test: Auch nach dem dritten Sprint fragt die App sofort nach dem höchsten Wert. Danach siehst du alle drei Werte und kannst sie noch ändern.', 'Neu angemeldet und noch nicht eingerichtet? Die App erinnert dich einmal nach 24 Stunden.', 'Zweimal schnell tippen zoomt die App nicht mehr hinein.', 'Der Datenschutztext zeigt keinen Entwurf-Hinweis mehr.', 'Eingabefelder sind besser lesbar.', 'Neu: Verein. Trainer legen Plätze für ihre Boxer an, jeder Boxer bekommt einen eigenen Code. Den Code gibst du nach der Einrichtung, auf der Startseite oder unter „Profil“, „Verein“ ein.', 'Die App fragt, wann du trainierst, und erinnert dich rechtzeitig: abends Trainierende morgens, morgens und mittags Trainierende am Vorabend.', 'Rote Zahl auf dem App-Symbol, wenn eine Einheit wartet.', 'Ein Hinweis, wenn du ein paar Tage nicht da warst.', 'Ein Hinweis, wenn deine App zu alt ist und im App Store aktualisiert werden sollte.'] },
   { v: '1.0', datum: '21.11.2026', punkte: ['Die App ist jetzt im App Store.', 'Training, Plan, Fortschritt und Kampftermin an einem Ort.', 'Erinnerungen, Sichern und Kalender-Export.'] },
 ];
 async function checkForUpdate() {
