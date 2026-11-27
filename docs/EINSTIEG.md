@@ -4,7 +4,7 @@ Diese Datei ist für die KI am Anfang jeder neuen Sitzung. Der Gesprächsverlauf
 
 ## Zuerst lesen
 
-1. `OFFENE-PUNKTE.md`: alle offenen Punkte, Entscheidungen und Annahmen (Prototyp und „live").
+1. **Offene Punkte (seit 28.11.2026 im privaten Repo):** `/Users/Ahmet/nonstop-boxing-planung/offene-punkte.md` (nur Offenes, kurz), Archiv `archiv.md` und eingefrorener Wortlaut der alten Liste `snapshot-2026-11-28.md` im selben Ordner. Das Repo ist privat (`aozcorap/nonstop-boxing-planung`), die Listen verweisen nur aufeinander (`[S 151]` = Zeile 151 im Snapshot). `OFFENE-PUNKTE.md` hier im Projekt ist nur noch die öffentliche Technik-Kurzliste. Fehlt der Ordner auf dem Mac: `gh repo clone aozcorap/nonstop-boxing-planung`.
 2. `video/trailer/STAND.md`: Arbeitsstand des Werbetrailers (Prompts, Einstellungen, was morgen offen ist). Die Prompts selbst: `video/trailer/higgsfield-prompts.md`, der Ablauf: `video/trailer/storyboard.md`.
 3. `CLAUDE.md`: Regeln für Änderungen an der App.
 4. `docs/ORDNUNG.md`: Wo liegen die Dateien des Projekts, Vorschlag für eine zentrale Ablage, Liste „behalten, verschieben oder löschen“. **Bei jeder neuen Datei oder jedem neuen Ordner (Mac, Repo, Higgsfield, Stores) dort mitpflegen.**
@@ -42,7 +42,7 @@ Die App (Version 94, Stand 20.11.: Maximalsprints altersunabhängig (85); Plan e
 
 ## Weniger lesen, weniger Token (28.11.2026)
 
-- **`OFFENE-PUNKTE.md` nicht ganz lesen.** Die Datei ist groß. Zuerst `grep -n -o '^- \*\*[^*]*\*\*' OFFENE-PUNKTE.md` für die Überschriften der Einträge, dann nur die nötigen Zeilen lesen. Erledigtes und Überholtes liegt in `docs/ARCHIV-OFFENE-PUNKTE.md` (nur bei Bedarf).
+- **Offene Punkte kurz halten (seit 28.11.2026):** Die Liste liegt im privaten Repo (`/Users/Ahmet/nonstop-boxing-planung/offene-punkte.md`, rund 80 Zeilen) und enthält nur Offenes. Erledigtes und Gecanceltes steht in `archiv.md` daneben. Details nur bei Bedarf aus `snapshot-2026-11-28.md` lesen (Zeilenverweis `[S n]`), nie die ganze Datei. Wird ein Punkt erledigt, aus `offene-punkte.md` löschen und in `archiv.md` eintragen. Ältere öffentliche Einträge: `docs/ARCHIV-OFFENE-PUNKTE.md`.
 - **`app.js` ist wieder durchsuchbar** (`grep -n` geht): Das Impressum mit den Kontaktdaten liegt seit Build 153 in `legal.js`. Kontaktdaten nicht wieder in `app.js` schreiben, sonst blockiert die Datenschutz-Sperre die Befehle auf der Datei erneut.
 
 ## Testumgebung für die Web-Version (28.11.2026)
